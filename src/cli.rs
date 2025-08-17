@@ -1,0 +1,347 @@
+use clap::{Parser, CommandFactory};
+use indicatif::{ProgressBar, ProgressStyle};
+use std::process::Command;
+use std::time::Duration;
+use wait_for::{Target, WaitConfig, WaitForError, WaitResult, wait_for_connection};
+
+/// Extended error type for CLI-specific errors
+#[derive(thiserror::Error, Debug)]
+enum CliError {
+    #[error("Wait error: {0}")]
+    WaitError(#[from] WaitForError),
+    #[error("Invalid timeout format '{0}': {1}")]
+    InvalidTimeout(String, String),
+    #[error("Invalid interval format '{0}': {1}")]
+    InvalidInterval(String, String),
+    #[error("Command execution failed: {0}")]
+    CommandExecution(String),
+    #[error("JSON serialization failed: {0}")]
+    JsonSerialization(#[from] serde_json::Error),
+}
+
+type Result<T> = std::result::Result<T, CliError>;
+
+#[derive(Parser)]
+#[command(name = "wait-for")]
+#[command(about = "Block until host:port is reachable; exit non-zero on timeout")]
+#[command(version)]
+struct Args {
+    /// Targets to wait for (host:port or http(s)://host/path)
+    #[arg(value_name = "TARGET", required = true)]
+    targets: Vec<String>,
+
+    /// Connection timeout (e.g., "30s", "2m", "1h")
+    #[arg(short, long, env = "WAIT_FOR_TIMEOUT", default_value = "30s")]
+    timeout: String,
+
+    /// Initial retry interval (e.g., "1s", "500ms", "2s")
+    #[arg(short, long, env = "WAIT_FOR_INTERVAL", default_value = "1s")]
+    interval: String,
+
+    /// Maximum retry interval for exponential backoff
+    #[arg(long, default_value = "30s")]
+    max_interval: String,
+
+    /// Expected HTTP status code for HTTP targets
+    #[arg(long, default_value = "200")]
+    expect_status: u16,
+
+    /// Wait for any target to be ready (default: wait for all)
+    #[arg(long, conflicts_with = "all")]
+    any: bool,
+
+    /// Wait for all targets to be ready (explicit flag)
+    #[arg(long, conflicts_with = "any")]
+    all: bool,
+
+    /// Suppress output messages
+    #[arg(short, long, conflicts_with = "json")]
+    quiet: bool,
+
+    /// Verbose output with progress information
+    #[arg(short, long, conflicts_with = "quiet")]
+    verbose: bool,
+
+    /// Output result in JSON format
+    #[arg(long, conflicts_with = "quiet")]
+    json: bool,
+
+    /// Maximum number of retry attempts
+    #[arg(long)]
+    retry_limit: Option<u32>,
+
+    /// Custom HTTP headers (format: "key:value")
+    #[arg(long, action = clap::ArgAction::Append)]
+    header: Vec<String>,
+
+    /// Connection timeout for individual attempts
+    #[arg(long, default_value = "10s")]
+    connection_timeout: String,
+
+    /// Generate shell completion script
+    #[arg(long, value_enum)]
+    generate_completion: Option<clap_complete::Shell>,
+
+    /// Command to execute after successful connection
+    #[arg(last = true)]
+    command: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+struct CliConfig {
+    targets: Vec<Target>,
+    wait_config: WaitConfig,
+    quiet: bool,
+    verbose: bool,
+    json: bool,
+    command: Vec<String>,
+}
+
+impl CliConfig {
+    fn from_args(args: Args) -> Result<Self> {
+        let mut targets = Vec::new();
+
+        // Parse custom headers
+        let mut headers = Vec::new();
+        for header_str in &args.header {
+            let parts: Vec<&str> = header_str.splitn(2, ':').collect();
+            if parts.len() != 2 {
+                return Err(CliError::WaitError(WaitForError::InvalidTarget(
+                    format!("Invalid header format '{}': expected 'key:value'", header_str)
+                )));
+            }
+            headers.push((parts[0].trim().to_string(), parts[1].trim().to_string()));
+        }
+
+        for target_str in &args.targets {
+            if target_str.starts_with("http://") || target_str.starts_with("https://") {
+                let url = url::Url::parse(target_str)
+                    .map_err(|_| CliError::WaitError(WaitForError::InvalidTarget(target_str.clone())))?;
+
+                if headers.is_empty() {
+                    targets.push(Target::http(url, args.expect_status)?);
+                } else {
+                    targets.push(Target::http_with_headers(url, args.expect_status, headers.clone())?);
+                }
+            } else {
+                targets.push(Target::parse(target_str, args.expect_status)?);
+            }
+        }
+
+        let timeout = args.timeout.parse::<humantime::Duration>()
+            .map_err(|e| CliError::InvalidTimeout(args.timeout, e.to_string()))?
+            .into();
+
+        let initial_interval = args.interval.parse::<humantime::Duration>()
+            .map_err(|e| CliError::InvalidInterval(args.interval, e.to_string()))?
+            .into();
+
+        let max_interval = args.max_interval.parse::<humantime::Duration>()
+            .map_err(|e| CliError::InvalidInterval(args.max_interval, e.to_string()))?
+            .into();
+
+        let connection_timeout = args.connection_timeout.parse::<humantime::Duration>()
+            .map_err(|e| CliError::InvalidInterval(args.connection_timeout, e.to_string()))?
+            .into();
+
+        let wait_for_any = args.any || (!args.all && targets.len() == 1);
+
+        let wait_config = WaitConfig::builder()
+            .timeout(timeout)
+            .interval(initial_interval)
+            .max_interval(max_interval)
+            .wait_for_any(wait_for_any)
+            .max_retries(args.retry_limit)
+            .connection_timeout(connection_timeout)
+            .build();
+
+        Ok(CliConfig {
+            targets,
+            wait_config,
+            quiet: args.quiet,
+            verbose: args.verbose,
+            json: args.json,
+            command: args.command,
+        })
+    }
+}
+
+/// Output formatter for wait results
+mod output {
+    use super::*;
+    use serde::Serialize;
+
+    #[derive(Serialize)]
+    pub struct JsonOutput {
+        pub success: bool,
+        pub elapsed_ms: u64,
+        pub total_attempts: u32,
+        pub targets: Vec<JsonTargetResult>,
+    }
+
+    #[derive(Serialize)]
+    pub struct JsonTargetResult {
+        pub target: String,
+        pub success: bool,
+        pub elapsed_ms: u64,
+        pub attempts: u32,
+        pub error: Option<String>,
+    }
+
+    pub fn format_result(result: &WaitResult, config: &CliConfig) -> Result<()> {
+        if config.json {
+            let json_output = JsonOutput {
+                success: result.success,
+                elapsed_ms: result.elapsed.as_millis() as u64,
+                total_attempts: result.attempts,
+                targets: result.target_results.iter().map(|tr| JsonTargetResult {
+                    target: tr.target.display(),
+                    success: tr.success,
+                    elapsed_ms: tr.elapsed.as_millis() as u64,
+                    attempts: tr.attempts,
+                    error: tr.error.clone(),
+                }).collect(),
+            };
+            println!("{}", serde_json::to_string_pretty(&json_output)?);
+        } else if !config.quiet {
+            if result.success {
+                if config.wait_config.wait_for_any {
+                    println!("At least one target is ready!");
+                } else {
+                    println!("All targets are ready!");
+                }
+            } else {
+                eprintln!("Failed to connect to targets");
+            }
+        }
+        Ok(())
+    }
+}
+
+async fn wait_with_progress(config: &CliConfig) -> Result<WaitResult> {
+    if config.verbose && !config.quiet && !config.json {
+        let multi_progress = indicatif::MultiProgress::new();
+        let progress_bars: Vec<_> = config.targets.iter().map(|target| {
+            let pb = multi_progress.add(ProgressBar::new_spinner());
+            pb.set_style(
+                ProgressStyle::default_spinner()
+                    .template("{spinner:.green} {msg}")
+                    .unwrap()
+            );
+            pb.set_message(format!("Waiting for {}", target.display()));
+            pb.enable_steady_tick(Duration::from_millis(100));
+            pb
+        }).collect();
+
+        // For now, we'll use the basic wait_for_connection and update progress bars manually
+        let result = wait_for_connection(&config.targets, &config.wait_config).await
+            .map_err(CliError::WaitError)?;
+
+        // Update progress bars based on results
+        for (i, target_result) in result.target_results.iter().enumerate() {
+            if let Some(pb) = progress_bars.get(i) {
+                if target_result.success {
+                    pb.finish_with_message(format!("✓ {}", target_result.target.display()));
+                } else {
+                    pb.finish_with_message(format!("✗ {} ({})",
+                        target_result.target.display(),
+                        target_result.error.as_deref().unwrap_or("failed")
+                    ));
+                }
+            }
+        }
+
+        Ok(result)
+    } else {
+        wait_for_connection(&config.targets, &config.wait_config).await
+            .map_err(CliError::WaitError)
+    }
+}
+
+async fn execute_command(command: Vec<String>) -> Result<()> {
+    if command.is_empty() {
+        return Ok(());
+    }
+
+    let mut cmd = Command::new(&command[0]);
+    if command.len() > 1 {
+        cmd.args(&command[1..]);
+    }
+
+    let output = cmd.output()
+        .map_err(|e| CliError::CommandExecution(e.to_string()))?;
+
+    if !output.status.success() {
+        return Err(CliError::CommandExecution(format!(
+            "Command exited with code: {:?}",
+            output.status.code()
+        )));
+    }
+
+    Ok(())
+}
+
+/// Main CLI entry point
+pub async fn run() -> i32 {
+    let args = Args::parse();
+
+    // Handle completion generation
+    if let Some(shell) = args.generate_completion {
+        let mut cmd = Args::command();
+        let name = cmd.get_name().to_string();
+        clap_complete::generate(shell, &mut cmd, name, &mut std::io::stdout());
+        return 0;
+    }
+
+    let config = match CliConfig::from_args(args) {
+        Ok(config) => config,
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            return 2;
+        }
+    };
+
+    // Wait for connections
+    let result = match wait_with_progress(&config).await {
+        Ok(result) => result,
+        Err(e) => {
+            if !config.json {
+                eprintln!("Error: {}", e);
+            } else {
+                let json_error = serde_json::json!({
+                    "success": false,
+                    "error": e.to_string()
+                });
+                println!("{}", json_error);
+            }
+            return 1;
+        }
+    };
+
+    // Output results
+    if let Err(e) = output::format_result(&result, &config) {
+        eprintln!("Output error: {}", e);
+        return 1;
+    }
+
+    // Exit if not successful
+    if !result.success {
+        return 1;
+    }
+
+    // Execute command if provided
+    if let Err(e) = execute_command(config.command).await {
+        if !config.json {
+            eprintln!("Command execution error: {}", e);
+        } else {
+            let json_error = serde_json::json!({
+                "success": false,
+                "error": format!("Command execution failed: {}", e)
+            });
+            println!("{}", json_error);
+        }
+        return 3;
+    }
+
+    0
+}
