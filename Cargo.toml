@@ -1,0 +1,50 @@
+[package]
+name = "wait-for"
+version = "1.0.0"
+edition = "2024"
+authors = ["Serhii Kaliuzhnyi <kalyuzhni.sergei@gmail.com>"]
+description = "A modern, feature-rich CLI tool for waiting until TCP ports, HTTP endpoints, and services become available. Perfect for Docker, Kubernetes, CI/CD pipelines, and microservices orchestration."
+license = "MIT"
+repository = "https://github.com/grok-rs/wait-for"
+homepage = "https://github.com/grok-rs/wait-for"
+documentation = "https://docs.rs/wait-for"
+readme = "README.md"
+keywords = ["cli", "tcp", "http", "health-check", "docker", "kubernetes", "microservices", "port", "networking", "connectivity"]
+categories = ["command-line-utilities", "network-programming", "development-tools", "web-programming"]
+exclude = [
+    "target/*",
+    ".github/*",
+    "*.log"
+]
+
+[dependencies]
+clap = { version = "4.0", features = ["derive", "env"] }
+clap_complete = "4.0"
+tokio = { version = "1.0", features = ["net", "rt-multi-thread", "time", "macros"] }
+tokio-util = "0.7"
+thiserror = "1.0"
+humantime = "2.1"
+indicatif = "0.17"
+reqwest = { version = "0.12", features = ["json"] }
+url = "2.5"
+futures = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[profile.release]
+lto = true
+strip = true
+opt-level = "z"
+codegen-units = 1
+panic = "abort"
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[lib]
+name = "wait_for"
+path = "src/lib.rs"
+
+[[bin]]
+name = "wait-for"
+path = "src/main.rs"
