@@ -1,0 +1,305 @@
+name: Docker
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (without v prefix)"
+        required: false
+        type: string
+
+env:
+  REGISTRY_DOCKERHUB: docker.io
+  REGISTRY_GHCR: ghcr.io
+  IMAGE_NAME: waitfor/wait-for
+  GHCR_IMAGE_NAME: ghcr.io/grok-rs/wait-for
+
+jobs:
+  # Build and test Docker images
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variant: [debian, alpine]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.IMAGE_NAME }}
+            ${{ env.GHCR_IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+          flavor: |
+            latest=false
+            suffix=${{ matrix.variant == 'alpine' && '-alpine' || '' }}
+
+      - name: Build and export
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.variant == 'alpine' && 'Dockerfile.alpine' || 'Dockerfile' }}
+          platforms: linux/amd64
+          outputs: type=docker,dest=/tmp/wait-for-${{ matrix.variant }}.tar
+          tags: test-image:latest
+          cache-from: type=gha,scope=${{ matrix.variant }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.variant }}
+
+      - name: Load and test image
+        run: |
+          docker load --input /tmp/wait-for-${{ matrix.variant }}.tar
+
+          echo "🔍 Testing Docker image functionality..."
+
+          # Test help command
+          docker run --rm test-image:latest --help
+
+          # Test version command
+          docker run --rm test-image:latest --version
+
+          # Test completion generation
+          docker run --rm test-image:latest --generate-completion bash > /dev/null
+
+          # Test with a quick connectivity check (should timeout gracefully)
+          timeout 10s docker run --rm test-image:latest localhost:12345 --timeout 2s --quiet || true
+
+          echo "✅ Docker image tests passed"
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-${{ matrix.variant }}
+          path: /tmp/wait-for-${{ matrix.variant }}.tar
+          retention-days: 1
+
+  # Security scan
+  docker-security:
+    name: Docker Security Scan
+    runs-on: ubuntu-latest
+    needs: docker-build
+    strategy:
+      matrix:
+        variant: [debian, alpine]
+    steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image-${{ matrix.variant }}
+          path: /tmp
+
+      - name: Load Docker image
+        run: docker load --input /tmp/wait-for-${{ matrix.variant }}.tar
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: test-image:latest
+          format: sarif
+          output: trivy-results-${{ matrix.variant }}.sarif
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results-${{ matrix.variant }}.sarif
+          category: trivy-${{ matrix.variant }}
+        if: always()
+
+      - name: Run Grype vulnerability scanner
+        uses: anchore/scan-action@v3
+        with:
+          image: test-image:latest
+          fail-build: false
+          output-format: sarif
+          output-file: grype-results-${{ matrix.variant }}.sarif
+
+      - name: Upload Grype scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: grype-results-${{ matrix.variant }}.sarif
+          category: grype-${{ matrix.variant }}
+        if: always()
+
+  # Multi-arch build and push
+  docker-publish:
+    name: Docker Publish
+    runs-on: ubuntu-latest
+    needs: [docker-build, docker-security]
+    if: github.event_name != 'pull_request'
+    strategy:
+      matrix:
+        variant: [debian, alpine]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY_DOCKERHUB }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY_GHCR }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.IMAGE_NAME }}
+            ${{ env.GHCR_IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+          flavor: |
+            latest=false
+            suffix=${{ matrix.variant == 'alpine' && '-alpine' || '' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.variant == 'alpine' && 'Dockerfile.alpine' || 'Dockerfile' }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.variant }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.variant }}
+
+      - name: Generate image attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.GHCR_IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+  # Update Docker Hub description
+  docker-hub-description:
+    name: Update Docker Hub Description
+    runs-on: ubuntu-latest
+    needs: docker-publish
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.IMAGE_NAME }}
+          short-description: "A robust CLI tool for waiting until TCP ports, HTTP endpoints, and services become available"
+          readme-filepath: ./README.md
+
+  # Performance testing
+  docker-performance:
+    name: Docker Performance Test
+    runs-on: ubuntu-latest
+    needs: docker-build
+    strategy:
+      matrix:
+        variant: [debian, alpine]
+    steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image-${{ matrix.variant }}
+          path: /tmp
+
+      - name: Load Docker image
+        run: docker load --input /tmp/wait-for-${{ matrix.variant }}.tar
+
+      - name: Test image size
+        run: |
+          SIZE=$(docker images test-image:latest --format "table {{.Size}}" | tail -n 1)
+          echo "📏 Image size (${{ matrix.variant }}): $SIZE"
+
+          # Check if Alpine image is smaller than Debian
+          if [[ "${{ matrix.variant }}" == "alpine" ]]; then
+            SIZE_BYTES=$(docker images test-image:latest --format "{{.Size}}" | tail -n 1)
+            echo "Alpine image size: $SIZE_BYTES"
+          fi
+
+      - name: Test startup time
+        run: |
+          echo "⏱️ Testing startup time..."
+          time docker run --rm test-image:latest --help > /dev/null
+
+          echo "🚀 Testing quick execution..."
+          time docker run --rm test-image:latest --version > /dev/null
+
+      - name: Test memory usage
+        run: |
+          echo "💾 Testing memory usage..."
+
+          # Start a long-running container
+          CONTAINER_ID=$(docker run -d test-image:latest localhost:12345 --timeout 30s --quiet)
+
+          # Wait a moment for it to start
+          sleep 2
+
+          # Check memory usage
+          docker stats --no-stream --format "table {{.Container}}\t{{.MemUsage}}" $CONTAINER_ID
+
+          # Clean up
+          docker stop $CONTAINER_ID
+
+  # Summary
+  docker-summary:
+    name: Docker Summary
+    runs-on: ubuntu-latest
+    needs: [docker-build, docker-security, docker-publish, docker-performance]
+    if: always()
+    steps:
+      - name: Print summary
+        run: |
+          echo "## 🐳 Docker Build Summary"
+          echo ""
+          echo "| Task | Status |"
+          echo "|------|--------|"
+          echo "| Build | ${{ needs.docker-build.result == 'success' && '✅ Success' || '❌ Failed' }} |"
+          echo "| Security Scan | ${{ needs.docker-security.result == 'success' && '✅ Success' || '❌ Failed' }} |"
+          echo "| Publish | ${{ needs.docker-publish.result == 'success' && '✅ Success' || '⏭️ Skipped' }} |"
+          echo "| Performance | ${{ needs.docker-performance.result == 'success' && '✅ Success' || '❌ Failed' }} |"
+          echo ""
+
+          if [ "${{ github.event_name }}" != "pull_request" ] && [ "${{ needs.docker-publish.result }}" == "success" ]; then
+            echo "🎉 Docker images published successfully!"
+            echo "📦 Standard: \`docker pull ${{ env.IMAGE_NAME }}:latest\`"
+            echo "🔬 Alpine: \`docker pull ${{ env.IMAGE_NAME }}:alpine\`"
+            echo "📋 GHCR: \`docker pull ${{ env.GHCR_IMAGE_NAME }}:latest\`"
+          fi

@@ -1,0 +1,56 @@
+# Alpine-based Dockerfile for even smaller images
+# This creates a very minimal container (~10MB)
+
+# Build stage
+FROM rust:1.75-alpine as builder
+
+# Install build dependencies
+RUN apk add --no-cache \
+    musl-dev \
+    pkgconfig \
+    openssl-dev \
+    openssl-libs-static
+
+# Create a new empty shell project
+RUN USER=root cargo new --bin wait-for
+WORKDIR /wait-for
+
+# Copy manifests
+COPY ./Cargo.lock ./Cargo.lock
+COPY ./Cargo.toml ./Cargo.toml
+
+# Build dependencies - this is the caching Docker layer!
+RUN cargo build --release && rm src/*.rs
+
+# Copy source code
+COPY ./src ./src
+
+# Build for release with static linking
+ENV RUSTFLAGS="-C target-feature=+crt-static"
+RUN rm ./target/release/deps/wait_for*
+RUN cargo build --release --target x86_64-unknown-linux-musl
+
+# Runtime stage - minimal scratch image
+FROM scratch
+
+# Copy CA certificates
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# Copy the binary from the build stage
+COPY --from=builder /wait-for/target/x86_64-unknown-linux-musl/release/wait-for /wait-for
+
+# Set the binary as the entrypoint
+ENTRYPOINT ["/wait-for"]
+
+# Default command
+CMD ["--help"]
+
+# Metadata
+LABEL org.opencontainers.image.title="wait-for"
+LABEL org.opencontainers.image.description="A robust CLI tool for waiting until TCP ports, HTTP endpoints, and services become available (Alpine/Minimal)"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.authors="Serhii Kaliuzhnyi <kalyuzhni.sergei@gmail.com>"
+LABEL org.opencontainers.image.url="https://github.com/grok-rs/wait-for"
+LABEL org.opencontainers.image.source="https://github.com/grok-rs/wait-for"
+LABEL org.opencontainers.image.vendor="wait-for"
+LABEL org.opencontainers.image.licenses="MIT"

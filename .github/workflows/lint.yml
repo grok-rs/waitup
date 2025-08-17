@@ -1,0 +1,285 @@
+name: Lint
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  format-check:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  clippy-strict:
+    name: Clippy (Strict)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-clippy-
+
+      - name: Run Clippy with strict lints
+        run: |
+          cargo clippy --all-targets --all-features -- \
+            -W clippy::pedantic \
+            -W clippy::nursery \
+            -W clippy::cargo \
+            -W clippy::suspicious \
+            -W clippy::complexity \
+            -W clippy::perf \
+            -W clippy::style \
+            -W clippy::correctness \
+            -W clippy::restriction \
+            -A clippy::blanket_clippy_restriction_lints \
+            -A clippy::implicit_return \
+            -A clippy::missing_docs_in_private_items \
+            -A clippy::exhaustive_structs \
+            -A clippy::exhaustive_enums \
+            -A clippy::module_name_repetitions \
+            -A clippy::single_call_fn \
+            -A clippy::question_mark_used \
+            -A clippy::std_instead_of_alloc \
+            -A clippy::std_instead_of_core \
+            -A clippy::missing_inline_in_public_items \
+            -A clippy::pub_use \
+            -A clippy::multiple_crate_versions \
+            -A clippy::cargo_common_metadata
+
+  documentation-lint:
+    name: Documentation Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-doc-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-doc-
+
+      - name: Check documentation
+        run: |
+          RUSTDOCFLAGS="-D warnings -D missing_docs -D rustdoc::broken_intra_doc_links -D rustdoc::private_intra_doc_links" \
+          cargo doc --all-features --no-deps --document-private-items
+
+      - name: Test documentation examples
+        run: cargo test --doc --all-features
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo-audit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: ${{ runner.os }}-cargo-audit
+
+      - name: Install cargo-audit
+        run: |
+          if ! command -v cargo-audit &> /dev/null; then
+            cargo install cargo-audit --locked
+          fi
+
+      - name: Run security audit
+        run: cargo audit
+
+  license-check:
+    name: License Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo-deny
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-deny
+          key: ${{ runner.os }}-cargo-deny
+
+      - name: Install cargo-deny
+        run: |
+          if ! command -v cargo-deny &> /dev/null; then
+            cargo install cargo-deny --locked
+          fi
+
+      - name: Create deny.toml if not exists
+        run: |
+          if [ ! -f deny.toml ]; then
+            cat > deny.toml << 'EOF'
+          [licenses]
+          allow = [
+              "MIT",
+              "Apache-2.0",
+              "Apache-2.0 WITH LLVM-exception",
+              "BSD-2-Clause",
+              "BSD-3-Clause",
+              "ISC",
+              "Unicode-DFS-2016",
+          ]
+          deny = [
+              "GPL-2.0",
+              "GPL-3.0",
+              "AGPL-1.0",
+              "AGPL-3.0",
+          ]
+          copyleft = "deny"
+          allow-osi-fsf-free = "neither"
+          default = "deny"
+          confidence-threshold = 0.8
+          exceptions = []
+
+          [bans]
+          multiple-versions = "warn"
+          wildcards = "allow"
+          highlight = "all"
+          workspace-default-features = "allow"
+          external-default-features = "allow"
+          allow = []
+          deny = []
+          skip = []
+          skip-tree = []
+
+          [advisories]
+          version = 2
+          ignore = []
+          informational = "warn"
+          severity-threshold = "low"
+
+          [sources]
+          unknown-registry = "warn"
+          unknown-git = "warn"
+          allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+          allow-git = []
+          EOF
+          fi
+
+      - name: Run license and dependency check
+        run: cargo deny check
+
+  unused-dependencies:
+    name: Unused Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo-machete
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-machete
+          key: ${{ runner.os }}-cargo-machete
+
+      - name: Install cargo-machete
+        run: |
+          if ! command -v cargo-machete &> /dev/null; then
+            cargo install cargo-machete --locked
+          fi
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-machete-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-machete-
+
+      - name: Check for unused dependencies
+        run: cargo machete
+
+  lint-summary:
+    name: Lint Summary
+    runs-on: ubuntu-latest
+    needs:
+      [
+        format-check,
+        clippy-strict,
+        documentation-lint,
+        security-audit,
+        license-check,
+        unused-dependencies,
+      ]
+    if: always()
+    steps:
+      - name: Check all lint jobs
+        run: |
+          if [[ "${{ needs.format-check.result }}" == "failure" ]] || \
+             [[ "${{ needs.clippy-strict.result }}" == "failure" ]] || \
+             [[ "${{ needs.documentation-lint.result }}" == "failure" ]] || \
+             [[ "${{ needs.security-audit.result }}" == "failure" ]] || \
+             [[ "${{ needs.license-check.result }}" == "failure" ]] || \
+             [[ "${{ needs.unused-dependencies.result }}" == "failure" ]]; then
+            echo "❌ One or more lint checks failed"
+            exit 1
+          else
+            echo "✅ All lint checks passed"
+          fi

@@ -1,0 +1,299 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  # Verify the release is ready
+  pre-release:
+    name: Pre-release Checks
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy, rust-docs, rust-src
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG=${GITHUB_REF#refs/tags/v}
+          echo "version=$TAG" >> $GITHUB_OUTPUT
+          echo "Version: $TAG"
+
+      - name: Verify version matches Cargo.toml
+        run: |
+          CARGO_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          if [ "${{ steps.version.outputs.version }}" != "$CARGO_VERSION" ]; then
+            echo "Version mismatch: tag=${{ steps.version.outputs.version }}, Cargo.toml=$CARGO_VERSION"
+            exit 1
+          fi
+
+      - name: Run tests
+        run: cargo test --all-features
+
+      - name: Check if can publish to crates.io
+        run: cargo publish --dry-run
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # Build cross-platform binaries
+  build-binaries:
+    name: Build Release Binaries
+    runs-on: ${{ matrix.os }}
+    needs: pre-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            name: wait-for-${{ needs.pre-release.outputs.version }}-x86_64-linux
+            archive: tar.gz
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            name: wait-for-${{ needs.pre-release.outputs.version }}-x86_64-linux-musl
+            archive: tar.gz
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            name: wait-for-${{ needs.pre-release.outputs.version }}-aarch64-linux
+            archive: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            name: wait-for-${{ needs.pre-release.outputs.version }}-x86_64-windows
+            archive: zip
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            name: wait-for-${{ needs.pre-release.outputs.version }}-x86_64-macos
+            archive: tar.gz
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            name: wait-for-${{ needs.pre-release.outputs.version }}-aarch64-macos
+            archive: tar.gz
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: rustfmt, clippy, rust-docs, rust-src
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install cross (for cross compilation)
+        run: cargo install cross
+        if: matrix.target != 'x86_64-unknown-linux-gnu' && matrix.target != 'x86_64-pc-windows-msvc' && matrix.target != 'x86_64-apple-darwin' && matrix.target != 'aarch64-apple-darwin'
+
+      - name: Build binary
+        run: |
+          if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" || "${{ matrix.target }}" == "x86_64-pc-windows-msvc" || "${{ matrix.target }}" == "x86_64-apple-darwin" || "${{ matrix.target }}" == "aarch64-apple-darwin" ]]; then
+            cargo build --release --target ${{ matrix.target }}
+          else
+            cross build --release --target ${{ matrix.target }}
+          fi
+        shell: bash
+
+      - name: Generate shell completions
+        run: |
+          mkdir -p completions
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            BINARY="./target/${{ matrix.target }}/release/wait-for.exe"
+          else
+            BINARY="./target/${{ matrix.target }}/release/wait-for"
+          fi
+
+          $BINARY --generate-completion bash > completions/wait-for.bash
+          $BINARY --generate-completion zsh > completions/_wait-for
+          $BINARY --generate-completion fish > completions/wait-for.fish
+          $BINARY --generate-completion powershell > completions/wait-for.ps1
+        shell: bash
+
+      - name: Create archive
+        run: |
+          mkdir -p dist
+
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            BINARY="wait-for.exe"
+            cp target/${{ matrix.target }}/release/wait-for.exe dist/
+          else
+            BINARY="wait-for"
+            cp target/${{ matrix.target }}/release/wait-for dist/
+          fi
+
+          # Copy additional files
+          cp README.md LICENSE CHANGELOG.md dist/
+          cp -r completions dist/
+
+          cd dist
+
+          if [[ "${{ matrix.archive }}" == "zip" ]]; then
+            7z a ../${{ matrix.name }}.zip *
+          else
+            tar czf ../${{ matrix.name }}.tar.gz *
+          fi
+
+          cd ..
+
+          # Generate checksums
+          if [[ "${{ matrix.archive }}" == "zip" ]]; then
+            sha256sum ${{ matrix.name }}.zip > ${{ matrix.name }}.zip.sha256
+          else
+            sha256sum ${{ matrix.name }}.tar.gz > ${{ matrix.name }}.tar.gz.sha256
+          fi
+        shell: bash
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            ${{ matrix.name }}.*
+
+  # Publish to crates.io
+  publish-crates:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    needs: [pre-release, build-binaries]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy, rust-docs, rust-src
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Publish to crates.io
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # Create GitHub release
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [pre-release, build-binaries, publish-crates]
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          find artifacts -name "*.tar.gz" -o -name "*.zip" -o -name "*.sha256" | while read file; do
+            cp "$file" release-assets/
+          done
+          ls -la release-assets/
+
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          # Extract changelog for this version
+          VERSION="${{ needs.pre-release.outputs.version }}"
+
+          # Get changelog section for this version
+          awk "/^## \[$VERSION\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md > release-notes.md
+
+          # If no specific version found, use the latest unreleased section
+          if [ ! -s release-notes.md ]; then
+            awk '/^## \[Unreleased\]/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md > release-notes.md
+          fi
+
+          # Add installation instructions
+          cat >> release-notes.md << 'EOF'
+
+          ## Installation
+
+          ### Cargo
+          ```bash
+          cargo install wait-for
+          ```
+
+          ### Docker
+          ```bash
+          docker pull waitfor/wait-for:v${{ needs.pre-release.outputs.version }}
+          ```
+
+          ### Binary Downloads
+          Download the appropriate binary for your platform from the assets below.
+
+          Verify the download with the provided SHA256 checksums:
+          ```bash
+          sha256sum -c wait-for-*.sha256
+          ```
+          EOF
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.pre-release.outputs.version }}
+          name: Release v${{ needs.pre-release.outputs.version }}
+          body_path: release-notes.md
+          files: release-assets/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Trigger Docker build
+  trigger-docker:
+    name: Trigger Docker Build
+    runs-on: ubuntu-latest
+    needs: [pre-release, publish-crates]
+    steps:
+      - name: Trigger Docker workflow
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'docker.yml',
+              ref: 'main',
+              inputs: {
+                version: '${{ needs.pre-release.outputs.version }}'
+              }
+            });
+
+  # Post-release notifications
+  post-release:
+    name: Post-release Tasks
+    runs-on: ubuntu-latest
+    needs: [pre-release, create-release, trigger-docker]
+    if: always()
+    steps:
+      - name: Release Summary
+        run: |
+          echo "🎉 Release v${{ needs.pre-release.outputs.version }} completed!"
+          echo "📦 Published to crates.io: https://crates.io/crates/wait-for"
+          echo "🐳 Docker images building..."
+          echo "📁 GitHub release: https://github.com/grok-rs/wait-for/releases/tag/v${{ needs.pre-release.outputs.version }}"

@@ -1,0 +1,43 @@
+# Global owners for the wait-for repository
+# These owners will be requested for review when anyone opens a pull request.
+
+# Default owners for everything in the repo.
+# Unless a later match takes precedence, these will be requested for review.
+* @grok-rs/maintainers
+
+# Core Rust code
+/src/ @grok-rs/maintainers
+/examples/ @grok-rs/maintainers
+/tests/ @grok-rs/maintainers
+
+# Build configuration
+/Cargo.toml @grok-rs/maintainers
+/Cargo.lock @grok-rs/maintainers
+/release.toml @grok-rs/maintainers
+
+# Docker
+/Dockerfile* @grok-rs/maintainers
+/docker-compose.yml @grok-rs/maintainers
+/.dockerignore @grok-rs/maintainers
+
+# CI/CD workflows
+/.github/workflows/ @grok-rs/maintainers
+/.github/dependabot.yml @grok-rs/maintainers
+/.github/release-drafter.yml @grok-rs/maintainers
+
+# Documentation
+/README.md @grok-rs/maintainers
+/CHANGELOG.md @grok-rs/maintainers
+/CONTRIBUTING.md @grok-rs/maintainers
+/SECURITY.md @grok-rs/maintainers
+
+# Configuration files
+/.editorconfig @grok-rs/maintainers
+/rustfmt.toml @grok-rs/maintainers
+/clippy.toml @grok-rs/maintainers
+
+# Scripts
+/scripts/ @grok-rs/maintainers
+
+# Legal
+/LICENSE @grok-rs/maintainers

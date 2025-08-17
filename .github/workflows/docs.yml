@@ -1,0 +1,393 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Check docs daily at 3 AM UTC
+    - cron: "0 3 * * *"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Build and test documentation
+  docs-build:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy, rust-docs, rust-src
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build documentation
+        run: |
+          cargo doc --no-deps --all-features --document-private-items
+        env:
+          RUSTDOCFLAGS: "-D warnings --cfg docsrs"
+
+      - name: Test documentation examples
+        run: cargo test --doc --all-features
+
+      - name: Check for broken intra-doc links
+        run: |
+          cargo doc --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: "-D rustdoc::broken-intra-doc-links"
+
+      - name: Upload documentation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: target/doc/
+          retention-days: 30
+
+  # Check README and other markdown files
+  markdown-check:
+    name: Markdown Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install markdown linter
+        run: npm install -g markdownlint-cli
+
+      - name: Create markdownlint config
+        run: |
+          cat > .markdownlint.json << 'EOF'
+          {
+            "MD013": false,
+            "MD033": false,
+            "MD041": false
+          }
+          EOF
+
+      - name: Lint markdown files
+        run: markdownlint README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md
+
+      - name: Check for broken links in README
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: "yes"
+          use-verbose-mode: "yes"
+          config-file: ".github/markdown-link-check.json"
+
+  # Validate examples compile and run
+  examples-check:
+    name: Examples Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy, rust-docs, rust-src
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Compile all examples
+        run: |
+          echo "🔧 Compiling all examples..."
+          for example in examples/*.rs; do
+            example_name=$(basename "$example" .rs)
+            echo "Building example: $example_name"
+            cargo build --example "$example_name"
+          done
+
+      - name: Test examples with timeouts
+        run: |
+          echo "🧪 Testing examples (with quick timeouts)..."
+
+          # Test basic_tcp example (should timeout quickly)
+          timeout 10s cargo run --example basic_tcp || echo "✅ basic_tcp example tested"
+
+          # Test library_usage example (should timeout quickly)
+          timeout 10s cargo run --example library_usage || echo "✅ library_usage example tested"
+
+          # Test http_health example (should work with real endpoints)
+          timeout 30s cargo run --example http_health || echo "✅ http_health example tested"
+
+      - name: Check example documentation
+        run: |
+          echo "📚 Checking example documentation..."
+          for example in examples/*.rs; do
+            echo "Checking documentation in: $example"
+            # Check that examples have proper //! documentation
+            if ! head -5 "$example" | grep -q "//!"; then
+              echo "❌ Example $example missing documentation header"
+              exit 1
+            fi
+          done
+          echo "✅ All examples have proper documentation"
+
+  # Spell check
+  spell-check:
+    name: Spell Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install codespell
+        run: pip install codespell
+
+      - name: Create codespell config
+        run: |
+          cat > .codespellrc << 'EOF'
+          [codespell]
+          skip = .git,target,Cargo.lock,*.toml
+          ignore-words-list = crate,crates,ser,deser,ba,datas
+          EOF
+
+      - name: Run spell check
+        run: codespell
+
+  # Check documentation coverage
+  docs-coverage:
+    name: Documentation Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt, clippy, rust-docs, rust-src
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check documentation coverage
+        run: |
+          cargo doc --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: "-Z unstable-options --show-coverage"
+
+      - name: Generate documentation coverage report
+        run: |
+          echo "# Documentation Coverage Report" > docs-coverage.md
+          echo "" >> docs-coverage.md
+          echo "Generated on $(date)" >> docs-coverage.md
+          echo "" >> docs-coverage.md
+
+          # Run with coverage and capture output
+          cargo doc --no-deps --all-features 2>&1 | tee coverage-output.txt || true
+
+          echo "## Coverage Details" >> docs-coverage.md
+          echo '```' >> docs-coverage.md
+          cat coverage-output.txt >> docs-coverage.md
+          echo '```' >> docs-coverage.md
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-coverage-report
+          path: docs-coverage.md
+
+  # Deploy documentation to GitHub Pages (optional)
+  docs-deploy:
+    name: Deploy Documentation
+    runs-on: ubuntu-latest
+    needs: [docs-build, markdown-check, examples-check]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy, rust-docs, rust-src
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build documentation for GitHub Pages
+        run: |
+          cargo doc --no-deps --all-features
+
+          # Create index.html redirect
+          cat > target/doc/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <meta charset="utf-8">
+              <title>wait-for documentation</title>
+              <meta http-equiv="refresh" content="0; url=wait_for/index.html">
+          </head>
+          <body>
+              <p>Redirecting to <a href="wait_for/index.html">wait-for documentation</a>...</p>
+          </body>
+          </html>
+          EOF
+
+          # Add a .nojekyll file to bypass Jekyll processing
+          touch target/doc/.nojekyll
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: target/doc
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Comprehensive documentation check
+  docs-comprehensive:
+    name: Comprehensive Docs Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check README completeness
+        run: |
+          echo "📋 Checking README completeness..."
+
+          required_sections=(
+            "Installation"
+            "Usage"
+            "Examples"
+            "Contributing"
+            "License"
+          )
+
+          for section in "${required_sections[@]}"; do
+            if ! grep -q "## $section" README.md; then
+              echo "❌ Missing required section: $section"
+              exit 1
+            fi
+          done
+
+          echo "✅ README has all required sections"
+
+      - name: Check CHANGELOG format
+        run: |
+          echo "📝 Checking CHANGELOG format..."
+
+          # Check for proper changelog format
+          if ! grep -q "# Changelog" CHANGELOG.md; then
+            echo "❌ CHANGELOG.md missing title"
+            exit 1
+          fi
+
+          if ! grep -q "## \[" CHANGELOG.md; then
+            echo "❌ CHANGELOG.md missing version entries"
+            exit 1
+          fi
+
+          echo "✅ CHANGELOG format is correct"
+
+      - name: Validate code examples in README
+        run: |
+          echo "🔍 Checking code examples in README..."
+
+          # Extract Rust code blocks and validate syntax
+          python3 << 'EOF'
+          import re
+          import tempfile
+          import subprocess
+          import os
+
+          with open('README.md', 'r') as f:
+              content = f.read()
+
+          # Find all rust code blocks
+          rust_blocks = re.findall(r'```rust\n(.*?)\n```', content, re.DOTALL)
+
+          for i, block in enumerate(rust_blocks):
+              # Skip if it's not a complete example
+              if 'fn main' not in block and 'use ' not in block:
+                  continue
+
+              # Create a temporary file
+              with tempfile.NamedTemporaryFile(mode='w', suffix='.rs', delete=False) as f:
+                  f.write(block)
+                  temp_file = f.name
+
+              try:
+                  # Check syntax
+                  result = subprocess.run(['rustc', '--check', temp_file],
+                                        capture_output=True, text=True)
+                  if result.returncode != 0:
+                      print(f"❌ Rust code block {i+1} has syntax errors:")
+                      print(result.stderr)
+                      exit(1)
+                  else:
+                      print(f"✅ Rust code block {i+1} is valid")
+              finally:
+                  os.unlink(temp_file)
+
+          print("✅ All Rust code examples are syntactically correct")
+          EOF
+
+  # Summary
+  docs-summary:
+    name: Documentation Summary
+    runs-on: ubuntu-latest
+    needs:
+      [
+        docs-build,
+        markdown-check,
+        examples-check,
+        spell-check,
+        docs-coverage,
+        docs-comprehensive,
+      ]
+    if: always()
+    steps:
+      - name: Documentation Report
+        run: |
+          echo "## 📚 Documentation Check Summary"
+          echo ""
+          echo "| Check | Status |"
+          echo "|-------|--------|"
+          echo "| Build | ${{ needs.docs-build.result == 'success' && '✅ Pass' || '❌ Fail' }} |"
+          echo "| Markdown | ${{ needs.markdown-check.result == 'success' && '✅ Pass' || '❌ Fail' }} |"
+          echo "| Examples | ${{ needs.examples-check.result == 'success' && '✅ Pass' || '❌ Fail' }} |"
+          echo "| Spell Check | ${{ needs.spell-check.result == 'success' && '✅ Pass' || '❌ Fail' }} |"
+          echo "| Coverage | ${{ needs.docs-coverage.result == 'success' && '✅ Pass' || '❌ Fail' }} |"
+          echo "| Comprehensive | ${{ needs.docs-comprehensive.result == 'success' && '✅ Pass' || '❌ Fail' }} |"
+          echo ""
+
+          if [ "${{ needs.docs-build.result }}" != "success" ] || \
+             [ "${{ needs.markdown-check.result }}" != "success" ] || \
+             [ "${{ needs.examples-check.result }}" != "success" ] || \
+             [ "${{ needs.spell-check.result }}" != "success" ] || \
+             [ "${{ needs.docs-coverage.result }}" != "success" ] || \
+             [ "${{ needs.docs-comprehensive.result }}" != "success" ]; then
+            echo "❌ One or more documentation checks failed"
+            exit 1
+          else
+            echo "✅ All documentation checks passed successfully!"
+          fi

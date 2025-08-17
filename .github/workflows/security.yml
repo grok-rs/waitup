@@ -1,0 +1,311 @@
+name: Security
+
+# Security workflow that complements the pre-commit security hooks
+# This workflow provides comprehensive security analysis including:
+# - cargo-audit: vulnerability scanning (matches pre-commit cargo-audit hook)
+# - cargo-deny: license and dependency policy enforcement (matches pre-commit cargo-deny hook)
+# - Comprehensive reporting with SARIF uploads for GitHub Security tab
+# - Supply chain security validation with detailed reporting
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Run security audit daily at 2 AM UTC
+    - cron: "0 2 * * *"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run comprehensive cargo audit
+        run: |
+          echo "🔍 Running comprehensive security audit..."
+          # Run audit with full verbosity and JSON output for processing
+          cargo audit --json --output audit-results.json
+
+          # Also run with deny warnings for strict checking
+          echo "🔍 Running strict audit check..."
+          cargo audit --deny warnings
+        continue-on-error: true
+
+      - name: Generate SARIF from audit
+        run: |
+          cat > convert-audit.py << 'EOF'
+          import json
+          import sys
+
+          def convert_to_sarif(audit_data):
+              sarif = {
+                  "version": "2.1.0",
+                  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+                  "runs": [{
+                      "tool": {
+                          "driver": {
+                              "name": "cargo-audit",
+                              "version": "0.18.0",
+                              "informationUri": "https://github.com/RustSec/rustsec"
+                          }
+                      },
+                      "results": []
+                  }]
+              }
+
+              if "vulnerabilities" in audit_data and audit_data["vulnerabilities"]:
+                  for vuln in audit_data["vulnerabilities"]["list"]:
+                      advisory = vuln["advisory"]
+                      result = {
+                          "ruleId": advisory["id"],
+                          "level": "warning" if advisory.get("severity") == "low" else "error",
+                          "message": {
+                              "text": advisory["title"]
+                          },
+                          "locations": [{
+                              "physicalLocation": {
+                                  "artifactLocation": {
+                                      "uri": "Cargo.lock"
+                                  }
+                              }
+                          }],
+                          "properties": {
+                              "package": vuln["package"]["name"],
+                              "version": vuln["package"]["version"],
+                              "advisory_url": advisory.get("url", ""),
+                              "severity": advisory.get("severity", "unknown")
+                          }
+                      }
+                      sarif["runs"][0]["results"].append(result)
+
+              return sarif
+
+          if __name__ == "__main__":
+              try:
+                  with open("audit-results.json", "r") as f:
+                      audit_data = json.load(f)
+
+                  sarif_data = convert_to_sarif(audit_data)
+
+                  with open("security-audit.sarif", "w") as f:
+                      json.dump(sarif_data, f, indent=2)
+
+                  print("SARIF file generated successfully")
+              except Exception as e:
+                  print(f"Error converting audit results: {e}")
+                  sys.exit(1)
+          EOF
+
+          python3 convert-audit.py
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: security-audit.sarif
+          category: cargo-audit
+        if: always()
+
+      - name: Final vulnerability check
+        run: |
+          echo "🔐 Final security vulnerability assessment..."
+          if ! cargo audit --deny warnings --quiet; then
+            echo "❌ Security vulnerabilities detected!"
+            echo "Please check the uploaded SARIF file and security tab for detailed information."
+            echo "Run 'cargo audit' locally for immediate details."
+            exit 1
+          else
+            echo "✅ No security vulnerabilities found - all dependencies are secure"
+          fi
+
+  license-check:
+    name: License Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-license
+        run: cargo install cargo-license
+
+      - name: Check licenses
+        run: |
+          echo "📄 Checking dependency licenses..."
+          cargo license --json > licenses.json
+
+          # Check for incompatible licenses
+          python3 << 'EOF'
+          import json
+
+          # Allowed licenses for MIT-licensed project
+          allowed_licenses = {
+              "MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause",
+              "ISC", "Unlicense", "CC0-1.0", "WTFPL", "0BSD"
+          }
+
+          incompatible_licenses = set()
+
+          with open("licenses.json", "r") as f:
+              licenses = json.load(f)
+
+          for package in licenses:
+              license_name = package.get("license")
+              if license_name and license_name not in allowed_licenses:
+                  incompatible_licenses.add(license_name)
+                  print(f"⚠️  {package['name']} uses potentially incompatible license: {license_name}")
+
+          if incompatible_licenses:
+              print(f"\n❌ Found {len(incompatible_licenses)} potentially incompatible license(s)")
+              print("Please review these licenses for compatibility with MIT license")
+              exit(1)
+          else:
+              print("✅ All licenses are compatible")
+          EOF
+
+      - name: Generate license report
+        run: |
+          echo "# License Report" > license-report.md
+          echo "" >> license-report.md
+          echo "Generated on $(date)" >> license-report.md
+          echo "" >> license-report.md
+          echo "## Direct Dependencies" >> license-report.md
+          echo "" >> license-report.md
+
+          cargo license --authors --do-not-bundle | while IFS= read -r line; do
+            echo "$line" >> license-report.md
+          done
+
+      - name: Upload license report
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: license-report.md
+
+  supply-chain:
+    name: Supply Chain Security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-deny
+        run: cargo install cargo-deny
+
+      - name: Verify deny.toml configuration exists
+        run: |
+          echo "🔍 Using existing deny.toml configuration..."
+          if [ -f "deny.toml" ]; then
+            echo "✅ deny.toml found - using project's supply chain security configuration"
+            echo "📋 Configuration summary:"
+            echo "   - License policy enforcement"
+            echo "   - Vulnerability scanning"
+            echo "   - Dependency banning rules"
+            echo "   - Source validation"
+          else
+            echo "❌ deny.toml not found!"
+            exit 1
+          fi
+
+      - name: Run cargo deny check
+        run: |
+          echo "🔍 Running cargo-deny security checks..."
+          cargo deny check
+
+      - name: Generate deny report
+        run: |
+          echo "📊 Generating detailed cargo-deny report..."
+          cargo deny check --format json > deny-report.json 2>/dev/null || true
+          cargo deny list > deny-licenses.txt 2>/dev/null || true
+
+      - name: Upload deny report
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-deny-report
+          path: |
+            deny-report.json
+            deny-licenses.txt
+        if: always()
+
+      - name: Check for yanked crates
+        run: |
+          echo "🔍 Checking for yanked crates..."
+          if cargo install --list | grep -q "cargo-outdated"; then
+            echo "cargo-outdated already installed"
+          else
+            cargo install cargo-outdated
+          fi
+
+          # Check for outdated dependencies
+          cargo outdated --exit-code 1 || echo "Some dependencies are outdated"
+
+  secrets-scan:
+    name: Secrets Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history for secret scanning
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  # Aggregate security results
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [audit, license-check, supply-chain, secrets-scan]
+    if: always()
+    steps:
+      - name: Security Report
+        run: |
+          echo "## 🛡️ Security Scan Summary"
+          echo ""
+          echo "| Check | Status |"
+          echo "|-------|--------|"
+          echo "| Vulnerability Audit | ${{ needs.audit.result == 'success' && '✅ Pass' || '❌ Fail' }} |"
+          echo "| License Check | ${{ needs.license-check.result == 'success' && '✅ Pass' || '❌ Fail' }} |"
+          echo "| Supply Chain | ${{ needs.supply-chain.result == 'success' && '✅ Pass' || '❌ Fail' }} |"
+          echo "| Secrets Scan | ${{ needs.secrets-scan.result == 'success' && '✅ Pass' || '❌ Fail' }} |"
+          echo ""
+
+          if [ "${{ needs.audit.result }}" != "success" ] || \
+             [ "${{ needs.license-check.result }}" != "success" ] || \
+             [ "${{ needs.supply-chain.result }}" != "success" ] || \
+             [ "${{ needs.secrets-scan.result }}" != "success" ]; then
+            echo "❌ One or more security checks failed. Please review the results."
+            exit 1
+          else
+            echo "✅ All security checks passed successfully!"
+          fi
