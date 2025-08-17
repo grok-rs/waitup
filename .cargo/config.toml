@@ -1,0 +1,142 @@
+# Cargo configuration for wait-for project
+# This file configures cargo behavior and sets up strict linting by default
+
+[alias]
+# Development aliases
+dev-check = "check --all-targets --all-features"
+dev-test = "test --all-features"
+dev-fmt = "fmt --all"
+dev-clippy = "clippy --all-targets --all-features"
+
+# Strict linting aliases
+lint = "clippy --all-targets --all-features -- -D warnings -D clippy::pedantic -D clippy::nursery -W clippy::restriction"
+lint-fix = "clippy --all-targets --all-features --fix -- -D warnings -D clippy::pedantic -W clippy::nursery -W clippy::restriction"
+
+# Documentation aliases
+doc-check = "doc --no-deps --all-features --document-private-items"
+doc-open = "doc --no-deps --all-features --document-private-items --open"
+
+# Security and audit aliases
+audit = "audit --deny warnings"
+deny-check = "deny check"
+
+# Testing aliases
+test-all = "test --all-features --workspace"
+test-doc = "test --doc --all-features"
+test-examples = "test --examples"
+
+# Release preparation
+pre-release = [
+    "fmt --all -- --check",
+    "clippy --all-targets --all-features -- -D warnings -D clippy::pedantic -W clippy::nursery",
+    "test --all-features --workspace",
+    "doc --no-deps --all-features --document-private-items",
+    "audit --deny warnings"
+]
+
+# Full quality check (equivalent to CI)
+ci-check = [
+    "fmt --all -- --check",
+    "clippy --all-targets --all-features -- -D warnings -D clippy::pedantic -D clippy::nursery -W clippy::restriction",
+    "test --all-features --workspace",
+    "test --doc --all-features",
+    "doc --no-deps --all-features --document-private-items",
+    "audit --deny warnings"
+]
+
+[build]
+# Use all available CPU cores for builds
+jobs = 0
+
+[term]
+# Enable colored output
+color = "always"
+
+[cargo-new]
+# Default to current edition
+edition = "2021"
+
+[env]
+# Set strict Rust flags for development
+RUSTFLAGS = [
+    # Deny warnings by default in development
+    "-D", "warnings",
+
+    # Enable additional lints
+    "-D", "rust-2018-idioms",
+    "-D", "rust-2021-compatibility",
+
+    # Performance lints
+    "-D", "clippy::perf",
+
+    # Correctness lints (deny)
+    "-D", "clippy::correctness",
+
+    # Style lints (warn)
+    "-W", "clippy::style",
+
+    # Complexity lints (warn)
+    "-W", "clippy::complexity",
+
+    # Suspicious patterns (deny)
+    "-D", "clippy::suspicious",
+
+    # Selected restriction lints
+    "-D", "clippy::unwrap_used",
+    "-D", "clippy::expect_used",
+    "-D", "clippy::panic",
+    "-D", "clippy::todo",
+    "-D", "clippy::unimplemented",
+    "-W", "clippy::dbg_macro",
+    "-W", "clippy::print_stdout",
+    "-W", "clippy::print_stderr",
+
+    # Security-related lints
+    "-D", "clippy::string_slice",
+    "-W", "clippy::indexing_slicing",
+
+    # Documentation lints
+    "-D", "missing_docs",
+    "-D", "rustdoc::missing_crate_level_docs",
+    "-D", "rustdoc::broken_intra_doc_links",
+
+    # Performance optimization hints
+    "-C", "target-cpu=native",
+]
+
+# Documentation flags for docs.rs compatibility
+RUSTDOCFLAGS = [
+    "-D", "warnings",
+    "-D", "rustdoc::broken_intra_doc_links",
+    "-D", "missing_docs",
+    "--cfg", "docsrs",
+]
+
+[target.x86_64-unknown-linux-gnu]
+# Linux-specific settings
+rustflags = [
+    "-C", "link-arg=-Wl,--as-needed",
+    "-C", "link-arg=-Wl,-z,relro,-z,now",
+]
+
+[target.x86_64-pc-windows-msvc]
+# Windows-specific settings
+rustflags = [
+    "-C", "target-feature=+crt-static",
+]
+
+[registries.crates-io]
+protocol = "sparse"
+
+[source.crates-io]
+replace-with = "vendored-sources"
+
+[source.vendored-sources]
+directory = "vendor"
+
+# HTTP settings
+[http]
+check-revoke = true
+timeout = 30
+low-speed-limit = 10
+multiplexing = true
