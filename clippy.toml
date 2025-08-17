@@ -1,0 +1,65 @@
+# Strict Clippy configuration for wait-for project
+# This configuration enables a comprehensive set of lints for maximum code quality
+
+# ===== THRESHOLDS =====
+
+# Cognitive complexity threshold (stricter than default 25)
+cognitive-complexity-threshold = 15
+
+# Type complexity threshold (stricter than default 100)
+type-complexity-threshold = 50
+
+# Maximum number of arguments for functions (stricter than default 7)
+too-many-arguments-threshold = 5
+
+# Maximum lines in functions (stricter than default 100)
+too-many-lines-threshold = 80
+
+# Enum variant name threshold
+enum-variant-name-threshold = 3
+
+# Literal representation threshold
+literal-representation-threshold = 65536
+
+# Single char binding names threshold
+single-char-binding-names-threshold = 3
+
+# Array size thresholds
+large-const-arrays-threshold = 256000
+large-stack-arrays-threshold = 256000
+
+# Size threshold for pass by value (stricter)
+pass-by-value-size-limit = 128
+
+# ===== DOCUMENTATION =====
+
+# Require documentation for all public items
+missing-docs-in-crate-items = true
+
+# ===== PERFORMANCE =====
+
+# Allow trivial bounds (sometimes needed for generic code)
+trivial-bounds = "allow"
+
+# Avoid breaking changes to exported API
+avoid-breaking-exported-api = true
+
+# ===== ADDITIONAL STRICT SETTINGS =====
+
+# Strict formatting requirements
+# (these are handled via additional rustfmt configuration)
+
+# ===== PEDANTIC LINTS =====
+# Note: These are enabled via command line in CI/hooks
+# Here we configure thresholds for pedantic lints
+
+# String literal character limit for readability
+# (already configured above)
+
+# Cyclomatic complexity limits
+cyclomatic-complexity-threshold = 10
+
+# ===== CUSTOM LINT CONFIGURATION =====
+
+# Disallow certain patterns in production code
+# (configured via RUSTFLAGS in .cargo/config.toml)
