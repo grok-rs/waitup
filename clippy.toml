@@ -24,9 +24,8 @@ literal-representation-threshold = 65536
 # Single char binding names threshold
 single-char-binding-names-threshold = 3
 
-# Array size thresholds
-large-const-arrays-threshold = 256000
-large-stack-arrays-threshold = 256000
+# Array size thresholds (using correct field names)
+array-size-threshold = 256000
 
 # Size threshold for pass by value (stricter)
 pass-by-value-size-limit = 128
@@ -38,8 +37,7 @@ missing-docs-in-crate-items = true
 
 # ===== PERFORMANCE =====
 
-# Allow trivial bounds (sometimes needed for generic code)
-trivial-bounds = "allow"
+# Allow trivial bounds - this setting is removed as it's not a valid clippy config
 
 # Avoid breaking changes to exported API
 avoid-breaking-exported-api = true
@@ -56,8 +54,7 @@ avoid-breaking-exported-api = true
 # String literal character limit for readability
 # (already configured above)
 
-# Cyclomatic complexity limits
-cyclomatic-complexity-threshold = 10
+# This is a duplicate - cognitive-complexity-threshold is already set above
 
 # ===== CUSTOM LINT CONFIGURATION =====
 
