@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2025-08-17
 
 ### Added
+
 - 🌐 **DNS Resolution Support**: Wait for hostnames, not just IP addresses
 - 🔗 **Multiple Targets**: Support waiting for multiple services with `--any` or `--all` strategies
 - 🚀 **Command Execution**: Run commands after successful connections using `-- command` syntax
@@ -23,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 📖 **Rich Documentation**: Extensive examples and use cases
 
 ### Features
+
 - TCP port connectivity testing with DNS resolution
 - HTTP/HTTPS endpoint health checking
 - Multiple target support with flexible strategies
@@ -34,12 +36,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optimized binary size and performance
 
 ### Exit Codes
+
 - `0`: Success - all targets are reachable
 - `1`: Timeout - failed to connect within timeout period
 - `2`: Invalid arguments or configuration
 - `3`: Command execution failed
 
 ### Examples
+
 - Docker Compose integration
 - Kubernetes init containers
 - CI/CD pipeline usage
@@ -49,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned
+
 - JSON output format for CI/CD integration
 - Shell completion scripts (bash, zsh, fish, powershell)
 - Docker image with multi-arch support

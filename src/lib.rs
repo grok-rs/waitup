@@ -2,17 +2,39 @@
 //!
 //! This library provides functionality for testing network connectivity and service availability,
 //! with support for DNS resolution, exponential backoff, and multiple connection strategies.
+//! Perfect for Docker, Kubernetes, CI/CD pipelines, and microservices orchestration.
+//!
+//! # Features
+//!
+//! - **Type Safety**: NewType wrappers for ports and hostnames with validation
+//! - **Multiple Protocols**: TCP socket connections and HTTP/HTTPS requests
+//! - **Flexible Configuration**: Timeouts, retry limits, exponential backoff
+//! - **Concurrency Strategies**: Wait for all targets or any target
+//! - **Graceful Cancellation**: Cancellation token support for clean shutdown
+//! - **Rich Error Context**: Detailed error information with contextual messages
+//! - **High Performance**: Optimized for minimal allocations and fast execution
+//! - **Comprehensive Testing**: Property-based and parameterized test coverage
+//!
+//! # Quick Start
+//!
+//! Add to your `Cargo.toml`:
+//!
+//! ```toml
+//! [dependencies]
+//! wait-for = "1.0"
+//! tokio = { version = "1.0", features = ["full"] }
+//! ```
 //!
 //! # Examples
 //!
 //! ## Basic TCP Connection Check
 //!
-//! ```rust
-//! use wait_for::{Target, WaitConfig, WaitForError, wait_for_connection};
+//! ```rust,no_run
+//! use wait_for::{Target, WaitConfig, wait_for_connection};
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), WaitForError> {
+//! async fn main() -> Result<(), wait_for::WaitForError> {
 //!     let target = Target::tcp("localhost", 8080)?;
 //!     let config = WaitConfig::builder()
 //!         .timeout(Duration::from_secs(30))
@@ -25,566 +47,179 @@
 //! }
 //! ```
 //!
-//! ## HTTP Health Check
+//! ## HTTP Health Check with Custom Headers
 //!
-//! ```rust
-//! use wait_for::{Target, WaitConfig, WaitForError, wait_for_connection};
-//! use std::time::Duration;
+//! ```rust,no_run
+//! use wait_for::Target;
 //! use url::Url;
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), WaitForError> {
-//!     let url = Url::parse("https://api.example.com/health")?;
-//!     let target = Target::http(url, 200)?;
-//!     let config = WaitConfig::builder()
-//!         .timeout(Duration::from_secs(60))
-//!         .interval(Duration::from_secs(2))
-//!         .wait_for_any(false)
+//! async fn main() -> Result<(), wait_for::WaitForError> {
+//!     let target = Target::http_builder(Url::parse("https://api.example.com/health")?)
+//!         .status(200)
+//!         .auth_bearer("your-api-token")
+//!         .content_type("application/json")
+//!         .build()?;
+//!
+//!     let config = wait_for::WaitConfig::builder()
+//!         .timeout(std::time::Duration::from_secs(60))
 //!         .build();
 //!
-//!     wait_for_connection(&[target], &config).await?;
+//!     wait_for::wait_for_connection(&[target], &config).await?;
 //!     println!("API is healthy!");
 //!     Ok(())
 //! }
 //! ```
+//!
+//! ## Multiple Services with Different Strategies
+//!
+//! ```rust,no_run
+//! use wait_for::{Target, WaitConfig, wait_for_connection};
+//! use std::time::Duration;
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), wait_for::WaitForError> {
+//!     let targets = vec![
+//!         Target::tcp("database", 5432)?,
+//!         Target::tcp("cache", 6379)?,
+//!         Target::http_url("https://api.example.com/health", 200)?,
+//!     ];
+//!
+//!     // Wait for ALL services to be ready
+//!     let config = WaitConfig::builder()
+//!         .timeout(Duration::from_secs(120))
+//!         .wait_for_any(false)
+//!         .max_retries(Some(20))
+//!         .build();
+//!
+//!     wait_for_connection(&targets, &config).await?;
+//!     println!("All services are ready!");
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## Advanced Configuration with Cancellation
+//!
+//! ```rust,no_run
+//! use wait_for::{Target, WaitConfig, wait_for_connection};
+//! use std::time::Duration;
+//! use tokio::time::sleep;
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), wait_for::WaitForError> {
+//!     let target = Target::tcp("slow-service", 8080)?;
+//!
+//!     let (config, cancel_token) = WaitConfig::builder()
+//!         .timeout(Duration::from_secs(60))
+//!         .interval(Duration::from_millis(500))
+//!         .with_cancellation();
+//!
+//!     // Cancel after 10 seconds
+//!     let cancel_handle = {
+//!         let token = cancel_token.clone();
+//!         tokio::spawn(async move {
+//!             sleep(Duration::from_secs(10)).await;
+//!             token.cancel();
+//!         })
+//!     };
+//!
+//!     match wait_for_connection(&[target], &config).await {
+//!         Ok(_) => println!("Service is ready!"),
+//!         Err(wait_for::WaitForError::Cancelled) => println!("Operation was cancelled"),
+//!         Err(e) => println!("Error: {}", e),
+//!     }
+//!
+//!     cancel_handle.abort(); // Clean up the cancel task
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## Docker Compose Integration
+//!
+//! ```rust,no_run
+//! use wait_for::{Target, WaitConfig, wait_for_connection};
+//! use std::time::Duration;
+//!
+//! /// Wait for services defined in docker-compose.yml
+//! #[tokio::main]
+//! async fn main() -> Result<(), wait_for::WaitForError> {
+//!     let services = vec![
+//!         Target::tcp("postgres", 5432)?,     // Database
+//!         Target::tcp("redis", 6379)?,        // Cache
+//!         Target::tcp("elasticsearch", 9200)?, // Search
+//!         Target::http_url("http://web:8000/health", 200)?, // Web app
+//!     ];
+//!
+//!     let config = WaitConfig::builder()
+//!         .timeout(Duration::from_secs(300))  // 5 minutes for Docker startup
+//!         .interval(Duration::from_secs(2))   // Check every 2 seconds
+//!         .max_interval(Duration::from_secs(10)) // Max 10 seconds between retries
+//!         .connection_timeout(Duration::from_secs(5)) // 5 second connection timeout
+//!         .wait_for_any(false)               // Wait for ALL services
+//!         .build();
+//!
+//!     println!("Waiting for services to be ready...");
+//!     wait_for_connection(&services, &config).await?;
+//!     println!("All services are ready! Starting application...");
+//!     Ok(())
+//! }
+//! ```
 
-use std::net::SocketAddr;
-use std::time::{Duration, Instant};
-use thiserror::Error;
-use tokio::net::{lookup_host, TcpStream};
-use tokio::time::{sleep, timeout};
-use url::Url;
+// Module declarations
+pub mod types;
+pub mod target;
+pub mod config;
+pub mod connection;
+pub mod error;
+pub mod iterators;
+pub mod presets;
+pub mod security;
+pub mod async_traits;
+pub mod zero_cost;
 
-/// Error types that can occur during wait operations.
-#[derive(Error, Debug)]
-pub enum WaitForError {
-    #[error("Invalid target format '{0}': expected host:port or http(s)://host:port/path")]
-    InvalidTarget(String),
-    #[error("Invalid timeout format '{0}': {1}")]
-    InvalidTimeout(String, String),
-    #[error("Invalid interval format '{0}': {1}")]
-    InvalidInterval(String, String),
-    #[error("DNS resolution failed for '{0}': {1}")]
-    DnsResolution(String, String),
-    #[error("Connection failed: {0}")]
-    Connection(String),
-    #[error("HTTP request failed: {0}")]
-    Http(String),
-    #[error("Timeout waiting for {0}")]
-    Timeout(String),
-    #[error("URL parse error: {0}")]
-    UrlParse(#[from] url::ParseError),
-}
+#[macro_use]
+pub mod macros;
 
-/// Result type alias for wait-for operations.
-pub type Result<T> = std::result::Result<T, WaitForError>;
+// Re-export commonly used types for convenient public API
+pub use error::{WaitForError, Result, ResultExt};
+pub use types::{
+    Port, Hostname, Target, WaitConfig, WaitResult, TargetResult,
+    ConnectionError, HttpError
+};
+pub use target::{HttpTargetBuilder, TcpTargetBuilder};
+pub use config::WaitConfigBuilder;
+pub use connection::{wait_for_connection, wait_for_single_target};
+pub use iterators::{TargetIterExt, TargetResultIterExt, ResultSummary};
+pub use security::{RateLimiter, SecurityValidator};
+pub use async_traits::{
+    AsyncTargetChecker, AsyncRetryStrategy, AsyncConnectionStrategy,
+    DefaultTargetChecker, ExponentialBackoffStrategy, LinearBackoffStrategy,
+    WaitForAllStrategy, WaitForAnyStrategy, ConcurrentProgressStrategy
+};
+pub use zero_cost::{
+    LazyFormat, StringBuilder, TargetDisplay, SmallString,
+    ValidatedPort, WellKnownPort, RegisteredPort, DynamicPort,
+    ConstRetryStrategy
+};
 
-/// A target service to wait for.
-#[derive(Debug, Clone)]
-pub enum Target {
-    /// TCP connection target with host and port.
-    Tcp {
-        /// The hostname or IP address
-        host: String,
-        /// The port number
-        port: u16,
-    },
-    /// HTTP/HTTPS endpoint target.
-    Http {
-        /// The URL to check
-        url: Url,
-        /// Expected HTTP status code
-        expected_status: u16,
-        /// Optional custom headers
-        headers: Option<Vec<(String, String)>>,
-    },
-}
-
-impl Target {
-    /// Create a new TCP target.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use wait_for::Target;
-    ///
-    /// let target = Target::tcp("localhost", 8080)?;
-    /// # Ok::<(), wait_for::WaitForError>(())
-    /// ```
-    pub fn tcp(host: impl Into<String>, port: u16) -> Result<Self> {
-        Ok(Target::Tcp {
-            host: host.into(),
-            port,
-        })
-    }
-
-    /// Create a new HTTP target with expected status code 200.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use wait_for::Target;
-    /// use url::Url;
-    ///
-    /// let url = Url::parse("https://api.example.com/health")?;
-    /// let target = Target::http(url, 200)?;
-    /// # Ok::<(), wait_for::WaitForError>(())
-    /// ```
-    pub fn http(url: Url, expected_status: u16) -> Result<Self> {
-        Ok(Target::Http {
-            url,
-            expected_status,
-            headers: None,
-        })
-    }
-
-    /// Create a new HTTP target with custom headers.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use wait_for::Target;
-    /// use url::Url;
-    ///
-    /// let url = Url::parse("https://api.example.com/health")?;
-    /// let headers = vec![("Authorization".to_string(), "Bearer token".to_string())];
-    /// let target = Target::http_with_headers(url, 200, headers)?;
-    /// # Ok::<(), wait_for::WaitForError>(())
-    /// ```
-    pub fn http_with_headers(
-        url: Url,
-        expected_status: u16,
-        headers: Vec<(String, String)>,
-    ) -> Result<Self> {
-        Ok(Target::Http {
-            url,
-            expected_status,
-            headers: Some(headers),
-        })
-    }
-
-    /// Parse a target from a string.
-    ///
-    /// Supports formats:
-    /// - `host:port` for TCP targets
-    /// - `http://host/path` or `https://host/path` for HTTP targets
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use wait_for::Target;
-    ///
-    /// let tcp_target = Target::parse("localhost:8080", 200)?;
-    /// let http_target = Target::parse("https://api.example.com/health", 200)?;
-    /// # Ok::<(), wait_for::WaitForError>(())
-    /// ```
-    pub fn parse(target_str: &str, default_http_status: u16) -> Result<Self> {
-        if target_str.starts_with("http://") || target_str.starts_with("https://") {
-            let url = Url::parse(target_str)?;
-            Ok(Target::Http {
-                url,
-                expected_status: default_http_status,
-                headers: None,
-            })
-        } else {
-            let parts: Vec<&str> = target_str.split(':').collect();
-            if parts.len() != 2 {
-                return Err(WaitForError::InvalidTarget(target_str.to_string()));
-            }
-            let host = parts[0].to_string();
-            let port = parts[1].parse::<u16>()
-                .map_err(|_| WaitForError::InvalidTarget(target_str.to_string()))?;
-            Ok(Target::Tcp { host, port })
-        }
-    }
-
-    /// Get a string representation of this target for display purposes.
-    pub fn display(&self) -> String {
-        match self {
-            Target::Tcp { host, port } => format!("{}:{}", host, port),
-            Target::Http { url, .. } => url.to_string(),
-        }
-    }
-}
-
-/// Configuration for wait operations.
-#[derive(Debug, Clone)]
-pub struct WaitConfig {
-    /// Total timeout for all wait operations.
-    pub timeout: Duration,
-    /// Initial retry interval.
-    pub initial_interval: Duration,
-    /// Maximum retry interval for exponential backoff.
-    pub max_interval: Duration,
-    /// If true, wait for any target to be ready. If false, wait for all targets.
-    pub wait_for_any: bool,
-    /// Maximum number of retry attempts (None for unlimited).
-    pub max_retries: Option<u32>,
-    /// Individual connection timeout.
-    pub connection_timeout: Duration,
-}
-
-impl Default for WaitConfig {
-    fn default() -> Self {
-        Self {
-            timeout: Duration::from_secs(30),
-            initial_interval: Duration::from_secs(1),
-            max_interval: Duration::from_secs(30),
-            wait_for_any: false,
-            max_retries: None,
-            connection_timeout: Duration::from_secs(10),
-        }
-    }
-}
-
-impl WaitConfig {
-    /// Create a new builder for WaitConfig.
-    pub fn builder() -> WaitConfigBuilder {
-        WaitConfigBuilder::default()
-    }
-}
-
-/// Builder for WaitConfig.
-#[derive(Debug, Clone)]
-pub struct WaitConfigBuilder {
-    config: WaitConfig,
-}
-
-impl Default for WaitConfigBuilder {
-    fn default() -> Self {
-        Self {
-            config: WaitConfig::default(),
-        }
-    }
-}
-
-impl WaitConfigBuilder {
-    /// Set the total timeout.
-    pub fn timeout(mut self, timeout: Duration) -> Self {
-        self.config.timeout = timeout;
-        self
-    }
-
-    /// Set the initial retry interval.
-    pub fn interval(mut self, interval: Duration) -> Self {
-        self.config.initial_interval = interval;
-        self
-    }
-
-    /// Set the maximum retry interval for exponential backoff.
-    pub fn max_interval(mut self, max_interval: Duration) -> Self {
-        self.config.max_interval = max_interval;
-        self
-    }
-
-    /// Set whether to wait for any target (true) or all targets (false).
-    pub fn wait_for_any(mut self, wait_for_any: bool) -> Self {
-        self.config.wait_for_any = wait_for_any;
-        self
-    }
-
-    /// Set the maximum number of retry attempts.
-    pub fn max_retries(mut self, max_retries: Option<u32>) -> Self {
-        self.config.max_retries = max_retries;
-        self
-    }
-
-    /// Set the individual connection timeout.
-    pub fn connection_timeout(mut self, timeout: Duration) -> Self {
-        self.config.connection_timeout = timeout;
-        self
-    }
-
-    /// Build the WaitConfig.
-    pub fn build(self) -> WaitConfig {
-        self.config
-    }
-}
-
-/// Information about a wait operation result.
-#[derive(Debug, Clone)]
-pub struct WaitResult {
-    /// Whether the operation was successful.
-    pub success: bool,
-    /// Time elapsed during the operation.
-    pub elapsed: Duration,
-    /// Number of attempts made.
-    pub attempts: u32,
-    /// Results for each target.
-    pub target_results: Vec<TargetResult>,
-}
-
-/// Result for an individual target.
-#[derive(Debug, Clone)]
-pub struct TargetResult {
-    /// The target that was tested.
-    pub target: Target,
-    /// Whether this target was successful.
-    pub success: bool,
-    /// Time elapsed for this target.
-    pub elapsed: Duration,
-    /// Number of attempts for this target.
-    pub attempts: u32,
-    /// Error message if unsuccessful.
-    pub error: Option<String>,
-}
-
-/// Resolve a hostname and port to socket addresses.
-async fn resolve_host(host: &str, port: u16) -> Result<Vec<SocketAddr>> {
-    let host_port = format!("{}:{}", host, port);
-    let addrs: Vec<SocketAddr> = lookup_host(&host_port)
-        .await
-        .map_err(|e| WaitForError::DnsResolution(host.to_string(), e.to_string()))?
-        .collect();
-
-    if addrs.is_empty() {
-        return Err(WaitForError::DnsResolution(
-            host.to_string(),
-            "No addresses found".to_string(),
-        ));
-    }
-
-    Ok(addrs)
-}
-
-/// Try to establish a TCP connection.
-async fn try_tcp_connect(host: &str, port: u16, timeout_duration: Duration) -> Result<()> {
-    let addrs = resolve_host(host, port).await?;
-
-    for addr in addrs {
-        if let Ok(_) = timeout(timeout_duration, TcpStream::connect(addr)).await {
-            return Ok(());
-        }
-    }
-
-    Err(WaitForError::Connection(format!("Failed to connect to {}:{}", host, port)))
-}
-
-/// Try to make an HTTP request and check the response.
-async fn try_http_connect(
-    url: &Url,
-    expected_status: u16,
-    headers: &Option<Vec<(String, String)>>,
-    timeout_duration: Duration,
-) -> Result<()> {
-    let client = reqwest::Client::builder()
-        .timeout(timeout_duration)
-        .build()
-        .map_err(|e| WaitForError::Http(e.to_string()))?;
-
-    let mut request = client.get(url.clone());
-
-    if let Some(headers) = headers {
-        for (key, value) in headers {
-            request = request.header(key, value);
-        }
-    }
-
-    let response = request
-        .send()
-        .await
-        .map_err(|e| WaitForError::Http(e.to_string()))?;
-
-    if response.status().as_u16() == expected_status {
-        Ok(())
-    } else {
-        Err(WaitForError::Http(format!(
-            "Expected status {}, got {}",
-            expected_status,
-            response.status()
-        )))
-    }
-}
-
-/// Try to connect to a target.
-async fn try_connect_target(target: &Target, config: &WaitConfig) -> Result<()> {
-    match target {
-        Target::Tcp { host, port } => {
-            try_tcp_connect(host, *port, config.connection_timeout).await
-        }
-        Target::Http { url, expected_status, headers } => {
-            try_http_connect(url, *expected_status, headers, config.connection_timeout).await
-        }
-    }
-}
-
-/// Calculate the next retry interval using exponential backoff.
-fn calculate_next_interval(current: Duration, max: Duration) -> Duration {
-    let next = Duration::from_millis((current.as_millis() as f64 * 1.5) as u64);
-    if next > max {
-        max
-    } else {
-        next
-    }
-}
-
-/// Wait for a single target to become available.
-pub async fn wait_for_single_target(target: &Target, config: &WaitConfig) -> Result<TargetResult> {
-    let start = Instant::now();
-    let mut current_interval = config.initial_interval;
-    let mut attempt = 0;
-
-    loop {
-        attempt += 1;
-
-        match try_connect_target(target, config).await {
-            Ok(()) => {
-                return Ok(TargetResult {
-                    target: target.clone(),
-                    success: true,
-                    elapsed: start.elapsed(),
-                    attempts: attempt,
-                    error: None,
-                });
-            }
-            Err(e) => {
-                if start.elapsed() >= config.timeout {
-                    return Ok(TargetResult {
-                        target: target.clone(),
-                        success: false,
-                        elapsed: start.elapsed(),
-                        attempts: attempt,
-                        error: Some(e.to_string()),
-                    });
-                }
-
-                if let Some(max_retries) = config.max_retries {
-                    if attempt >= max_retries {
-                        return Ok(TargetResult {
-                            target: target.clone(),
-                            success: false,
-                            elapsed: start.elapsed(),
-                            attempts: attempt,
-                            error: Some(format!("Max retries ({}) exceeded", max_retries)),
-                        });
-                    }
-                }
-
-                sleep(current_interval).await;
-                current_interval = calculate_next_interval(current_interval, config.max_interval);
-            }
-        }
-    }
-}
-
-/// Wait for connections to multiple targets.
-///
-/// This is the main function for waiting on multiple targets with different strategies.
-///
-/// # Examples
-///
-/// ```rust
-/// use wait_for::{Target, WaitConfig, wait_for_connection};
-/// use std::time::Duration;
-///
-/// #[tokio::main]
-/// async fn main() -> Result<(), wait_for::WaitForError> {
-///     let targets = vec![
-///         Target::tcp("localhost", 8080)?,
-///         Target::tcp("localhost", 5432)?,
-///     ];
-///
-///     let config = WaitConfig::builder()
-///         .timeout(Duration::from_secs(60))
-///         .wait_for_any(false) // Wait for all targets
-///         .build();
-///
-///     wait_for_connection(&targets, &config).await?;
-///     println!("All services are ready!");
-///     Ok(())
-/// }
-/// ```
-pub async fn wait_for_connection(targets: &[Target], config: &WaitConfig) -> Result<WaitResult> {
-    let start = Instant::now();
-
-    if targets.is_empty() {
-        return Ok(WaitResult {
-            success: true,
-            elapsed: start.elapsed(),
-            attempts: 0,
-            target_results: vec![],
-        });
-    }
-
-    if config.wait_for_any {
-        // Wait for any target to be ready
-        use futures::future::select_ok;
-
-        let futures: Vec<_> = targets.iter()
-            .map(|target| Box::pin(wait_for_single_target(target, config)))
-            .collect();
-
-        match select_ok(futures).await {
-            Ok((result, _)) => {
-                Ok(WaitResult {
-                    success: result.success,
-                    elapsed: start.elapsed(),
-                    attempts: result.attempts,
-                    target_results: vec![result],
-                })
-            }
-            Err(e) => Err(e),
-        }
-    } else {
-        // Wait for all targets to be ready
-        use futures::future::join_all;
-
-        let futures: Vec<_> = targets.iter()
-            .map(|target| wait_for_single_target(target, config))
-            .collect();
-
-        let results = join_all(futures).await;
-        let mut target_results = Vec::new();
-        let mut all_successful = true;
-        let mut total_attempts = 0;
-
-        for result in results {
-            match result {
-                Ok(target_result) => {
-                    if !target_result.success {
-                        all_successful = false;
-                    }
-                    total_attempts += target_result.attempts;
-                    target_results.push(target_result);
-                }
-                Err(e) => {
-                    return Err(e);
-                }
-            }
-        }
-
-        if !all_successful {
-            let failed_targets: Vec<_> = target_results.iter()
-                .filter(|r| !r.success)
-                .map(|r| r.target.display())
-                .collect();
-            return Err(WaitForError::Timeout(format!(
-                "Failed targets: {}",
-                failed_targets.join(", ")
-            )));
-        }
-
-        Ok(WaitResult {
-            success: all_successful,
-            elapsed: start.elapsed(),
-            attempts: total_attempts,
-            target_results,
-        })
-    }
-}
+// Re-export error_messages for internal use
+pub(crate) use error::error_messages;
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::time::Duration;
+    use url::Url;
+    use proptest::prelude::*;
+    use test_case::test_case;
 
     #[test]
     fn test_target_parse_tcp() {
         let target = Target::parse("localhost:8080", 200).unwrap();
         match target {
             Target::Tcp { host, port } => {
-                assert_eq!(host, "localhost");
-                assert_eq!(port, 8080);
+                assert_eq!(host.as_str(), "localhost");
+                assert_eq!(port.get(), 8080);
             }
             _ => panic!("Expected TCP target"),
         }
@@ -631,6 +266,8 @@ mod tests {
 
     #[test]
     fn test_calculate_next_interval() {
+        use connection::calculate_next_interval;
+
         let current = Duration::from_secs(1);
         let max = Duration::from_secs(30);
 
@@ -640,5 +277,287 @@ mod tests {
         let large_current = Duration::from_secs(25);
         let next = calculate_next_interval(large_current, max);
         assert_eq!(next, max);
+    }
+
+    // Property-based tests for Port validation
+    proptest! {
+        #[test]
+        fn test_port_new_valid_range(port in 1u16..=65535) {
+            let result = Port::new(port);
+            assert!(result.is_some());
+            assert_eq!(result.unwrap().get(), port);
+        }
+
+        #[test]
+        fn test_port_new_zero_invalid(port in 0u16..=0) {
+            let result = Port::new(port);
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn test_port_well_known_valid_range(port in 1u16..=1023) {
+            let result = Port::well_known(port);
+            assert!(result.is_some());
+            assert_eq!(result.unwrap().get(), port);
+        }
+
+        #[test]
+        fn test_port_well_known_invalid_range(port in 1024u16..=65535) {
+            let result = Port::well_known(port);
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn test_port_registered_valid_range(port in 1024u16..=49151) {
+            let result = Port::registered(port);
+            assert!(result.is_some());
+            assert_eq!(result.unwrap().get(), port);
+        }
+
+        #[test]
+        fn test_port_registered_invalid_low_range(port in 1u16..=1023) {
+            let result = Port::registered(port);
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn test_port_registered_invalid_high_range(port in 49152u16..=65535) {
+            let result = Port::registered(port);
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn test_port_dynamic_valid_range(port in 49152u16..=65535) {
+            let result = Port::dynamic(port);
+            assert!(result.is_some());
+            assert_eq!(result.unwrap().get(), port);
+        }
+
+        #[test]
+        fn test_port_dynamic_invalid_range(port in 1u16..=49151) {
+            let result = Port::dynamic(port);
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn test_hostname_validation_alphanumeric(
+            hostname in "[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9]"
+        ) {
+            let result = Hostname::new(hostname);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_hostname_validation_too_long(
+            hostname in "[a-zA-Z]{254,300}"
+        ) {
+            let result = Hostname::new(hostname);
+            assert!(result.is_err());
+        }
+
+        #[test]
+        fn test_target_tcp_creation(
+            hostname in "[a-zA-Z0-9][a-zA-Z0-9\\-]{0,30}[a-zA-Z0-9]",
+            port in 1u16..=65535
+        ) {
+            let result = Target::tcp(hostname, port);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_calculate_next_interval_property(
+            current_ms in 1u64..=60000,
+            max_ms in 60000u64..=300000
+        ) {
+            let current = Duration::from_millis(current_ms);
+            let max = Duration::from_millis(max_ms);
+
+            let next = connection::calculate_next_interval(current, max);
+
+            // Next interval should be greater than current (due to exponential backoff)
+            assert!(next >= current);
+            // Next interval should not exceed max
+            assert!(next <= max);
+        }
+    }
+
+    // Parameterized tests using test-case
+    #[test_case("localhost", 80; "http port")]
+    #[test_case("example.com", 443; "https port")]
+    #[test_case("127.0.0.1", 22; "ssh port")]
+    #[test_case("db.example.com", 5432; "postgres port")]
+    fn test_tcp_target_creation(hostname: &str, port: u16) {
+        let target = Target::tcp(hostname, port).unwrap();
+        match target {
+            Target::Tcp { host, port: p } => {
+                assert_eq!(host.as_str(), hostname);
+                assert_eq!(p.get(), port);
+            }
+            _ => panic!("Expected TCP target"),
+        }
+    }
+
+    #[test_case(80, Port::http(); "http port constant")]
+    #[test_case(443, Port::https(); "https port constant")]
+    #[test_case(22, Port::ssh(); "ssh port constant")]
+    #[test_case(5432, Port::postgres(); "postgres port constant")]
+    #[test_case(3306, Port::mysql(); "mysql port constant")]
+    #[test_case(6379, Port::redis(); "redis port constant")]
+    fn test_port_constants(expected: u16, port: Port) {
+        assert_eq!(port.get(), expected);
+    }
+
+    #[test_case("http://example.com/", 200; "http url")]
+    #[test_case("https://api.example.com/health", 200; "https health endpoint")]
+    #[test_case("https://example.com:8080/status", 204; "custom port and status")]
+    fn test_http_target_parsing(url_str: &str, status: u16) {
+        let target = Target::parse(url_str, status).unwrap();
+        match target {
+            Target::Http { url, expected_status, .. } => {
+                assert_eq!(url.to_string(), url_str);
+                assert_eq!(expected_status, status);
+            }
+            _ => panic!("Expected HTTP target"),
+        }
+    }
+
+    #[test_case(""; "empty string")]
+    #[test_case("invalid-target"; "missing port")]
+    #[test_case("host:"; "empty port")]
+    #[test_case("host:abc"; "non-numeric port")]
+    #[test_case("host:0"; "zero port")]
+    #[test_case("host:65536"; "port too high")]
+    fn test_invalid_target_parsing(target_str: &str) {
+        let result = Target::parse(target_str, 200);
+        assert!(result.is_err());
+    }
+
+    #[test_case(""; "empty hostname")]
+    #[test_case("-example.com"; "starts with hyphen")]
+    #[test_case("example.com-"; "ends with hyphen")]
+    #[test_case("ex..ample.com"; "empty label")]
+    #[test_case(&"a".repeat(254); "too long")]
+    fn test_invalid_hostname_validation(hostname: &str) {
+        let result = Hostname::new(hostname);
+        assert!(result.is_err());
+    }
+
+    #[test_case("192.168.1.1"; "valid ipv4")]
+    #[test_case("10.0.0.1"; "valid private ip")]
+    #[test_case("255.255.255.255"; "max ipv4")]
+    fn test_valid_ipv4_hostname(ip: &str) {
+        let result = Hostname::ipv4(ip);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().as_str(), ip);
+    }
+
+    #[test_case("192.168.1"; "incomplete ipv4")]
+    #[test_case("192.168.1.1.1"; "too many parts")]
+    #[test_case("192.168.256.1"; "octet too high")]
+    #[test_case("192.168.abc.1"; "invalid octet")]
+    fn test_invalid_ipv4_hostname(ip: &str) {
+        let result = Hostname::ipv4(ip);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hostname_const_constructors() {
+        let localhost = Hostname::localhost();
+        assert_eq!(localhost.as_str(), "localhost");
+
+        let loopback = Hostname::loopback();
+        assert_eq!(loopback.as_str(), "127.0.0.1");
+
+        let loopback_v6 = Hostname::loopback_v6();
+        assert_eq!(loopback_v6.as_str(), "::1");
+
+        let any = Hostname::any();
+        assert_eq!(any.as_str(), "0.0.0.0");
+    }
+
+    #[test]
+    fn test_target_convenience_constructors() {
+        let localhost_target = Target::localhost(8080).unwrap();
+        assert_eq!(localhost_target.hostname(), "localhost");
+        assert_eq!(localhost_target.port(), Some(8080));
+
+        let loopback_target = Target::loopback(3000).unwrap();
+        assert_eq!(loopback_target.hostname(), "127.0.0.1");
+        assert_eq!(loopback_target.port(), Some(3000));
+
+        let loopback_v6_target = Target::loopback_v6(9090).unwrap();
+        assert_eq!(loopback_v6_target.hostname(), "::1");
+        assert_eq!(loopback_v6_target.port(), Some(9090));
+    }
+
+    #[test]
+    fn test_tcp_builder_fluent_interface() {
+        // Test that builder methods return Self for fluent chaining
+        let target = Target::tcp_builder("example.com").unwrap()
+            .registered_port(8080)
+            .build().unwrap();
+
+        assert_eq!(target.hostname(), "example.com");
+        assert_eq!(target.port(), Some(8080));
+    }
+
+    #[test]
+    fn test_tcp_builder_error_deferred() {
+        // Test that validation errors are deferred until build()
+        let result = Target::tcp_builder("example.com").unwrap()
+            .well_known_port(8080) // Invalid for well-known range
+            .build();
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_safe_tcp_targets_macro() {
+        // Test the new safe tcp_targets! macro
+        let result = tcp_targets![
+            "localhost" => 8080,
+            "example.com" => 443,
+        ];
+
+        assert!(result.is_ok());
+        let targets = result.unwrap();
+        assert_eq!(targets.len(), 2);
+        assert_eq!(targets[0].hostname(), "localhost");
+        assert_eq!(targets[0].port(), Some(8080));
+    }
+
+    #[test]
+    fn test_safe_tcp_targets_macro_error() {
+        // Test that the macro properly propagates errors
+        let result = tcp_targets![
+            "localhost" => 8080,
+            "example.com" => 0, // Invalid port
+        ];
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_safe_http_targets_macro() {
+        // Test the new safe http_targets! macro
+        let result = http_targets![
+            "https://example.com" => 200,
+            "http://localhost:8080" => 204,
+        ];
+
+        assert!(result.is_ok());
+        let targets = result.unwrap();
+        assert_eq!(targets.len(), 2);
+    }
+
+    #[test]
+    fn test_safe_http_targets_macro_error() {
+        // Test that the macro properly propagates errors
+        let result = http_targets![
+            "https://example.com" => 200,
+            "invalid-url" => 200, // Invalid URL
+        ];
+
+        assert!(result.is_err());
     }
 }
