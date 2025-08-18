@@ -2,7 +2,7 @@
 # This creates a very minimal container (~10MB)
 
 # Build stage
-FROM rust:1.75-alpine as builder
+FROM rust:1.75-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
