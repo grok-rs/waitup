@@ -83,12 +83,14 @@
 use std::borrow::Cow;
 use std::net::SocketAddr;
 use std::time::Duration;
-use tokio::net::{lookup_host, TcpStream};
-use tokio::time::{sleep, timeout, Instant};
+use tokio::net::{TcpStream, lookup_host};
+use tokio::time::{Instant, sleep, timeout};
 use url::Url;
 
-use crate::types::{Target, WaitConfig, TargetResult, WaitResult, Hostname, Port, ConnectionError, HttpError};
-use crate::{WaitForError, Result, ResultExt};
+use crate::types::{
+    ConnectionError, Hostname, HttpError, Port, Target, TargetResult, WaitConfig, WaitResult,
+};
+use crate::{Result, ResultExt, WaitForError};
 
 /// Resolve a hostname and port to socket addresses.
 pub(crate) async fn resolve_host(host: &str, port: u16) -> Result<Vec<SocketAddr>> {
@@ -99,20 +101,19 @@ pub(crate) async fn resolve_host(host: &str, port: u16) -> Result<Vec<SocketAddr
     let host_port = host_port_builder.as_str();
     let addrs: Vec<SocketAddr> = lookup_host(&host_port)
         .await
-        .map_err(|e| WaitForError::Connection(ConnectionError::DnsResolution {
-            host: Cow::Owned(host.to_string()),
-            reason: e,
-        }))
+        .map_err(|e| {
+            WaitForError::Connection(ConnectionError::DnsResolution {
+                host: Cow::Owned(host.to_string()),
+                reason: e,
+            })
+        })
         .with_context(|| format!("Failed to resolve hostname '{}'", host))?
         .collect();
 
     if addrs.is_empty() {
         let dns_error = WaitForError::Connection(ConnectionError::DnsResolution {
             host: Cow::Owned(host.to_string()),
-            reason: std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "No addresses found"
-            ),
+            reason: std::io::Error::new(std::io::ErrorKind::NotFound, "No addresses found"),
         });
         return Err(dns_error)
             .with_context(|| format!("No IP addresses found for hostname '{}'", host));
@@ -122,8 +123,13 @@ pub(crate) async fn resolve_host(host: &str, port: u16) -> Result<Vec<SocketAddr
 }
 
 /// Try to establish a TCP connection.
-pub(crate) async fn try_tcp_connect(host: &Hostname, port: Port, timeout_duration: Duration) -> Result<()> {
-    let addrs = resolve_host(host.as_str(), port.get()).await
+pub(crate) async fn try_tcp_connect(
+    host: &Hostname,
+    port: Port,
+    timeout_duration: Duration,
+) -> Result<()> {
+    let addrs = resolve_host(host.as_str(), port.get())
+        .await
         .with_context(|| format!("Failed to resolve {}:{}", host, port))?;
 
     let mut last_error = None;
@@ -135,8 +141,14 @@ pub(crate) async fn try_tcp_connect(host: &Hostname, port: Port, timeout_duratio
                 return Err(WaitForError::Connection(ConnectionError::Timeout {
                     timeout_ms: timeout_duration.as_millis() as u64,
                 }))
-                .with_context(|| format!("Connection timeout after {}ms to {}:{}",
-                    timeout_duration.as_millis(), host, port));
+                .with_context(|| {
+                    format!(
+                        "Connection timeout after {}ms to {}:{}",
+                        timeout_duration.as_millis(),
+                        host,
+                        port
+                    )
+                });
             }
         }
     }
@@ -145,7 +157,10 @@ pub(crate) async fn try_tcp_connect(host: &Hostname, port: Port, timeout_duratio
         host: Cow::Owned(host.to_string()),
         port: port.get(),
         reason: last_error.unwrap_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "No addresses available")
+            std::io::Error::new(
+                std::io::ErrorKind::ConnectionRefused,
+                "No addresses available",
+            )
         }),
     }))
     .with_context(|| format!("Failed to establish TCP connection to {}:{}", host, port))
@@ -161,10 +176,12 @@ pub(crate) async fn try_http_connect(
     let client = reqwest::Client::builder()
         .timeout(timeout_duration)
         .build()
-        .map_err(|e| WaitForError::Http(HttpError::RequestFailed {
-            url: Cow::Owned(url.to_string()),
-            reason: e,
-        }))
+        .map_err(|e| {
+            WaitForError::Http(HttpError::RequestFailed {
+                url: Cow::Owned(url.to_string()),
+                reason: e,
+            })
+        })
         .with_context(|| format!("Failed to create HTTP client for {}", url))?;
 
     let mut request = client.get(url.clone());
@@ -184,10 +201,12 @@ pub(crate) async fn try_http_connect(
     let response = request
         .send()
         .await
-        .map_err(|e| WaitForError::Http(HttpError::RequestFailed {
-            url: Cow::Owned(url.to_string()),
-            reason: e,
-        }))
+        .map_err(|e| {
+            WaitForError::Http(HttpError::RequestFailed {
+                url: Cow::Owned(url.to_string()),
+                reason: e,
+            })
+        })
         .with_context(|| format!("HTTP request failed to {}", url))?;
 
     let actual_status = response.status().as_u16();
@@ -198,8 +217,12 @@ pub(crate) async fn try_http_connect(
             expected: expected_status,
             actual: actual_status,
         }))
-        .with_context(|| format!("Unexpected HTTP status from {}: expected {}, got {}",
-            url, expected_status, actual_status))
+        .with_context(|| {
+            format!(
+                "Unexpected HTTP status from {}: expected {}, got {}",
+                url, expected_status, actual_status
+            )
+        })
     }
 }
 
@@ -214,23 +237,19 @@ pub(crate) async fn try_connect_target(target: &Target, config: &WaitConfig) -> 
     }
 
     match target {
-        Target::Tcp { host, port } => {
-            try_tcp_connect(host, *port, config.connection_timeout).await
-        }
-        Target::Http { url, expected_status, headers } => {
-            try_http_connect(url, *expected_status, headers, config.connection_timeout).await
-        }
+        Target::Tcp { host, port } => try_tcp_connect(host, *port, config.connection_timeout).await,
+        Target::Http {
+            url,
+            expected_status,
+            headers,
+        } => try_http_connect(url, *expected_status, headers, config.connection_timeout).await,
     }
 }
 
 /// Calculate the next retry interval using exponential backoff.
 pub(crate) fn calculate_next_interval(current: Duration, max: Duration) -> Duration {
     let next = Duration::from_millis((current.as_millis() as f64 * 1.5) as u64);
-    if next > max {
-        max
-    } else {
-        next
-    }
+    if next > max { max } else { next }
 }
 
 /// Wait for a single target to become available.
@@ -351,26 +370,26 @@ pub async fn wait_for_connection(targets: &[Target], config: &WaitConfig) -> Res
         // Wait for any target to be ready
         use futures::future::select_ok;
 
-        let futures: Vec<_> = targets.iter()
+        let futures: Vec<_> = targets
+            .iter()
             .map(|target| Box::pin(wait_for_single_target(target, config)))
             .collect();
 
         match select_ok(futures).await {
-            Ok((result, _)) => {
-                Ok(WaitResult {
-                    success: result.success,
-                    elapsed: start.elapsed(),
-                    attempts: result.attempts,
-                    target_results: vec![result],
-                })
-            }
+            Ok((result, _)) => Ok(WaitResult {
+                success: result.success,
+                elapsed: start.elapsed(),
+                attempts: result.attempts,
+                target_results: vec![result],
+            }),
             Err(e) => Err(e),
         }
     } else {
         // Wait for all targets to be ready
         use futures::future::join_all;
 
-        let futures: Vec<_> = targets.iter()
+        let futures: Vec<_> = targets
+            .iter()
             .map(|target| wait_for_single_target(target, config))
             .collect();
 
@@ -395,7 +414,8 @@ pub async fn wait_for_connection(targets: &[Target], config: &WaitConfig) -> Res
         }
 
         if !all_successful {
-            let failed_targets: Vec<_> = target_results.iter()
+            let failed_targets: Vec<_> = target_results
+                .iter()
                 .filter(|r| !r.success)
                 .map(|r| r.target.display())
                 .collect();
@@ -528,5 +548,4 @@ mod tests {
         assert!(wait_result.success);
         assert_eq!(wait_result.target_results.len(), 0);
     }
-
 }

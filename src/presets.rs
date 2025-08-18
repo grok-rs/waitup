@@ -1,7 +1,7 @@
 //! Common presets and configurations for typical use cases.
 
+use crate::{Target, WaitConfig};
 use std::time::Duration;
-use crate::{WaitConfig, Target};
 
 /// Preset configurations for common scenarios
 impl WaitConfig {

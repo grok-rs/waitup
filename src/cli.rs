@@ -1,4 +1,4 @@
-use clap::{Parser, CommandFactory};
+use clap::{CommandFactory, Parser};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::borrow::Cow;
 use std::process::Command;
@@ -107,7 +107,10 @@ impl CliConfig {
             let parts: Vec<&str> = header_str.splitn(2, ':').collect();
             if parts.len() != 2 {
                 return Err(CliError::WaitError(WaitForError::InvalidTarget(
-                    Cow::Owned(format!("Invalid header format '{}': expected 'key:value'", header_str))
+                    Cow::Owned(format!(
+                        "Invalid header format '{}': expected 'key:value'",
+                        header_str
+                    )),
                 )));
             }
             headers.push((parts[0].trim().to_string(), parts[1].trim().to_string()));
@@ -115,32 +118,45 @@ impl CliConfig {
 
         for target_str in &args.targets {
             if target_str.starts_with("http://") || target_str.starts_with("https://") {
-                let url = url::Url::parse(target_str)
-                    .map_err(|_| CliError::WaitError(WaitForError::InvalidTarget(Cow::Owned(target_str.clone()))))?;
+                let url = url::Url::parse(target_str).map_err(|_| {
+                    CliError::WaitError(WaitForError::InvalidTarget(Cow::Owned(target_str.clone())))
+                })?;
 
                 if headers.is_empty() {
                     targets.push(Target::http(url, args.expect_status)?);
                 } else {
-                    targets.push(Target::http_with_headers(url, args.expect_status, headers.clone())?);
+                    targets.push(Target::http_with_headers(
+                        url,
+                        args.expect_status,
+                        headers.clone(),
+                    )?);
                 }
             } else {
                 targets.push(Target::parse(target_str, args.expect_status)?);
             }
         }
 
-        let timeout = args.timeout.parse::<humantime::Duration>()
+        let timeout = args
+            .timeout
+            .parse::<humantime::Duration>()
             .map_err(|e| CliError::InvalidTimeout(args.timeout, e.to_string()))?
             .into();
 
-        let initial_interval = args.interval.parse::<humantime::Duration>()
+        let initial_interval = args
+            .interval
+            .parse::<humantime::Duration>()
             .map_err(|e| CliError::InvalidInterval(args.interval, e.to_string()))?
             .into();
 
-        let max_interval = args.max_interval.parse::<humantime::Duration>()
+        let max_interval = args
+            .max_interval
+            .parse::<humantime::Duration>()
             .map_err(|e| CliError::InvalidInterval(args.max_interval, e.to_string()))?
             .into();
 
-        let connection_timeout = args.connection_timeout.parse::<humantime::Duration>()
+        let connection_timeout = args
+            .connection_timeout
+            .parse::<humantime::Duration>()
             .map_err(|e| CliError::InvalidInterval(args.connection_timeout, e.to_string()))?
             .into();
 
@@ -194,13 +210,17 @@ mod output {
                 success: result.success,
                 elapsed_ms: result.elapsed.as_millis() as u64,
                 total_attempts: result.attempts,
-                targets: result.target_results.iter().map(|tr| JsonTargetResult {
-                    target: tr.target.display(),
-                    success: tr.success,
-                    elapsed_ms: tr.elapsed.as_millis() as u64,
-                    attempts: tr.attempts,
-                    error: tr.error.clone(),
-                }).collect(),
+                targets: result
+                    .target_results
+                    .iter()
+                    .map(|tr| JsonTargetResult {
+                        target: tr.target.display(),
+                        success: tr.success,
+                        elapsed_ms: tr.elapsed.as_millis() as u64,
+                        attempts: tr.attempts,
+                        error: tr.error.clone(),
+                    })
+                    .collect(),
             };
             println!("{}", serde_json::to_string_pretty(&json_output)?);
         } else if !config.quiet {
@@ -221,19 +241,24 @@ mod output {
 async fn wait_with_progress(config: &CliConfig) -> Result<WaitResult> {
     if config.verbose && !config.quiet && !config.json {
         let multi_progress = indicatif::MultiProgress::new();
-        let progress_bars: Vec<_> = config.targets.iter().map(|target| {
-            let pb = multi_progress.add(ProgressBar::new_spinner());
-            pb.set_style(
-                ProgressStyle::default_spinner()
-                    .template("{spinner:.green} {msg}")
-                    .unwrap()
-            );
-            pb.set_message(format!("Waiting for {}", target.display()));
-            pb.enable_steady_tick(Duration::from_millis(100));
-            pb
-        }).collect();
+        let progress_bars: Vec<_> = config
+            .targets
+            .iter()
+            .map(|target| {
+                let pb = multi_progress.add(ProgressBar::new_spinner());
+                pb.set_style(
+                    ProgressStyle::default_spinner()
+                        .template("{spinner:.green} {msg}")
+                        .unwrap(),
+                );
+                pb.set_message(format!("Waiting for {}", target.display()));
+                pb.enable_steady_tick(Duration::from_millis(100));
+                pb
+            })
+            .collect();
 
-        let result = wait_for_connection(&config.targets, &config.wait_config).await
+        let result = wait_for_connection(&config.targets, &config.wait_config)
+            .await
             .map_err(CliError::WaitError)?;
 
         for (i, target_result) in result.target_results.iter().enumerate() {
@@ -241,7 +266,8 @@ async fn wait_with_progress(config: &CliConfig) -> Result<WaitResult> {
                 if target_result.success {
                     pb.finish_with_message(format!("✓ {}", target_result.target.display()));
                 } else {
-                    pb.finish_with_message(format!("✗ {} ({})",
+                    pb.finish_with_message(format!(
+                        "✗ {} ({})",
                         target_result.target.display(),
                         target_result.error.as_deref().unwrap_or("failed")
                     ));
@@ -251,7 +277,8 @@ async fn wait_with_progress(config: &CliConfig) -> Result<WaitResult> {
 
         Ok(result)
     } else {
-        wait_for_connection(&config.targets, &config.wait_config).await
+        wait_for_connection(&config.targets, &config.wait_config)
+            .await
             .map_err(CliError::WaitError)
     }
 }
@@ -266,7 +293,8 @@ async fn execute_command(command: Vec<String>) -> Result<()> {
         cmd.args(&command[1..]);
     }
 
-    let output = cmd.output()
+    let output = cmd
+        .output()
         .map_err(|e| CliError::CommandExecution(e.to_string()))?;
 
     if !output.status.success() {

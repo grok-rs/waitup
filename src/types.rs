@@ -49,13 +49,13 @@
 //! };
 //! ```
 
-use std::fmt;
 use std::borrow::Cow;
+use std::fmt;
 use std::num::NonZeroU16;
+use std::time::Duration;
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 use url::Url;
-use std::time::Duration;
 
 use crate::error_messages;
 
@@ -93,11 +93,7 @@ impl Port {
 
     /// Create a port from a dynamic/private port number range
     pub const fn dynamic(port: u16) -> Option<Self> {
-        if port < 49152 {
-            None
-        } else {
-            Self::new(port)
-        }
+        if port < 49152 { None } else { Self::new(port) }
     }
 
     /// Create a new port without validation (for known valid values)
@@ -205,8 +201,7 @@ impl std::str::FromStr for Port {
     type Err = crate::WaitForError;
 
     fn from_str(s: &str) -> crate::Result<Self> {
-        let port: u16 = s.parse()
-            .map_err(|_| crate::WaitForError::InvalidPort(0))?;
+        let port: u16 = s.parse().map_err(|_| crate::WaitForError::InvalidPort(0))?;
         Self::try_from(port)
     }
 }
@@ -244,29 +239,43 @@ impl Hostname {
     /// Validate a hostname according to RFC standards
     fn validate(hostname: &str) -> crate::Result<()> {
         if hostname.is_empty() {
-            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::EMPTY_HOSTNAME)));
+            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                error_messages::EMPTY_HOSTNAME,
+            )));
         }
 
         if hostname.len() > 253 {
-            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::HOSTNAME_TOO_LONG)));
+            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                error_messages::HOSTNAME_TOO_LONG,
+            )));
         }
 
         if hostname.starts_with('-') || hostname.ends_with('-') {
-            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::HOSTNAME_INVALID_HYPHEN)));
+            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                error_messages::HOSTNAME_INVALID_HYPHEN,
+            )));
         }
 
         for label in hostname.split('.') {
             if label.is_empty() {
-                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::HOSTNAME_EMPTY_LABEL)));
+                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                    error_messages::HOSTNAME_EMPTY_LABEL,
+                )));
             }
             if label.len() > 63 {
-                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::HOSTNAME_LABEL_TOO_LONG)));
+                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                    error_messages::HOSTNAME_LABEL_TOO_LONG,
+                )));
             }
             if label.starts_with('-') || label.ends_with('-') {
-                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::HOSTNAME_LABEL_INVALID_HYPHEN)));
+                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                    error_messages::HOSTNAME_LABEL_INVALID_HYPHEN,
+                )));
             }
             if !label.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
-                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::HOSTNAME_INVALID_CHARS)));
+                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                    error_messages::HOSTNAME_INVALID_CHARS,
+                )));
             }
         }
 
@@ -301,14 +310,21 @@ impl Hostname {
         for part in ip.split('.') {
             parts_count += 1;
             if parts_count > 4 {
-                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::INVALID_IPV4_FORMAT)));
+                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                    error_messages::INVALID_IPV4_FORMAT,
+                )));
             }
-            let _num: u8 = part.parse()
-                .map_err(|_| crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::INVALID_IPV4_OCTET)))?;
+            let _num: u8 = part.parse().map_err(|_| {
+                crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                    error_messages::INVALID_IPV4_OCTET,
+                ))
+            })?;
             // _num is automatically validated to be 0-255 by u8 parsing
         }
         if parts_count != 4 {
-            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::INVALID_IPV4_FORMAT)));
+            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                error_messages::INVALID_IPV4_FORMAT,
+            )));
         }
         Ok(Self(Cow::Owned(ip.to_string())))
     }
@@ -428,7 +444,7 @@ pub enum ConnectionError {
     #[error("Connection timeout after {timeout_ms}ms")]
     Timeout {
         /// The timeout duration in milliseconds that was exceeded
-        timeout_ms: u64
+        timeout_ms: u64,
     },
     /// Failed to resolve hostname to IP address via DNS
     #[error("DNS resolution failed for {host}: {reason}")]
@@ -459,13 +475,13 @@ pub enum HttpError {
         /// The HTTP status code that was expected
         expected: u16,
         /// The actual HTTP status code received
-        actual: u16
+        actual: u16,
     },
     /// Invalid HTTP header format or value
     #[error("Invalid header: {header}")]
     InvalidHeader {
         /// The header that was invalid
-        header: Cow<'static, str>
+        header: Cow<'static, str>,
     },
 }
 
@@ -528,7 +544,10 @@ impl Target {
     {
         let hostname = host.try_into().map_err(Into::into)?;
         let port = port.try_into().map_err(Into::into)?;
-        Ok(Self::Tcp { host: hostname, port })
+        Ok(Self::Tcp {
+            host: hostname,
+            port,
+        })
     }
 
     /// Try to create an HTTP target from URL string
@@ -596,30 +615,34 @@ impl std::str::FromStr for ValidatedDuration {
             return Ok(Self::from_secs(secs));
         }
 
-        let (number_part, unit_part) = if let Some(pos) = s.find(|c: char| !c.is_ascii_digit() && c != '.') {
-            s.split_at(pos)
-        } else {
-            return Err(crate::WaitForError::InvalidTimeout(
-                Cow::Owned(s.to_string()),
-                Cow::Borrowed("Invalid duration format")
-            ));
-        };
+        let (number_part, unit_part) =
+            if let Some(pos) = s.find(|c: char| !c.is_ascii_digit() && c != '.') {
+                s.split_at(pos)
+            } else {
+                return Err(crate::WaitForError::InvalidTimeout(
+                    Cow::Owned(s.to_string()),
+                    Cow::Borrowed("Invalid duration format"),
+                ));
+            };
 
-        let number: f64 = number_part.parse()
-            .map_err(|_| crate::WaitForError::InvalidTimeout(
+        let number: f64 = number_part.parse().map_err(|_| {
+            crate::WaitForError::InvalidTimeout(
                 Cow::Owned(s.to_string()),
-                Cow::Borrowed("Invalid number")
-            ))?;
+                Cow::Borrowed("Invalid number"),
+            )
+        })?;
 
         let duration = match unit_part {
             "ms" => Duration::from_millis((number * 1.0) as u64),
             "s" => Duration::from_millis((number * 1000.0) as u64),
             "m" => Duration::from_millis((number * 60_000.0) as u64),
             "h" => Duration::from_millis((number * 3_600_000.0) as u64),
-            _ => return Err(crate::WaitForError::InvalidTimeout(
-                Cow::Owned(s.to_string()),
-                Cow::Borrowed("Unknown time unit (use: ms, s, m, h)")
-            )),
+            _ => {
+                return Err(crate::WaitForError::InvalidTimeout(
+                    Cow::Owned(s.to_string()),
+                    Cow::Borrowed("Unknown time unit (use: ms, s, m, h)"),
+                ));
+            }
         };
 
         Ok(Self(duration))
@@ -717,8 +740,8 @@ impl PartialEq for WaitConfig {
             && self.wait_for_any == other.wait_for_any
             && self.max_retries == other.max_retries
             && self.connection_timeout == other.connection_timeout
-            // Intentionally ignore cancellation_token, security_validator, and rate_limiter
-            // as they don't implement PartialEq or are runtime-specific
+        // Intentionally ignore cancellation_token, security_validator, and rate_limiter
+        // as they don't implement PartialEq or are runtime-specific
     }
 }
 

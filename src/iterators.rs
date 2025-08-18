@@ -101,13 +101,9 @@ impl TargetResultSliceExt for [TargetResult] {
         let total_attempts = self.iter().map(|r| r.attempts).sum();
         let total_elapsed: std::time::Duration = self.iter().map(|r| r.elapsed).sum();
 
-        let fastest = self.iter()
-            .map(|r| r.elapsed)
-            .min();
+        let fastest = self.iter().map(|r| r.elapsed).min();
 
-        let slowest = self.iter()
-            .map(|r| r.elapsed)
-            .max();
+        let slowest = self.iter().map(|r| r.elapsed).max();
 
         ResultSummary {
             total_targets: self.len(),
@@ -160,13 +156,15 @@ impl WaitResult {
         let failed_count = self.failed_results().count();
         let total_attempts = self.target_results.iter().map(|r| r.attempts).sum();
 
-        let fastest = self.target_results
+        let fastest = self
+            .target_results
             .iter()
             .filter(|r| r.success)
             .min_by_key(|r| r.elapsed)
             .map(|r| r.elapsed);
 
-        let slowest = self.target_results
+        let slowest = self
+            .target_results
             .iter()
             .max_by_key(|r| r.elapsed)
             .map(|r| r.elapsed);
@@ -197,12 +195,10 @@ pub struct ResultSummary {
 
 impl std::fmt::Display for ResultSummary {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,
+        write!(
+            f,
             "Targets: {}/{} successful, {} attempts, elapsed: {:?}",
-            self.successful_count,
-            self.total_targets,
-            self.total_attempts,
-            self.total_elapsed
+            self.successful_count, self.total_targets, self.total_attempts, self.total_elapsed
         )
     }
 }
@@ -213,13 +209,22 @@ mod tests {
     use crate::types::{Target, TargetResult, WaitResult};
     use std::time::Duration;
 
-    fn create_test_target_result(target: Target, success: bool, elapsed: Duration, attempts: u32) -> TargetResult {
+    fn create_test_target_result(
+        target: Target,
+        success: bool,
+        elapsed: Duration,
+        attempts: u32,
+    ) -> TargetResult {
         TargetResult {
             target,
             success,
             elapsed,
             attempts,
-            error: if success { None } else { Some("Test error".to_string()) },
+            error: if success {
+                None
+            } else {
+                Some("Test error".to_string())
+            },
         }
     }
 
@@ -323,9 +328,12 @@ mod tests {
     #[test]
     fn test_result_summary_display() {
         let target = Target::tcp("localhost", 8080).unwrap();
-        let results = vec![
-            create_test_target_result(target, true, Duration::from_millis(100), 2),
-        ];
+        let results = vec![create_test_target_result(
+            target,
+            true,
+            Duration::from_millis(100),
+            2,
+        )];
 
         let summary = results.summary();
         let display = format!("{}", summary);

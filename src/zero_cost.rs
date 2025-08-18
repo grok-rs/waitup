@@ -118,11 +118,7 @@ where
             }
         }
 
-        if chunk.is_empty() {
-            None
-        } else {
-            Some(chunk)
-        }
+        if chunk.is_empty() { None } else { Some(chunk) }
     }
 }
 
@@ -143,9 +139,7 @@ impl<'a> Display for TargetDisplay<'a> {
             crate::types::Target::Tcp { host, port } => {
                 write!(f, "{}:{}", host, port)
             }
-            crate::types::Target::Http { url, .. } => {
-                Display::fmt(url, f)
-            }
+            crate::types::Target::Http { url, .. } => Display::fmt(url, f),
         }
     }
 }
@@ -206,7 +200,9 @@ pub type DynamicPort = ValidatedPort<49152, 65535>;
 /// Zero-allocation retry strategy using const generics
 pub struct ConstRetryStrategy<const MAX_ATTEMPTS: u32, const INTERVAL_MS: u64>;
 
-impl<const MAX_ATTEMPTS: u32, const INTERVAL_MS: u64> ConstRetryStrategy<MAX_ATTEMPTS, INTERVAL_MS> {
+impl<const MAX_ATTEMPTS: u32, const INTERVAL_MS: u64>
+    ConstRetryStrategy<MAX_ATTEMPTS, INTERVAL_MS>
+{
     pub const fn new() -> Self {
         Self
     }

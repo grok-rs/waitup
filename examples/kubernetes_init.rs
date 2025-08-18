@@ -36,11 +36,11 @@ async fn main() -> Result<(), wait_for::WaitForError> {
 
     // Kubernetes-appropriate configuration
     let config = WaitConfig::builder()
-        .timeout(Duration::from_secs(300))  // 5 minutes max
-        .interval(Duration::from_secs(5))   // Check every 5 seconds
+        .timeout(Duration::from_secs(300)) // 5 minutes max
+        .interval(Duration::from_secs(5)) // Check every 5 seconds
         .max_interval(Duration::from_secs(30))
-        .max_retries(Some(60))  // Limit retries
-        .wait_for_any(false)    // All dependencies must be ready
+        .max_retries(Some(60)) // Limit retries
+        .wait_for_any(false) // All dependencies must be ready
         .build();
 
     println!("🔍 Checking dependencies:");
@@ -51,15 +51,19 @@ async fn main() -> Result<(), wait_for::WaitForError> {
     match wait_for_connection(&targets, &config).await {
         Ok(result) => {
             println!("✅ All dependencies are ready!");
-            println!("📊 Completed in {:?} with {} total attempts",
-                     result.elapsed, result.attempts);
+            println!(
+                "📊 Completed in {:?} with {} total attempts",
+                result.elapsed, result.attempts
+            );
 
             // Log detailed results for troubleshooting
             for target_result in &result.target_results {
-                println!("  ✅ {}: Ready in {:?} ({} attempts)",
-                         target_result.target.display(),
-                         target_result.elapsed,
-                         target_result.attempts);
+                println!(
+                    "  ✅ {}: Ready in {:?} ({} attempts)",
+                    target_result.target.display(),
+                    target_result.elapsed,
+                    target_result.attempts
+                );
             }
 
             println!("🎯 Init container completed successfully. Main container can now start.");

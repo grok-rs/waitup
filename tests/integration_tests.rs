@@ -14,7 +14,12 @@ async fn test_successful_tcp_connection() {
 
     // Test wait-for
     let output = Command::new("./target/debug/wait-for")
-        .args(&[&format!("127.0.0.1:{}", addr.port()), "--timeout", "5s", "--quiet"])
+        .args(&[
+            &format!("127.0.0.1:{}", addr.port()),
+            "--timeout",
+            "5s",
+            "--quiet",
+        ])
         .output()
         .expect("Failed to execute wait-for");
 
@@ -57,8 +62,9 @@ async fn test_multiple_targets_any() {
             &format!("127.0.0.1:{}", addr.port()),
             "127.0.0.1:65534", // This will fail
             "--any",
-            "--timeout", "5s",
-            "--quiet"
+            "--timeout",
+            "5s",
+            "--quiet",
         ])
         .output()
         .expect("Failed to execute wait-for");
@@ -79,10 +85,12 @@ async fn test_command_execution() {
     let output = Command::new("./target/debug/wait-for")
         .args(&[
             &format!("127.0.0.1:{}", addr.port()),
-            "--timeout", "5s",
+            "--timeout",
+            "5s",
             "--quiet",
             "--",
-            "echo", "command executed"
+            "echo",
+            "command executed",
         ])
         .output()
         .expect("Failed to execute wait-for");

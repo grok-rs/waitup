@@ -3,13 +3,16 @@
 //! This module provides security features including rate limiting,
 //! request validation, and protection against common network security issues.
 
+use crate::types::{Hostname, Target};
+use crate::{Result, WaitForError};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::net::IpAddr;
-use std::sync::{RwLock, atomic::{AtomicU64, Ordering}};
+use std::sync::{
+    RwLock,
+    atomic::{AtomicU64, Ordering},
+};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use crate::types::{Target, Hostname};
-use crate::{WaitForError, Result};
 
 /// Rate limiter to prevent excessive connection attempts
 /// Uses RwLock for better read performance compared to Mutex
@@ -70,7 +73,9 @@ impl RateLimiter {
         self.cleanup_if_needed(now);
 
         // Use write lock for modifying the limits
-        let mut limits = self.limits.write()
+        let mut limits = self
+            .limits
+            .write()
             .map_err(|_| WaitForError::InvalidTarget(Cow::Borrowed("Rate limiter lock error")))?;
 
         let requests = limits.entry(key).or_insert_with(Vec::new);
@@ -80,7 +85,7 @@ impl RateLimiter {
 
         if requests.len() >= self.max_requests_per_minute as usize {
             return Err(WaitForError::RetryLimitExceeded {
-                limit: self.max_requests_per_minute
+                limit: self.max_requests_per_minute,
             });
         }
 
@@ -92,9 +97,11 @@ impl RateLimiter {
         match target {
             Target::Tcp { host, port } => format!("tcp://{}:{}", host.as_str(), port.get()),
             Target::Http { url, .. } => {
-                format!("http://{}:{}",
+                format!(
+                    "http://{}:{}",
                     url.host_str().unwrap_or("unknown"),
-                    url.port().unwrap_or(if url.scheme() == "https" { 443 } else { 80 })
+                    url.port()
+                        .unwrap_or(if url.scheme() == "https" { 443 } else { 80 })
                 )
             }
         }
@@ -111,12 +118,16 @@ impl RateLimiter {
 
         if now_millis.saturating_sub(last_cleanup_millis) > cleanup_interval_millis {
             // Try to update the cleanup time atomically
-            if self.last_cleanup.compare_exchange_weak(
-                last_cleanup_millis,
-                now_millis,
-                Ordering::Relaxed,
-                Ordering::Relaxed,
-            ).is_ok() {
+            if self
+                .last_cleanup
+                .compare_exchange_weak(
+                    last_cleanup_millis,
+                    now_millis,
+                    Ordering::Relaxed,
+                    Ordering::Relaxed,
+                )
+                .is_ok()
+            {
                 // We won the race to do cleanup
                 if let Ok(mut limits) = self.limits.write() {
                     limits.retain(|_, requests| {
@@ -147,14 +158,14 @@ impl Default for SecurityValidator {
             allow_localhost: true,
             allowed_ports: None,
             blocked_ports: vec![
-                22,    // SSH
-                23,    // Telnet
-                135,   // RPC
-                445,   // SMB
-                1433,  // SQL Server
-                3389,  // RDP
-                5432,  // PostgreSQL (blocked by default for security)
-                6379,  // Redis (blocked by default for security)
+                22,   // SSH
+                23,   // Telnet
+                135,  // RPC
+                445,  // SMB
+                1433, // SQL Server
+                3389, // RDP
+                5432, // PostgreSQL (blocked by default for security)
+                6379, // Redis (blocked by default for security)
             ],
             max_hostname_length: 253,
             max_url_length: 2048,
@@ -229,23 +240,25 @@ impl SecurityValidator {
         let host_str = hostname.as_str();
 
         if host_str.len() > self.max_hostname_length {
-            return Err(WaitForError::InvalidHostname(
-                Cow::Owned(format!("Hostname too long: {} > {}", host_str.len(), self.max_hostname_length))
-            ));
+            return Err(WaitForError::InvalidHostname(Cow::Owned(format!(
+                "Hostname too long: {} > {}",
+                host_str.len(),
+                self.max_hostname_length
+            ))));
         }
 
         if !self.allow_localhost && (host_str == "localhost" || host_str == "127.0.0.1") {
-            return Err(WaitForError::InvalidHostname(
-                Cow::Borrowed("Localhost connections are not allowed")
-            ));
+            return Err(WaitForError::InvalidHostname(Cow::Borrowed(
+                "Localhost connections are not allowed",
+            )));
         }
 
         if !self.allow_private_ips {
             if let Ok(ip) = host_str.parse::<IpAddr>() {
                 if self.is_private_ip(&ip) {
-                    return Err(WaitForError::InvalidHostname(
-                        Cow::Borrowed("Private IP addresses are not allowed")
-                    ));
+                    return Err(WaitForError::InvalidHostname(Cow::Borrowed(
+                        "Private IP addresses are not allowed",
+                    )));
                 }
             }
         }
@@ -277,9 +290,10 @@ impl SecurityValidator {
 
         // Only allow HTTP and HTTPS
         if !matches!(url.scheme(), "http" | "https") {
-            return Err(WaitForError::InvalidTarget(
-                Cow::Owned(format!("Unsupported URL scheme: {}", url.scheme()))
-            ));
+            return Err(WaitForError::InvalidTarget(Cow::Owned(format!(
+                "Unsupported URL scheme: {}",
+                url.scheme()
+            ))));
         }
 
         Ok(())
@@ -295,9 +309,7 @@ impl SecurityValidator {
                     || (octets[0] == 192 && octets[1] == 168)
                     || octets[0] == 127 // Loopback
             }
-            IpAddr::V6(ipv6) => {
-                ipv6.is_loopback() || ipv6.is_unspecified()
-            }
+            IpAddr::V6(ipv6) => ipv6.is_loopback() || ipv6.is_unspecified(),
         }
     }
 }

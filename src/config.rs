@@ -70,9 +70,9 @@
 //!     .build();
 //! ```
 
+use crate::types::WaitConfig;
 use std::time::Duration;
 use tokio_util::sync::CancellationToken;
-use crate::types::WaitConfig;
 
 impl WaitConfig {
     /// Create a new builder for WaitConfig.
@@ -233,17 +233,13 @@ mod tests {
 
     #[test]
     fn test_wait_config_security_presets() {
-        let config = WaitConfig::builder()
-            .production_security()
-            .build();
+        let config = WaitConfig::builder().production_security().build();
 
         // Should have security settings applied
         assert!(config.security_validator.is_some());
         assert!(config.rate_limiter.is_some());
 
-        let config = WaitConfig::builder()
-            .development_security()
-            .build();
+        let config = WaitConfig::builder().development_security().build();
 
         // Should have development security settings applied
         assert!(config.security_validator.is_some());
@@ -252,7 +248,7 @@ mod tests {
 
     #[test]
     fn test_wait_config_custom_security() {
-        use crate::security::{SecurityValidator, RateLimiter};
+        use crate::security::{RateLimiter, SecurityValidator};
 
         let validator = SecurityValidator::new();
         let limiter = RateLimiter::new(100);

@@ -168,40 +168,38 @@
 //! ```
 
 // Module declarations
-pub mod types;
-pub mod target;
+pub mod async_traits;
 pub mod config;
 pub mod connection;
 pub mod error;
 pub mod iterators;
 pub mod presets;
 pub mod security;
-pub mod async_traits;
+pub mod target;
+pub mod types;
 pub mod zero_cost;
 
 #[macro_use]
 pub mod macros;
 
 // Re-export commonly used types for convenient public API
-pub use error::{WaitForError, Result, ResultExt};
-pub use types::{
-    Port, Hostname, Target, WaitConfig, WaitResult, TargetResult,
-    ConnectionError, HttpError
+pub use async_traits::{
+    AsyncConnectionStrategy, AsyncRetryStrategy, AsyncTargetChecker, ConcurrentProgressStrategy,
+    DefaultTargetChecker, ExponentialBackoffStrategy, LinearBackoffStrategy, WaitForAllStrategy,
+    WaitForAnyStrategy,
 };
-pub use target::{HttpTargetBuilder, TcpTargetBuilder};
 pub use config::WaitConfigBuilder;
 pub use connection::{wait_for_connection, wait_for_single_target};
-pub use iterators::{TargetIterExt, TargetResultIterExt, ResultSummary};
+pub use error::{Result, ResultExt, WaitForError};
+pub use iterators::{ResultSummary, TargetIterExt, TargetResultIterExt};
 pub use security::{RateLimiter, SecurityValidator};
-pub use async_traits::{
-    AsyncTargetChecker, AsyncRetryStrategy, AsyncConnectionStrategy,
-    DefaultTargetChecker, ExponentialBackoffStrategy, LinearBackoffStrategy,
-    WaitForAllStrategy, WaitForAnyStrategy, ConcurrentProgressStrategy
+pub use target::{HttpTargetBuilder, TcpTargetBuilder};
+pub use types::{
+    ConnectionError, Hostname, HttpError, Port, Target, TargetResult, WaitConfig, WaitResult,
 };
 pub use zero_cost::{
-    LazyFormat, StringBuilder, TargetDisplay, SmallString,
-    ValidatedPort, WellKnownPort, RegisteredPort, DynamicPort,
-    ConstRetryStrategy
+    ConstRetryStrategy, DynamicPort, LazyFormat, RegisteredPort, SmallString, StringBuilder,
+    TargetDisplay, ValidatedPort, WellKnownPort,
 };
 
 // Re-export error_messages for internal use
@@ -210,10 +208,10 @@ pub(crate) use error::error_messages;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
-    use url::Url;
     use proptest::prelude::*;
+    use std::time::Duration;
     use test_case::test_case;
+    use url::Url;
 
     #[test]
     fn test_target_parse_tcp() {
@@ -231,7 +229,11 @@ mod tests {
     fn test_target_parse_http() {
         let target = Target::parse("https://example.com/health", 200).unwrap();
         match target {
-            Target::Http { url, expected_status, .. } => {
+            Target::Http {
+                url,
+                expected_status,
+                ..
+            } => {
                 assert_eq!(url.to_string(), "https://example.com/health");
                 assert_eq!(expected_status, 200);
             }
@@ -415,7 +417,11 @@ mod tests {
     fn test_http_target_parsing(url_str: &str, status: u16) {
         let target = Target::parse(url_str, status).unwrap();
         match target {
-            Target::Http { url, expected_status, .. } => {
+            Target::Http {
+                url,
+                expected_status,
+                ..
+            } => {
                 assert_eq!(url.to_string(), url_str);
                 assert_eq!(expected_status, status);
             }
@@ -495,9 +501,11 @@ mod tests {
     #[test]
     fn test_tcp_builder_fluent_interface() {
         // Test that builder methods return Self for fluent chaining
-        let target = Target::tcp_builder("example.com").unwrap()
+        let target = Target::tcp_builder("example.com")
+            .unwrap()
             .registered_port(8080)
-            .build().unwrap();
+            .build()
+            .unwrap();
 
         assert_eq!(target.hostname(), "example.com");
         assert_eq!(target.port(), Some(8080));
@@ -506,7 +514,8 @@ mod tests {
     #[test]
     fn test_tcp_builder_error_deferred() {
         // Test that validation errors are deferred until build()
-        let result = Target::tcp_builder("example.com").unwrap()
+        let result = Target::tcp_builder("example.com")
+            .unwrap()
             .well_known_port(8080) // Invalid for well-known range
             .build();
 

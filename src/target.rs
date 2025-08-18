@@ -66,10 +66,10 @@
 //! # Ok::<(), wait_for::WaitForError>(())
 //! ```
 
-use url::Url;
+use crate::types::{Hostname, Port, Target};
+use crate::{Result, ResultExt, WaitForError};
 use std::borrow::Cow;
-use crate::types::{Target, Hostname, Port};
-use crate::{WaitForError, Result, ResultExt};
+use url::Url;
 
 impl Target {
     /// Create multiple TCP targets from a list of host:port pairs
@@ -90,8 +90,7 @@ impl Target {
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        urls
-            .into_iter()
+        urls.into_iter()
             .map(|url| Target::http_url(url.as_ref(), default_status))
             .collect()
     }
@@ -108,8 +107,7 @@ impl Target {
     pub fn tcp(host: impl AsRef<str>, port: u16) -> Result<Self> {
         let hostname = Hostname::new(host.as_ref())
             .with_context(|| format!("Invalid hostname '{}'", host.as_ref()))?;
-        let port = Port::try_from(port)
-            .with_context(|| format!("Invalid port {}", port))?;
+        let port = Port::try_from(port).with_context(|| format!("Invalid port {}", port))?;
         Ok(Target::Tcp {
             host: hostname,
             port,
@@ -127,8 +125,7 @@ impl Target {
     /// # Ok::<(), wait_for::WaitForError>(())
     /// ```
     pub fn localhost(port: u16) -> Result<Self> {
-        let port = Port::try_from(port)
-            .with_context(|| format!("Invalid port {}", port))?;
+        let port = Port::try_from(port).with_context(|| format!("Invalid port {}", port))?;
         Ok(Target::Tcp {
             host: Hostname::localhost(),
             port,
@@ -146,8 +143,7 @@ impl Target {
     /// # Ok::<(), wait_for::WaitForError>(())
     /// ```
     pub fn loopback(port: u16) -> Result<Self> {
-        let port = Port::try_from(port)
-            .with_context(|| format!("Invalid port {}", port))?;
+        let port = Port::try_from(port).with_context(|| format!("Invalid port {}", port))?;
         Ok(Target::Tcp {
             host: Hostname::loopback(),
             port,
@@ -165,8 +161,7 @@ impl Target {
     /// # Ok::<(), wait_for::WaitForError>(())
     /// ```
     pub fn loopback_v6(port: u16) -> Result<Self> {
-        let port = Port::try_from(port)
-            .with_context(|| format!("Invalid port {}", port))?;
+        let port = Port::try_from(port).with_context(|| format!("Invalid port {}", port))?;
         Ok(Target::Tcp {
             host: Hostname::loopback_v6(),
             port,
@@ -220,8 +215,8 @@ impl Target {
     /// # Ok::<(), wait_for::WaitForError>(())
     /// ```
     pub fn http_url(url: impl AsRef<str>, expected_status: u16) -> Result<Self> {
-        let url = Url::parse(url.as_ref())
-            .with_context(|| format!("Invalid URL: {}", url.as_ref()))?;
+        let url =
+            Url::parse(url.as_ref()).with_context(|| format!("Invalid URL: {}", url.as_ref()))?;
         Self::http(url, expected_status)
     }
 
@@ -233,36 +228,42 @@ impl Target {
     ) -> Result<()> {
         // Validate URL scheme
         if !matches!(url.scheme(), "http" | "https") {
-            return Err(WaitForError::InvalidTarget(
-                Cow::Owned(format!("Unsupported URL scheme: {}", url.scheme()))
-            ));
+            return Err(WaitForError::InvalidTarget(Cow::Owned(format!(
+                "Unsupported URL scheme: {}",
+                url.scheme()
+            ))));
         }
 
         // Validate status code
         if !(100..=599).contains(&expected_status) {
-            return Err(WaitForError::InvalidTarget(
-                Cow::Owned(format!("Invalid HTTP status code: {}", expected_status))
-            ));
+            return Err(WaitForError::InvalidTarget(Cow::Owned(format!(
+                "Invalid HTTP status code: {}",
+                expected_status
+            ))));
         }
 
         // Validate headers if present
         if let Some(headers) = headers {
             for (key, value) in headers {
                 if key.is_empty() {
-                    return Err(WaitForError::InvalidTarget(
-                        Cow::Borrowed("HTTP header key cannot be empty")
-                    ));
+                    return Err(WaitForError::InvalidTarget(Cow::Borrowed(
+                        "HTTP header key cannot be empty",
+                    )));
                 }
                 if value.is_empty() {
-                    return Err(WaitForError::InvalidTarget(
-                        Cow::Borrowed("HTTP header value cannot be empty")
-                    ));
+                    return Err(WaitForError::InvalidTarget(Cow::Borrowed(
+                        "HTTP header value cannot be empty",
+                    )));
                 }
                 // Basic header name validation (simplified)
-                if !key.chars().all(|c| c.is_ascii_alphanumeric() || "-_".contains(c)) {
-                    return Err(WaitForError::InvalidTarget(
-                        Cow::Owned(format!("Invalid HTTP header name: {}", key))
-                    ));
+                if !key
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || "-_".contains(c))
+                {
+                    return Err(WaitForError::InvalidTarget(Cow::Owned(format!(
+                        "Invalid HTTP header name: {}",
+                        key
+                    ))));
                 }
             }
         }
@@ -322,16 +323,25 @@ impl Target {
         } else {
             let parts: Vec<&str> = target_str.split(':').collect();
             if parts.len() != 2 {
-                return Err(WaitForError::InvalidTarget(Cow::Owned(target_str.to_string())));
+                return Err(WaitForError::InvalidTarget(Cow::Owned(
+                    target_str.to_string(),
+                )));
             }
-            let hostname = Hostname::try_from(parts[0])
-                .with_context(|| format!("Invalid hostname '{}' in target '{}'", parts[0], target_str))?;
-            let port = parts[1].parse::<u16>()
+            let hostname = Hostname::try_from(parts[0]).with_context(|| {
+                format!("Invalid hostname '{}' in target '{}'", parts[0], target_str)
+            })?;
+            let port = parts[1]
+                .parse::<u16>()
                 .map_err(|_| WaitForError::InvalidTarget(Cow::Owned(target_str.to_string())))
-                .with_context(|| format!("Invalid port '{}' in target '{}'", parts[1], target_str))?;
+                .with_context(|| {
+                    format!("Invalid port '{}' in target '{}'", parts[1], target_str)
+                })?;
             let port = Port::try_from(port)
                 .with_context(|| format!("Port {} out of valid range (1-65535)", port))?;
-            Ok(Target::Tcp { host: hostname, port })
+            Ok(Target::Tcp {
+                host: hostname,
+                port,
+            })
         }
     }
 
@@ -406,7 +416,10 @@ impl HttpTargetBuilder {
 
     /// Set authorization header with Bearer token
     pub fn auth_bearer(self, token: impl AsRef<str>) -> Self {
-        self.header("Authorization", crate::lazy_format!("Bearer {}", token.as_ref()).to_string())
+        self.header(
+            "Authorization",
+            crate::lazy_format!("Bearer {}", token.as_ref()).to_string(),
+        )
     }
 
     /// Set content type header
@@ -445,7 +458,11 @@ pub struct TcpTargetBuilder {
 
 impl TcpTargetBuilder {
     pub(crate) fn new(host: Hostname) -> Self {
-        Self { host, port: None, port_validation_error: None }
+        Self {
+            host,
+            port: None,
+            port_validation_error: None,
+        }
     }
 
     /// Set the port
@@ -511,7 +528,8 @@ impl TcpTargetBuilder {
             return Err(error);
         }
 
-        let port = self.port
+        let port = self
+            .port
             .ok_or_else(|| WaitForError::InvalidTarget(Cow::Borrowed("Port must be specified")))?;
         Ok(Target::Tcp {
             host: self.host,

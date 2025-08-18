@@ -3,10 +3,10 @@
 //! This module provides async traits that allow for custom implementations
 //! of connection checking, retry strategies, and concurrency patterns.
 
+use crate::types::{Target, TargetResult, WaitConfig, WaitResult};
+use crate::{Result, WaitForError};
 use async_trait::async_trait;
 use std::time::Duration;
-use crate::types::{Target, TargetResult, WaitConfig, WaitResult};
-use crate::{WaitForError, Result};
 
 /// Async trait for checking target availability
 ///
@@ -31,7 +31,13 @@ pub trait AsyncRetryStrategy: Send + Sync {
     fn next_interval(&mut self, attempt: u32, last_interval: Duration) -> Duration;
 
     /// Check if we should continue retrying
-    fn should_retry(&self, attempt: u32, elapsed: Duration, max_retries: Option<u32>, timeout: Duration) -> bool;
+    fn should_retry(
+        &self,
+        attempt: u32,
+        elapsed: Duration,
+        max_retries: Option<u32>,
+        timeout: Duration,
+    ) -> bool;
 
     /// Reset strategy state for a new target
     fn reset(&mut self);
@@ -96,7 +102,10 @@ pub struct ExponentialBackoffStrategy {
 
 impl ExponentialBackoffStrategy {
     pub fn new(multiplier: f64, max_interval: Duration) -> Self {
-        Self { multiplier, max_interval }
+        Self {
+            multiplier,
+            max_interval,
+        }
     }
 }
 
@@ -109,7 +118,8 @@ impl Default for ExponentialBackoffStrategy {
 #[async_trait]
 impl AsyncRetryStrategy for ExponentialBackoffStrategy {
     fn next_interval(&mut self, _attempt: u32, last_interval: Duration) -> Duration {
-        let next = Duration::from_millis((last_interval.as_millis() as f64 * self.multiplier) as u64);
+        let next =
+            Duration::from_millis((last_interval.as_millis() as f64 * self.multiplier) as u64);
         if next > self.max_interval {
             self.max_interval
         } else {
@@ -117,7 +127,13 @@ impl AsyncRetryStrategy for ExponentialBackoffStrategy {
         }
     }
 
-    fn should_retry(&self, attempt: u32, elapsed: Duration, max_retries: Option<u32>, timeout: Duration) -> bool {
+    fn should_retry(
+        &self,
+        attempt: u32,
+        elapsed: Duration,
+        max_retries: Option<u32>,
+        timeout: Duration,
+    ) -> bool {
         // Check timeout
         if elapsed >= timeout {
             return false;
@@ -150,7 +166,10 @@ pub struct LinearBackoffStrategy {
 
 impl LinearBackoffStrategy {
     pub fn new(increment: Duration, max_interval: Duration) -> Self {
-        Self { increment, max_interval }
+        Self {
+            increment,
+            max_interval,
+        }
     }
 }
 
@@ -171,7 +190,13 @@ impl AsyncRetryStrategy for LinearBackoffStrategy {
         }
     }
 
-    fn should_retry(&self, attempt: u32, elapsed: Duration, max_retries: Option<u32>, timeout: Duration) -> bool {
+    fn should_retry(
+        &self,
+        attempt: u32,
+        elapsed: Duration,
+        max_retries: Option<u32>,
+        timeout: Duration,
+    ) -> bool {
         if elapsed >= timeout {
             return false;
         }
@@ -220,7 +245,8 @@ impl AsyncConnectionStrategy for WaitForAllStrategy {
         }
 
         // Create futures for each target using the async target checker
-        let futures: Vec<_> = targets.iter()
+        let futures: Vec<_> = targets
+            .iter()
             .map(|target| wait_for_single_target_with_checker(target, checker, config))
             .collect();
 
@@ -245,7 +271,8 @@ impl AsyncConnectionStrategy for WaitForAllStrategy {
         }
 
         if !all_successful {
-            let failed_targets: Vec<_> = target_results.iter()
+            let failed_targets: Vec<_> = target_results
+                .iter()
                 .filter(|r| !r.success)
                 .map(|r| r.target.display())
                 .collect();
@@ -292,19 +319,18 @@ impl AsyncConnectionStrategy for WaitForAnyStrategy {
             });
         }
 
-        let futures: Vec<_> = targets.iter()
+        let futures: Vec<_> = targets
+            .iter()
             .map(|target| Box::pin(wait_for_single_target_with_checker(target, checker, config)))
             .collect();
 
         match select_ok(futures).await {
-            Ok((result, _)) => {
-                Ok(WaitResult {
-                    success: result.success,
-                    elapsed: start.elapsed(),
-                    attempts: result.attempts,
-                    target_results: vec![result],
-                })
-            }
+            Ok((result, _)) => Ok(WaitResult {
+                success: result.success,
+                elapsed: start.elapsed(),
+                attempts: result.attempts,
+                target_results: vec![result],
+            }),
             Err(e) => Err(e),
         }
     }
@@ -379,7 +405,8 @@ impl AsyncConnectionStrategy for ConcurrentProgressStrategy {
         let all_successful = target_results.iter().all(|r| r.success);
 
         if !all_successful {
-            let failed_targets: Vec<_> = target_results.iter()
+            let failed_targets: Vec<_> = target_results
+                .iter()
                 .filter(|r| !r.success)
                 .map(|r| r.target.display())
                 .collect();
@@ -422,7 +449,7 @@ async fn wait_for_single_target_with_checker(
     checker: &dyn AsyncTargetChecker,
     config: &WaitConfig,
 ) -> Result<TargetResult> {
-    use tokio::time::{sleep, Instant};
+    use tokio::time::{Instant, sleep};
 
     let start = Instant::now();
     let deadline = start + config.timeout;
@@ -475,7 +502,7 @@ async fn wait_for_single_target_with_checker(
                     attempt,
                     now.duration_since(start),
                     config.max_retries,
-                    config.timeout
+                    config.timeout,
                 ) {
                     return Ok(TargetResult {
                         target: target.clone(),
