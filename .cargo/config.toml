@@ -17,7 +17,7 @@ doc-check = "doc --no-deps --all-features --document-private-items"
 doc-open = "doc --no-deps --all-features --document-private-items --open"
 
 # Security and audit aliases
-audit = "audit --deny warnings"
+security-audit = "audit --deny warnings"
 deny-check = "deny check"
 
 # Testing aliases
@@ -31,7 +31,7 @@ pre-release = [
     "clippy --all-targets --all-features -- -D warnings -D clippy::pedantic -W clippy::nursery",
     "test --all-features --workspace",
     "doc --no-deps --all-features --document-private-items",
-    "audit --deny warnings"
+    "cargo-audit --deny warnings"
 ]
 
 # Full quality check (equivalent to CI)
@@ -41,7 +41,7 @@ ci-check = [
     "test --all-features --workspace",
     "test --doc --all-features",
     "doc --no-deps --all-features --document-private-items",
-    "audit --deny warnings"
+    "cargo-audit --deny warnings"
 ]
 
 [build]
