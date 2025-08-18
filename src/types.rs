@@ -21,7 +21,7 @@
 //! // Use port range validation
 //! let http_port = Port::well_known(80).expect("HTTP is well-known");
 //! let app_port = Port::registered(8080).expect("8080 is registered");
-//! let ephemeral = Port::dynamic(32768).expect("32768 is dynamic");
+//! let ephemeral = Port::dynamic(49152).expect("49152 is dynamic");
 //!
 //! // Create validated hostnames
 //! let hostname = Hostname::new("example.com").expect("Valid hostname");
@@ -413,19 +413,30 @@ impl std::borrow::Borrow<str> for Hostname {
 /// Specific error types for different connection failure modes
 #[derive(Error, Debug)]
 pub enum ConnectionError {
+    /// Failed to establish TCP connection to the target host and port
     #[error("Failed to connect to {host}:{port} - {reason}")]
     TcpConnection {
+        /// The hostname or IP address that connection failed to
         host: Cow<'static, str>,
+        /// The port number that connection failed to
         port: u16,
         #[source]
+        /// The underlying I/O error that caused the connection failure
         reason: std::io::Error,
     },
+    /// Connection attempt timed out before establishing a connection
     #[error("Connection timeout after {timeout_ms}ms")]
-    Timeout { timeout_ms: u64 },
+    Timeout {
+        /// The timeout duration in milliseconds that was exceeded
+        timeout_ms: u64
+    },
+    /// Failed to resolve hostname to IP address via DNS
     #[error("DNS resolution failed for {host}: {reason}")]
     DnsResolution {
+        /// The hostname that failed to resolve
         host: Cow<'static, str>,
         #[source]
+        /// The underlying I/O error from DNS resolution
         reason: std::io::Error,
     },
 }
@@ -433,16 +444,29 @@ pub enum ConnectionError {
 /// Specific error types for HTTP operations
 #[derive(Error, Debug)]
 pub enum HttpError {
+    /// HTTP request failed due to network or server error
     #[error("HTTP request failed for {url}: {reason}")]
     RequestFailed {
+        /// The URL that the request failed to reach
         url: Cow<'static, str>,
         #[source]
+        /// The underlying HTTP client error
         reason: reqwest::Error,
     },
+    /// HTTP response returned unexpected status code
     #[error("Unexpected status code: expected {expected}, got {actual}")]
-    UnexpectedStatus { expected: u16, actual: u16 },
+    UnexpectedStatus {
+        /// The HTTP status code that was expected
+        expected: u16,
+        /// The actual HTTP status code received
+        actual: u16
+    },
+    /// Invalid HTTP header format or value
     #[error("Invalid header: {header}")]
-    InvalidHeader { header: Cow<'static, str> },
+    InvalidHeader {
+        /// The header that was invalid
+        header: Cow<'static, str>
+    },
 }
 
 /// A target service to wait for.

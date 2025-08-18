@@ -82,12 +82,16 @@ use crate::types::{ConnectionError, HttpError};
 /// Core error source types for proper error chaining without Box
 #[derive(Error, Debug)]
 pub enum ErrorSource {
+    /// Connection-related errors (TCP connection failures, DNS resolution, etc.)
     #[error("Connection error: {0}")]
     Connection(#[from] ConnectionError),
+    /// HTTP-related errors (request failures, unexpected status codes, etc.)
     #[error("HTTP error: {0}")]
     Http(#[from] HttpError),
+    /// URL parsing errors when target format is invalid
     #[error("URL parse error: {0}")]
     UrlParse(#[from] url::ParseError),
+    /// Low-level I/O errors from the operating system
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -95,32 +99,52 @@ pub enum ErrorSource {
 /// Error types that can occur during wait operations.
 #[derive(Error, Debug)]
 pub enum WaitForError {
+    /// Invalid target format provided (must be host:port or http(s)://host:port/path)
     #[error("Invalid target format '{0}': expected host:port or http(s)://host:port/path")]
     InvalidTarget(Cow<'static, str>),
+    /// Port number is out of valid range (1-65535)
     #[error("Invalid port: {0} (must be 1-65535)")]
     InvalidPort(u16),
+    /// Hostname format is invalid or contains illegal characters
     #[error("Invalid hostname: {0}")]
     InvalidHostname(Cow<'static, str>),
+    /// Timeout format is invalid (expected formats: 30s, 5m, 1h30m, etc.)
     #[error("Invalid timeout format '{0}': {1}")]
     InvalidTimeout(Cow<'static, str>, Cow<'static, str>),
+    /// Interval format is invalid (expected formats: 30s, 5m, 1h30m, etc.)
     #[error("Invalid interval format '{0}': {1}")]
     InvalidInterval(Cow<'static, str>, Cow<'static, str>),
+    /// Connection-related errors (TCP connection failures, DNS resolution, etc.)
     #[error("Connection error: {0}")]
     Connection(#[from] ConnectionError),
+    /// HTTP-related errors (request failures, unexpected status codes, etc.)
     #[error("HTTP error: {0}")]
     Http(#[from] HttpError),
+    /// Timeout occurred while waiting for targets to become available
     #[error("Timeout waiting for {targets}")]
-    Timeout { targets: Cow<'static, str> },
+    Timeout {
+        /// List of targets that were being waited for
+        targets: Cow<'static, str>
+    },
+    /// URL parsing errors when target format is invalid
     #[error("URL parse error: {0}")]
     UrlParse(#[from] url::ParseError),
+    /// Maximum number of retry attempts has been exceeded
     #[error("Retry limit exceeded: {limit} attempts")]
-    RetryLimitExceeded { limit: u32 },
+    RetryLimitExceeded {
+        /// The retry limit that was exceeded
+        limit: u32
+    },
+    /// Error with additional context information
     #[error("{message}: {source}")]
     WithContext {
+        /// Contextual message describing the operation that failed
         message: Cow<'static, str>,
         #[source]
+        /// The underlying error that occurred
         source: ErrorSource,
     },
+    /// Operation was cancelled (typically by user interrupt)
     #[error("Operation was cancelled")]
     Cancelled,
 }
