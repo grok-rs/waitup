@@ -5,7 +5,65 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-toml
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
 
+  # Rust formatting with rustfmt
+  - repo: local
+    hooks:
+      - id: rustfmt
+        name: rustfmt
+        description: Format Rust code
+        entry: cargo fmt --all
+        language: system
+        types: [rust]
+        pass_filenames: false
+      - id: cargo-check
+        name: cargo-check
+        description: Check Rust code compiles
+        entry: cargo check --workspace
+        language: system
+        types: [rust]
+        pass_filenames: false
+
+  # Rust linting with clippy (less strict for pre-commit)
+  - repo: local
+    hooks:
+      - id: clippy
+        name: clippy
+        description: Run cargo clippy
+        entry: cargo clippy --all-targets --all-features
+        language: system
+        types: [rust]
+        pass_filenames: false
+
+  # Security audit (optional - can be slow)
+  - repo: local
+    hooks:
+      - id: cargo-audit
+        name: cargo-audit
+        description: Run cargo audit for security vulnerabilities
+        entry: cargo audit
+        language: system
+        types: [rust]
+        pass_filenames: false
+        stages: [manual]  # Only run when explicitly called
+
+  # Documentation tests (optional - can be slow)
+  - repo: local
+    hooks:
+      - id: doc-tests
+        name: doc-tests
+        description: Run documentation tests
+        entry: cargo test --doc --all-features
+        language: system
+        types: [rust]
+        pass_filenames: false
+        stages: [manual]  # Only run when explicitly called
+
+  # Conventional commits
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v3.0.0
     hooks:
