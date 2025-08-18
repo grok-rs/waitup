@@ -1,5 +1,6 @@
 use clap::{Parser, CommandFactory};
 use indicatif::{ProgressBar, ProgressStyle};
+use std::borrow::Cow;
 use std::process::Command;
 use std::time::Duration;
 use wait_for::{Target, WaitConfig, WaitForError, WaitResult, wait_for_connection};
@@ -101,13 +102,12 @@ impl CliConfig {
     fn from_args(args: Args) -> Result<Self> {
         let mut targets = Vec::new();
 
-        // Parse custom headers
         let mut headers = Vec::new();
         for header_str in &args.header {
             let parts: Vec<&str> = header_str.splitn(2, ':').collect();
             if parts.len() != 2 {
                 return Err(CliError::WaitError(WaitForError::InvalidTarget(
-                    format!("Invalid header format '{}': expected 'key:value'", header_str)
+                    Cow::Owned(format!("Invalid header format '{}': expected 'key:value'", header_str))
                 )));
             }
             headers.push((parts[0].trim().to_string(), parts[1].trim().to_string()));
@@ -116,7 +116,7 @@ impl CliConfig {
         for target_str in &args.targets {
             if target_str.starts_with("http://") || target_str.starts_with("https://") {
                 let url = url::Url::parse(target_str)
-                    .map_err(|_| CliError::WaitError(WaitForError::InvalidTarget(target_str.clone())))?;
+                    .map_err(|_| CliError::WaitError(WaitForError::InvalidTarget(Cow::Owned(target_str.clone()))))?;
 
                 if headers.is_empty() {
                     targets.push(Target::http(url, args.expect_status)?);
@@ -233,11 +233,9 @@ async fn wait_with_progress(config: &CliConfig) -> Result<WaitResult> {
             pb
         }).collect();
 
-        // For now, we'll use the basic wait_for_connection and update progress bars manually
         let result = wait_for_connection(&config.targets, &config.wait_config).await
             .map_err(CliError::WaitError)?;
 
-        // Update progress bars based on results
         for (i, target_result) in result.target_results.iter().enumerate() {
             if let Some(pb) = progress_bars.get(i) {
                 if target_result.success {
@@ -285,7 +283,6 @@ async fn execute_command(command: Vec<String>) -> Result<()> {
 pub async fn run() -> i32 {
     let args = Args::parse();
 
-    // Handle completion generation
     if let Some(shell) = args.generate_completion {
         let mut cmd = Args::command();
         let name = cmd.get_name().to_string();
@@ -301,7 +298,6 @@ pub async fn run() -> i32 {
         }
     };
 
-    // Wait for connections
     let result = match wait_with_progress(&config).await {
         Ok(result) => result,
         Err(e) => {
@@ -318,18 +314,15 @@ pub async fn run() -> i32 {
         }
     };
 
-    // Output results
     if let Err(e) = output::format_result(&result, &config) {
         eprintln!("Output error: {}", e);
         return 1;
     }
 
-    // Exit if not successful
     if !result.success {
         return 1;
     }
 
-    // Execute command if provided
     if let Err(e) = execute_command(config.command).await {
         if !config.json {
             eprintln!("Command execution error: {}", e);
