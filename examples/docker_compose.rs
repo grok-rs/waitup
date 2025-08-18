@@ -1,15 +1,22 @@
+#![allow(
+    clippy::print_stdout,
+    clippy::uninlined_format_args,
+    clippy::std_instead_of_core,
+    reason = "example code that demonstrates library usage"
+)]
+
 //! Docker Compose integration example.
 //!
 //! This example shows how to use wait-for in a Docker Compose environment
 //! to wait for dependent services before starting your application.
-//! Run with: cargo run --example docker_compose
+//! Run with: cargo run --example `docker_compose`
 
 use std::time::Duration;
-use wait_for::{Target, WaitConfig, wait_for_connection};
+use wait_for::{wait_for_connection, Target, WaitConfig};
 
 #[tokio::main]
 async fn main() -> Result<(), wait_for::WaitForError> {
-    println!("🐳 Docker Compose: Waiting for dependent services...");
+    println!("\u{1F433} Docker Compose: Waiting for dependent services...");
 
     // Typical services in a Docker Compose setup
     let targets = vec![
@@ -28,18 +35,18 @@ async fn main() -> Result<(), wait_for::WaitForError> {
         .wait_for_any(false) // Wait for ALL services
         .build();
 
-    println!("📋 Waiting for {} services:", targets.len());
+    println!("\u{1F4CB} Waiting for {} services:", targets.len());
     for target in &targets {
         println!("  - {}", target.display());
     }
 
     let result = wait_for_connection(&targets, &config).await?;
 
-    println!("🎉 All services are ready! Starting application...");
-    println!("⏱️  Total wait time: {:?}", result.elapsed);
+    println!("\u{1F389} All services are ready! Starting application...");
+    println!("\u{23F1}\u{FE0F} Total wait time: {:?}", result.elapsed);
 
     // Simulate starting your application
-    println!("🚀 Application started successfully!");
+    println!("\u{1F680} Application started successfully!");
 
     // Example: You could now execute your main application logic
     // or return success to Docker Compose to continue with the next service

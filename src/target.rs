@@ -66,35 +66,48 @@
 //! # Ok::<(), wait_for::WaitForError>(())
 //! ```
 
-use crate::types::{Hostname, Port, Target};
-use crate::{Result, ResultExt, WaitForError};
 use std::borrow::Cow;
 use url::Url;
 
+use crate::types::{Hostname, Port, Target};
+use crate::{Result, ResultExt, WaitForError};
+
 impl Target {
     /// Create multiple TCP targets from a list of host:port pairs
-    pub fn tcp_batch<I, S>(targets: I) -> Result<Vec<Target>>
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any hostname or port is invalid
+    pub fn tcp_batch<I, S>(targets: I) -> crate::types::TargetVecResult
     where
         I: IntoIterator<Item = (S, u16)>,
         S: AsRef<str>,
     {
         targets
             .into_iter()
-            .map(|(host, port)| Target::tcp(host.as_ref(), port))
+            .map(|(host, port)| Self::tcp(host.as_ref(), port))
             .collect()
     }
 
     /// Create multiple HTTP targets from a list of URLs
-    pub fn http_batch<I, S>(urls: I, default_status: u16) -> Result<Vec<Target>>
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any URL is invalid or cannot be parsed
+    pub fn http_batch<I, S>(urls: I, default_status: u16) -> crate::types::TargetVecResult
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
         urls.into_iter()
-            .map(|url| Target::http_url(url.as_ref(), default_status))
+            .map(|url| Self::http_url(url.as_ref(), default_status))
             .collect()
     }
     /// Create a new TCP target.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the hostname is invalid or the port is out of range (1-65535)
     ///
     /// # Examples
     ///
@@ -106,15 +119,19 @@ impl Target {
     /// ```
     pub fn tcp(host: impl AsRef<str>, port: u16) -> Result<Self> {
         let hostname = Hostname::new(host.as_ref())
-            .with_context(|| format!("Invalid hostname '{}'", host.as_ref()))?;
-        let port = Port::try_from(port).with_context(|| format!("Invalid port {}", port))?;
-        Ok(Target::Tcp {
+            .with_context(|| format!("Invalid hostname '{host}'", host = host.as_ref()))?;
+        let port = Port::try_from(port).with_context(|| format!("Invalid port {port}"))?;
+        Ok(Self::Tcp {
             host: hostname,
             port,
         })
     }
 
     /// Create a TCP target for localhost.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the port is invalid (0 or > 65535)
     ///
     /// # Examples
     ///
@@ -125,14 +142,18 @@ impl Target {
     /// # Ok::<(), wait_for::WaitForError>(())
     /// ```
     pub fn localhost(port: u16) -> Result<Self> {
-        let port = Port::try_from(port).with_context(|| format!("Invalid port {}", port))?;
-        Ok(Target::Tcp {
+        let port = Port::try_from(port).with_context(|| format!("Invalid port {port}"))?;
+        Ok(Self::Tcp {
             host: Hostname::localhost(),
             port,
         })
     }
 
     /// Create a TCP target for IPv4 loopback (127.0.0.1).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the port is invalid (0 or > 65535)
     ///
     /// # Examples
     ///
@@ -143,14 +164,18 @@ impl Target {
     /// # Ok::<(), wait_for::WaitForError>(())
     /// ```
     pub fn loopback(port: u16) -> Result<Self> {
-        let port = Port::try_from(port).with_context(|| format!("Invalid port {}", port))?;
-        Ok(Target::Tcp {
+        let port = Port::try_from(port).with_context(|| format!("Invalid port {port}"))?;
+        Ok(Self::Tcp {
             host: Hostname::loopback(),
             port,
         })
     }
 
-    /// Create a TCP target for IPv6 loopback (::1).
+    /// Create a TCP target for IPv6 loopback (`::1`).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the port is invalid (0 or > 65535)
     ///
     /// # Examples
     ///
@@ -161,8 +186,8 @@ impl Target {
     /// # Ok::<(), wait_for::WaitForError>(())
     /// ```
     pub fn loopback_v6(port: u16) -> Result<Self> {
-        let port = Port::try_from(port).with_context(|| format!("Invalid port {}", port))?;
-        Ok(Target::Tcp {
+        let port = Port::try_from(port).with_context(|| format!("Invalid port {port}"))?;
+        Ok(Self::Tcp {
             host: Hostname::loopback_v6(),
             port,
         })
@@ -179,11 +204,16 @@ impl Target {
     /// let port = Port::new(8080).unwrap();
     /// let target = Target::from_parts(hostname, port);
     /// ```
-    pub fn from_parts(host: Hostname, port: Port) -> Self {
-        Target::Tcp { host, port }
+    #[must_use]
+    pub const fn from_parts(host: Hostname, port: Port) -> Self {
+        Self::Tcp { host, port }
     }
 
     /// Create a new HTTP target with expected status code 200.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the URL scheme is not HTTP/HTTPS or if the status code is invalid
     ///
     /// # Examples
     ///
@@ -196,8 +226,8 @@ impl Target {
     /// # Ok::<(), wait_for::WaitForError>(())
     /// ```
     pub fn http(url: Url, expected_status: u16) -> Result<Self> {
-        Self::validate_http_config(&url, expected_status, &None)?;
-        Ok(Target::Http {
+        Self::validate_http_config(&url, expected_status, None)?;
+        Ok(Self::Http {
             url,
             expected_status,
             headers: None,
@@ -205,6 +235,10 @@ impl Target {
     }
 
     /// Create a new HTTP target from a URL string.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the URL cannot be parsed or if validation fails
     ///
     /// # Examples
     ///
@@ -215,8 +249,8 @@ impl Target {
     /// # Ok::<(), wait_for::WaitForError>(())
     /// ```
     pub fn http_url(url: impl AsRef<str>, expected_status: u16) -> Result<Self> {
-        let url =
-            Url::parse(url.as_ref()).with_context(|| format!("Invalid URL: {}", url.as_ref()))?;
+        let url = Url::parse(url.as_ref())
+            .with_context(|| format!("Invalid URL: {url}", url = url.as_ref()))?;
         Self::http(url, expected_status)
     }
 
@@ -224,21 +258,20 @@ impl Target {
     pub(crate) fn validate_http_config(
         url: &Url,
         expected_status: u16,
-        headers: &Option<Vec<(String, String)>>,
+        headers: Option<&crate::types::HttpHeaders>,
     ) -> Result<()> {
         // Validate URL scheme
         if !matches!(url.scheme(), "http" | "https") {
             return Err(WaitForError::InvalidTarget(Cow::Owned(format!(
-                "Unsupported URL scheme: {}",
-                url.scheme()
+                "Unsupported URL scheme: {scheme}",
+                scheme = url.scheme()
             ))));
         }
 
         // Validate status code
         if !(100..=599).contains(&expected_status) {
             return Err(WaitForError::InvalidTarget(Cow::Owned(format!(
-                "Invalid HTTP status code: {}",
-                expected_status
+                "Invalid HTTP status code: {expected_status}"
             ))));
         }
 
@@ -261,8 +294,7 @@ impl Target {
                     .all(|c| c.is_ascii_alphanumeric() || "-_".contains(c))
                 {
                     return Err(WaitForError::InvalidTarget(Cow::Owned(format!(
-                        "Invalid HTTP header name: {}",
-                        key
+                        "Invalid HTTP header name: {key}"
                     ))));
                 }
             }
@@ -272,6 +304,10 @@ impl Target {
     }
 
     /// Create a new HTTP target with custom headers.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if URL validation fails or if headers are invalid
     ///
     /// # Examples
     ///
@@ -287,10 +323,10 @@ impl Target {
     pub fn http_with_headers(
         url: Url,
         expected_status: u16,
-        headers: Vec<(String, String)>,
+        headers: crate::types::HttpHeaders,
     ) -> Result<Self> {
-        Self::validate_http_config(&url, expected_status, &Some(headers.clone()))?;
-        Ok(Target::Http {
+        Self::validate_http_config(&url, expected_status, Some(&headers))?;
+        Ok(Self::Http {
             url,
             expected_status,
             headers: Some(headers),
@@ -302,6 +338,10 @@ impl Target {
     /// Supports formats:
     /// - `host:port` for TCP targets
     /// - `http://host/path` or `https://host/path` for HTTP targets
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the string format is invalid or if parsing fails
     ///
     /// # Examples
     ///
@@ -315,7 +355,7 @@ impl Target {
     pub fn parse(target_str: &str, default_http_status: u16) -> Result<Self> {
         if target_str.starts_with("http://") || target_str.starts_with("https://") {
             let url = Url::parse(target_str)?;
-            Ok(Target::Http {
+            Ok(Self::Http {
                 url,
                 expected_status: default_http_status,
                 headers: None,
@@ -328,17 +368,23 @@ impl Target {
                 )));
             }
             let hostname = Hostname::try_from(parts[0]).with_context(|| {
-                format!("Invalid hostname '{}' in target '{}'", parts[0], target_str)
+                format!(
+                    "Invalid hostname '{hostname}' in target '{target_str}'",
+                    hostname = parts[0]
+                )
             })?;
             let port = parts[1]
                 .parse::<u16>()
                 .map_err(|_| WaitForError::InvalidTarget(Cow::Owned(target_str.to_string())))
                 .with_context(|| {
-                    format!("Invalid port '{}' in target '{}'", parts[1], target_str)
+                    format!(
+                        "Invalid port '{port}' in target '{target_str}'",
+                        port = parts[1]
+                    )
                 })?;
             let port = Port::try_from(port)
-                .with_context(|| format!("Port {} out of valid range (1-65535)", port))?;
-            Ok(Target::Tcp {
+                .with_context(|| format!("Port {port} out of valid range (1-65535)"))?;
+            Ok(Self::Tcp {
                 host: hostname,
                 port,
             })
@@ -346,35 +392,43 @@ impl Target {
     }
 
     /// Get a string representation of this target for display purposes.
+    #[must_use]
     pub fn display(&self) -> String {
         crate::zero_cost::TargetDisplay::new(self).to_string()
     }
 
     /// Get the hostname for this target (useful for logging and grouping)
+    #[must_use]
     pub fn hostname(&self) -> &str {
         match self {
-            Target::Tcp { host, .. } => host.as_str(),
-            Target::Http { url, .. } => url.host_str().unwrap_or("unknown"),
+            Self::Tcp { host, .. } => host.as_str(),
+            Self::Http { url, .. } => url.host_str().unwrap_or("unknown"),
         }
     }
 
     /// Get the port for this target
+    #[must_use]
     pub fn port(&self) -> Option<u16> {
         match self {
-            Target::Tcp { port, .. } => Some(port.get()),
-            Target::Http { url, .. } => url.port(),
+            Self::Tcp { port, .. } => Some(port.get()),
+            Self::Http { url, .. } => url.port(),
         }
     }
 
     /// Create a builder for HTTP targets
-    pub fn http_builder(url: Url) -> HttpTargetBuilder {
+    #[must_use]
+    pub const fn http_builder(url: Url) -> HttpTargetBuilder {
         HttpTargetBuilder::new(url)
     }
 
     /// Create a builder for TCP targets
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the hostname is invalid
     pub fn tcp_builder(host: impl AsRef<str>) -> Result<TcpTargetBuilder> {
         let hostname = Hostname::new(host.as_ref())
-            .with_context(|| format!("Invalid hostname '{}'", host.as_ref()))?;
+            .with_context(|| format!("Invalid hostname '{host}'", host = host.as_ref()))?;
         Ok(TcpTargetBuilder::new(hostname))
     }
 }
@@ -384,11 +438,11 @@ impl Target {
 pub struct HttpTargetBuilder {
     url: Url,
     expected_status: u16,
-    headers: Vec<(String, String)>,
+    headers: crate::types::HttpHeaders,
 }
 
 impl HttpTargetBuilder {
-    pub(crate) fn new(url: Url) -> Self {
+    pub(crate) const fn new(url: Url) -> Self {
         Self {
             url,
             expected_status: 200,
@@ -397,24 +451,28 @@ impl HttpTargetBuilder {
     }
 
     /// Set the expected HTTP status code
-    pub fn status(mut self, status: u16) -> Self {
+    #[must_use]
+    pub const fn status(mut self, status: u16) -> Self {
         self.expected_status = status;
         self
     }
 
     /// Add a header
+    #[must_use]
     pub fn header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.headers.push((key.into(), value.into()));
         self
     }
 
     /// Add multiple headers
+    #[must_use]
     pub fn headers(mut self, headers: impl IntoIterator<Item = (String, String)>) -> Self {
         self.headers.extend(headers);
         self
     }
 
     /// Set authorization header with Bearer token
+    #[must_use]
     pub fn auth_bearer(self, token: impl AsRef<str>) -> Self {
         self.header(
             "Authorization",
@@ -423,23 +481,29 @@ impl HttpTargetBuilder {
     }
 
     /// Set content type header
+    #[must_use]
     pub fn content_type(self, content_type: impl Into<String>) -> Self {
         self.header("Content-Type", content_type)
     }
 
     /// Set user agent header
+    #[must_use]
     pub fn user_agent(self, user_agent: impl Into<String>) -> Self {
         self.header("User-Agent", user_agent)
     }
 
     /// Build the HTTP target
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if validation fails
     pub fn build(self) -> Result<Target> {
         let headers = if self.headers.is_empty() {
             None
         } else {
             Some(self.headers)
         };
-        Target::validate_http_config(&self.url, self.expected_status, &headers)?;
+        Target::validate_http_config(&self.url, self.expected_status, headers.as_ref())?;
         Ok(Target::Http {
             url: self.url,
             expected_status: self.expected_status,
@@ -457,7 +521,7 @@ pub struct TcpTargetBuilder {
 }
 
 impl TcpTargetBuilder {
-    pub(crate) fn new(host: Hostname) -> Self {
+    pub(crate) const fn new(host: Hostname) -> Self {
         Self {
             host,
             port: None,
@@ -466,6 +530,7 @@ impl TcpTargetBuilder {
     }
 
     /// Set the port
+    #[must_use]
     pub fn port(mut self, port: u16) -> Self {
         match Port::try_from(port) {
             Ok(p) => {
@@ -480,6 +545,7 @@ impl TcpTargetBuilder {
     }
 
     /// Set a well-known port (0-1023)
+    #[must_use]
     pub fn well_known_port(mut self, port: u16) -> Self {
         match Port::well_known(port) {
             Some(p) => {
@@ -494,6 +560,7 @@ impl TcpTargetBuilder {
     }
 
     /// Set a registered port (1024-49151)
+    #[must_use]
     pub fn registered_port(mut self, port: u16) -> Self {
         match Port::registered(port) {
             Some(p) => {
@@ -508,6 +575,7 @@ impl TcpTargetBuilder {
     }
 
     /// Set a dynamic port (49152-65535)
+    #[must_use]
     pub fn dynamic_port(mut self, port: u16) -> Self {
         match Port::dynamic(port) {
             Some(p) => {
@@ -522,6 +590,10 @@ impl TcpTargetBuilder {
     }
 
     /// Build the TCP target
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no port was specified or if validation fails
     pub fn build(self) -> Result<Target> {
         // Check for validation errors first
         if let Some(error) = self.port_validation_error {

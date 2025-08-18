@@ -1,3 +1,9 @@
+#![allow(
+    clippy::pub_with_shorthand,
+    clippy::pub_without_shorthand,
+    reason = "restriction lints have contradictory pub visibility rules"
+)]
+
 //! Error types and handling for wait-for operations.
 //!
 //! This module provides comprehensive error handling for the wait-for library,
@@ -75,9 +81,10 @@
 //! }
 //! ```
 
-use crate::types::{ConnectionError, HttpError};
 use std::borrow::Cow;
 use thiserror::Error;
+
+use crate::types::{ConnectionError, HttpError};
 
 /// Core error source types for proper error chaining without Box
 #[derive(Error, Debug)]
@@ -155,24 +162,32 @@ pub type Result<T> = std::result::Result<T, WaitForError>;
 // Convenient From implementations for error types
 impl From<&'static str> for WaitForError {
     fn from(msg: &'static str) -> Self {
-        WaitForError::InvalidTarget(Cow::Borrowed(msg))
+        Self::InvalidTarget(Cow::Borrowed(msg))
     }
 }
 
 impl From<String> for WaitForError {
     fn from(msg: String) -> Self {
-        WaitForError::InvalidTarget(Cow::Owned(msg))
+        Self::InvalidTarget(Cow::Owned(msg))
     }
 }
 
 /// Extension trait for adding context to Results
 pub trait ResultExt<T> {
     /// Add context to an error
+    ///
+    /// # Errors
+    ///
+    /// Returns the original error with additional context information
     fn with_context<F>(self, f: F) -> Result<T>
     where
         F: FnOnce() -> String;
 
     /// Add static context to an error
+    ///
+    /// # Errors
+    ///
+    /// Returns the original error with additional static context information
     fn context(self, msg: &'static str) -> Result<T>;
 }
 
@@ -198,10 +213,10 @@ where
     }
 }
 
-/// Special ResultExt implementation for errors that are already WaitForError
-/// This handles the case where we want to add context to a WaitForError
+/// Special `ResultExt` implementation for errors that are already `WaitForError`
+/// This handles the case where we want to add context to a `WaitForError`
 impl<T> ResultExt<T> for std::result::Result<T, WaitForError> {
-    fn with_context<F>(self, f: F) -> Result<T>
+    fn with_context<F>(self, f: F) -> Self
     where
         F: FnOnce() -> String,
     {
@@ -225,11 +240,11 @@ impl<T> ResultExt<T> for std::result::Result<T, WaitForError> {
                 other => {
                     let context_msg = f();
                     match other {
-                        WaitForError::InvalidTarget(msg) => WaitForError::InvalidTarget(
-                            Cow::Owned(format!("{}: {}", context_msg, msg)),
-                        ),
+                        WaitForError::InvalidTarget(msg) => {
+                            WaitForError::InvalidTarget(Cow::Owned(format!("{context_msg}: {msg}")))
+                        }
                         WaitForError::InvalidHostname(msg) => WaitForError::InvalidHostname(
-                            Cow::Owned(format!("{}: {}", context_msg, msg)),
+                            Cow::Owned(format!("{context_msg}: {msg}")),
                         ),
                         _ => other, // For complex cases, return as-is
                     }
@@ -238,7 +253,7 @@ impl<T> ResultExt<T> for std::result::Result<T, WaitForError> {
         })
     }
 
-    fn context(self, msg: &'static str) -> Result<T> {
+    fn context(self, msg: &'static str) -> Self {
         self.map_err(|e| {
             // Convert WaitForError to ErrorSource where possible
             match e {
@@ -257,12 +272,12 @@ impl<T> ResultExt<T> for std::result::Result<T, WaitForError> {
                 // For other error types, prepend the context message
                 other => {
                     match other {
-                        WaitForError::InvalidTarget(orig_msg) => WaitForError::InvalidTarget(
-                            Cow::Owned(format!("{}: {}", msg, orig_msg)),
-                        ),
-                        WaitForError::InvalidHostname(orig_msg) => WaitForError::InvalidHostname(
-                            Cow::Owned(format!("{}: {}", msg, orig_msg)),
-                        ),
+                        WaitForError::InvalidTarget(orig_msg) => {
+                            WaitForError::InvalidTarget(Cow::Owned(format!("{msg}: {orig_msg}")))
+                        }
+                        WaitForError::InvalidHostname(orig_msg) => {
+                            WaitForError::InvalidHostname(Cow::Owned(format!("{msg}: {orig_msg}")))
+                        }
                         _ => other, // For complex cases, return as-is
                     }
                 }

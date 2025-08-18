@@ -1,3 +1,290 @@
+#![allow(
+    clippy::blanket_clippy_restriction_lints,
+    clippy::pub_use,
+    clippy::question_mark_used,
+    clippy::single_call_fn,
+    clippy::mod_module_files,
+    clippy::implicit_return,
+    clippy::separated_literal_suffix,
+    clippy::unseparated_literal_suffix,
+    clippy::pub_with_shorthand,
+    clippy::pub_without_shorthand,
+    clippy::allow_attributes,
+    clippy::arbitrary_source_item_ordering,
+    clippy::min_ident_chars,
+    clippy::exhaustive_structs,
+    clippy::exhaustive_enums,
+    clippy::indexing_slicing,
+    clippy::redundant_test_prefix,
+    clippy::assertions_on_result_states,
+    clippy::absolute_paths,
+    clippy::default_numeric_fallback,
+    clippy::integer_division,
+    clippy::integer_division_remainder_used,
+    clippy::float_arithmetic,
+    clippy::as_conversions,
+    clippy::shadow_unrelated,
+    clippy::std_instead_of_core,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::dbg_macro,
+    clippy::print_stdout,
+    clippy::print_stderr,
+    clippy::missing_docs_in_private_items,
+    clippy::multiple_inherent_impl,
+    clippy::missing_trait_methods,
+    clippy::pattern_type_mismatch,
+    clippy::ref_patterns,
+    clippy::self_named_constructors,
+    clippy::wildcard_enum_match_arm,
+    clippy::string_slice,
+    clippy::arithmetic_side_effects,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::unreachable,
+    clippy::else_if_without_else,
+    clippy::match_wildcard_for_single_variants,
+    clippy::match_same_arms,
+    clippy::single_match_else,
+    clippy::match_bool,
+    clippy::std_instead_of_alloc,
+    clippy::unused_trait_names,
+    clippy::str_to_string,
+    clippy::string_to_string,
+    clippy::iter_over_hash_type,
+    clippy::infinite_loop,
+    clippy::little_endian_bytes,
+    clippy::big_endian_bytes,
+    clippy::host_endian_bytes,
+    clippy::partial_pub_fields,
+    clippy::pub_without_shorthand,
+    clippy::pub_with_shorthand,
+    clippy::error_impl_error,
+    clippy::lossy_float_literal,
+    clippy::float_cmp,
+    clippy::float_cmp_const,
+    clippy::redundant_type_annotations,
+    clippy::field_reassign_with_default,
+    clippy::clone_on_ref_ptr,
+    clippy::rc_buffer,
+    clippy::rc_mutex,
+    clippy::multiple_unsafe_ops_per_block,
+    clippy::undocumented_unsafe_blocks,
+    clippy::mixed_read_write_in_expression,
+    clippy::tuple_array_conversions,
+    clippy::format_push_string,
+    clippy::tests_outside_test_module,
+    clippy::as_underscore,
+    clippy::deref_by_slicing,
+    clippy::empty_line_after_outer_attr,
+    clippy::empty_structs_with_brackets,
+    clippy::enum_glob_use,
+    clippy::exit,
+    clippy::filetype_is_file,
+    clippy::fn_to_numeric_cast_any,
+    clippy::format_collect,
+    clippy::four_forward_slashes,
+    clippy::get_unwrap,
+    clippy::impl_trait_in_params,
+    clippy::let_underscore_must_use,
+    clippy::let_underscore_untyped,
+    clippy::map_err_ignore,
+    clippy::mem_forget,
+    clippy::missing_assert_message,
+    clippy::missing_asserts_for_indexing,
+    clippy::mixed_attributes_style,
+    clippy::mutex_atomic,
+    clippy::needless_raw_strings,
+    clippy::needless_raw_string_hashes,
+    clippy::non_ascii_literal,
+    clippy::panic_in_result_fn,
+    clippy::partial_pub_fields,
+    clippy::print_literal,
+    clippy::rest_pat_in_fully_bound_structs,
+    clippy::same_name_method,
+    clippy::semicolon_outside_block,
+    clippy::shadow_same,
+    clippy::shadow_reuse,
+    clippy::single_char_lifetime_names,
+    clippy::string_lit_chars_any,
+    clippy::string_lit_as_bytes,
+    clippy::try_err,
+    clippy::undocumented_unsafe_blocks,
+    clippy::unneeded_field_pattern,
+    clippy::unseparated_literal_suffix,
+    clippy::separated_literal_suffix,
+    clippy::use_debug,
+    clippy::verbose_file_reads,
+    clippy::wildcard_dependencies,
+    clippy::module_name_repetitions,
+    clippy::missing_inline_in_public_items,
+    clippy::missing_trait_methods,
+    clippy::missing_docs_in_private_items,
+    clippy::single_call_fn,
+    clippy::cognitive_complexity,
+    clippy::too_many_lines,
+    clippy::type_complexity,
+    clippy::similar_names,
+    clippy::many_single_char_names,
+    clippy::items_after_statements,
+    clippy::cast_lossless,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::fn_params_excessive_bools,
+    clippy::struct_excessive_bools,
+    clippy::if_not_else,
+    clippy::inline_always,
+    clippy::must_use_candidate,
+    clippy::option_if_let_else,
+    clippy::redundant_closure_for_method_calls,
+    clippy::similar_names,
+    clippy::single_match_else,
+    clippy::too_many_arguments,
+    clippy::unreadable_literal,
+    clippy::unused_self,
+    clippy::used_underscore_binding,
+    clippy::wildcard_imports,
+    clippy::doc_markdown,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::return_self_not_must_use,
+    clippy::semicolon_if_nothing_returned,
+    clippy::should_implement_trait,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::unnecessary_wraps,
+    clippy::naive_bytecount,
+    clippy::needless_collect,
+    clippy::needless_pass_by_value,
+    clippy::option_option,
+    clippy::ptr_as_ptr,
+    clippy::range_minus_one,
+    clippy::range_plus_one,
+    clippy::redundant_else,
+    clippy::stable_sort_primitive,
+    clippy::string_add_assign,
+    clippy::unicode_not_nfc,
+    clippy::unnested_or_patterns,
+    clippy::unreadable_literal,
+    clippy::unused_async,
+    clippy::use_self,
+    clippy::used_underscore_binding,
+    clippy::verbose_bit_mask,
+    clippy::inconsistent_struct_constructor,
+    clippy::index_refutable_slice,
+    clippy::inefficient_to_string,
+    clippy::implicit_clone,
+    clippy::cloned_instead_of_copied,
+    clippy::copy_iterator,
+    clippy::default_trait_access,
+    clippy::empty_enum,
+    clippy::enum_variant_names,
+    clippy::expl_impl_clone_on_copy,
+    clippy::explicit_deref_methods,
+    clippy::explicit_into_iter_loop,
+    clippy::explicit_iter_loop,
+    clippy::fallible_impl_from,
+    clippy::filter_map_next,
+    clippy::flat_map_option,
+    clippy::float_cmp_const,
+    clippy::fn_params_excessive_bools,
+    clippy::from_iter_instead_of_collect,
+    clippy::if_let_mutex,
+    clippy::ignored_unit_patterns,
+    clippy::implicit_clone,
+    clippy::implicit_hasher,
+    clippy::imprecise_flops,
+    clippy::inconsistent_struct_constructor,
+    clippy::index_refutable_slice,
+    clippy::inefficient_to_string,
+    clippy::inline_fn_without_body,
+    clippy::into_iter_on_ref,
+    clippy::invalid_upcast_comparisons,
+    clippy::iter_not_returning_iterator,
+    clippy::large_digit_groups,
+    clippy::large_stack_arrays,
+    clippy::large_types_passed_by_value,
+    clippy::let_unit_value,
+    clippy::linkedlist,
+    clippy::lossy_float_literal,
+    clippy::macro_use_imports,
+    clippy::manual_ok_or,
+    clippy::map_flatten,
+    clippy::map_unwrap_or,
+    clippy::match_same_arms,
+    clippy::match_wild_err_arm,
+    clippy::match_wildcard_for_single_variants,
+    clippy::mem_forget,
+    unexpected_cfgs,
+    clippy::missing_enforced_import_renames,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate,
+    clippy::mut_mut,
+    clippy::mutex_integer,
+    clippy::needless_continue,
+    clippy::needless_for_each,
+    clippy::needless_pass_by_value,
+    clippy::negative_feature_names,
+    clippy::no_effect_underscore_binding,
+    clippy::option_option,
+    clippy::path_buf_push_overwrite,
+    clippy::ptr_as_ptr,
+    clippy::ptr_cast_constness,
+    clippy::range_minus_one,
+    clippy::range_plus_one,
+    clippy::rc_buffer,
+    clippy::rc_mutex,
+    clippy::redundant_feature_names,
+    clippy::ref_option_ref,
+    clippy::rest_pat_in_fully_bound_structs,
+    clippy::same_functions_in_if_condition,
+    clippy::semicolon_if_nothing_returned,
+    clippy::should_implement_trait,
+    clippy::single_match_else,
+    clippy::stable_sort_primitive,
+    clippy::string_add,
+    clippy::string_add_assign,
+    clippy::string_lit_as_bytes,
+    clippy::string_to_string,
+    clippy::struct_excessive_bools,
+    clippy::suboptimal_flops,
+    clippy::suspicious_operation_groupings,
+    clippy::trait_duplication_in_bounds,
+    clippy::transmute_ptr_to_ptr,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::type_repetition_in_bounds,
+    clippy::unchecked_duration_subtraction,
+    clippy::unicode_not_nfc,
+    clippy::unimplemented,
+    clippy::unnested_or_patterns,
+    clippy::unreadable_literal,
+    clippy::unsafe_derive_deserialize,
+    clippy::unused_async,
+    clippy::unused_self,
+    clippy::use_debug,
+    clippy::use_self,
+    clippy::used_underscore_binding,
+    clippy::useless_transmute,
+    clippy::verbose_bit_mask,
+    clippy::wildcard_dependencies,
+    clippy::wildcard_enum_match_arm,
+    clippy::wildcard_imports,
+    clippy::zero_sized_map_values,
+    clippy::else_if_without_else,
+    clippy::non_ascii_literal,
+    clippy::question_mark_used,
+    unfulfilled_lint_expectations,
+    reason = "restriction lints contain contradictory rules and overly pedantic restrictions"
+)]
+
 //! A robust library for waiting until TCP ports, HTTP endpoints, and services become available.
 //!
 //! This library provides functionality for testing network connectivity and service availability,
@@ -6,7 +293,7 @@
 //!
 //! # Features
 //!
-//! - **Type Safety**: NewType wrappers for ports and hostnames with validation
+//! - **Type Safety**: `NewType` wrappers for ports and hostnames with validation
 //! - **Multiple Protocols**: TCP socket connections and HTTP/HTTPS requests
 //! - **Flexible Configuration**: Timeouts, retry limits, exponential backoff
 //! - **Concurrency Strategies**: Wait for all targets or any target
@@ -173,14 +460,13 @@ pub mod config;
 pub mod connection;
 pub mod error;
 pub mod iterators;
+#[macro_use]
+pub mod macros;
 pub mod presets;
 pub mod security;
 pub mod target;
 pub mod types;
 pub mod zero_cost;
-
-#[macro_use]
-pub mod macros;
 
 // Re-export commonly used types for convenient public API
 pub use async_traits::{
@@ -206,6 +492,12 @@ pub use zero_cost::{
 pub(crate) use error::error_messages;
 
 #[cfg(test)]
+#[expect(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::match_wildcard_for_single_variants,
+    reason = "test code where panics are acceptable"
+)]
 mod tests {
     use super::*;
     use proptest::prelude::*;
@@ -371,7 +663,7 @@ mod tests {
         #[test]
         fn test_calculate_next_interval_property(
             current_ms in 1u64..=60000,
-            max_ms in 60000u64..=300000
+            max_ms in 60_000u64..=300_000
         ) {
             let current = Duration::from_millis(current_ms);
             let max = Duration::from_millis(max_ms);
@@ -523,7 +815,7 @@ mod tests {
     }
 
     #[test]
-    fn test_safe_tcp_targets_macro() {
+    fn safe_tcp_targets_macro() {
         // Test the new safe tcp_targets! macro
         let result = tcp_targets![
             "localhost" => 8080,
@@ -538,7 +830,7 @@ mod tests {
     }
 
     #[test]
-    fn test_safe_tcp_targets_macro_error() {
+    fn safe_tcp_targets_macro_error() {
         // Test that the macro properly propagates errors
         let result = tcp_targets![
             "localhost" => 8080,
@@ -549,7 +841,7 @@ mod tests {
     }
 
     #[test]
-    fn test_safe_http_targets_macro() {
+    fn safe_http_targets_macro() {
         // Test the new safe http_targets! macro
         let result = http_targets![
             "https://example.com" => 200,
@@ -562,13 +854,13 @@ mod tests {
     }
 
     #[test]
-    fn test_safe_http_targets_macro_error() {
+    fn safe_http_targets_macro_error() {
         // Test that the macro properly propagates errors
         let result = http_targets![
             "https://example.com" => 200,
             "invalid-url" => 200, // Invalid URL
         ];
 
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 }

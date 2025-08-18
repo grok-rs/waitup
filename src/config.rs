@@ -70,75 +70,85 @@
 //!     .build();
 //! ```
 
-use crate::types::WaitConfig;
-use std::time::Duration;
+use core::time::Duration;
 use tokio_util::sync::CancellationToken;
 
+use crate::types::WaitConfig;
+
 impl WaitConfig {
-    /// Create a new builder for WaitConfig.
+    /// Create a new builder for `WaitConfig`.
+    #[must_use]
+    #[inline]
     pub fn builder() -> WaitConfigBuilder {
         WaitConfigBuilder::default()
     }
 }
 
-/// Builder for WaitConfig.
-#[derive(Debug, Clone)]
+/// Builder for `WaitConfig`.
+#[derive(Debug, Clone, Default)]
 pub struct WaitConfigBuilder {
     config: WaitConfig,
 }
 
-impl Default for WaitConfigBuilder {
-    fn default() -> Self {
-        Self {
-            config: WaitConfig::default(),
-        }
-    }
-}
-
 impl WaitConfigBuilder {
     /// Set the total timeout.
-    pub fn timeout(mut self, timeout: Duration) -> Self {
+    #[must_use]
+    #[inline]
+    pub const fn timeout(mut self, timeout: Duration) -> Self {
         self.config.timeout = timeout;
         self
     }
 
     /// Set the initial retry interval.
-    pub fn interval(mut self, interval: Duration) -> Self {
+    #[must_use]
+    #[inline]
+    pub const fn interval(mut self, interval: Duration) -> Self {
         self.config.initial_interval = interval;
         self
     }
 
     /// Set the maximum retry interval for exponential backoff.
-    pub fn max_interval(mut self, max_interval: Duration) -> Self {
+    #[must_use]
+    #[inline]
+    pub const fn max_interval(mut self, max_interval: Duration) -> Self {
         self.config.max_interval = max_interval;
         self
     }
 
     /// Set whether to wait for any target (true) or all targets (false).
-    pub fn wait_for_any(mut self, wait_for_any: bool) -> Self {
+    #[must_use]
+    #[inline]
+    pub const fn wait_for_any(mut self, wait_for_any: bool) -> Self {
         self.config.wait_for_any = wait_for_any;
         self
     }
 
     /// Set the maximum number of retry attempts.
-    pub fn max_retries(mut self, max_retries: Option<u32>) -> Self {
+    #[must_use]
+    #[inline]
+    pub const fn max_retries(mut self, max_retries: Option<u32>) -> Self {
         self.config.max_retries = max_retries;
         self
     }
 
     /// Set the individual connection timeout.
-    pub fn connection_timeout(mut self, timeout: Duration) -> Self {
+    #[must_use]
+    #[inline]
+    pub const fn connection_timeout(mut self, timeout: Duration) -> Self {
         self.config.connection_timeout = timeout;
         self
     }
 
     /// Set the cancellation token for graceful shutdown.
+    #[must_use]
+    #[inline]
     pub fn cancellation_token(mut self, token: CancellationToken) -> Self {
         self.config.cancellation_token = Some(token);
         self
     }
 
     /// Enable cancellation with a new token.
+    #[inline]
     pub fn with_cancellation(mut self) -> (Self, CancellationToken) {
         let token = CancellationToken::new();
         self.config.cancellation_token = Some(token.clone());
@@ -146,18 +156,24 @@ impl WaitConfigBuilder {
     }
 
     /// Set the security validator.
+    #[must_use]
+    #[inline]
     pub fn security_validator(mut self, validator: crate::security::SecurityValidator) -> Self {
         self.config.security_validator = Some(validator);
         self
     }
 
     /// Set the rate limiter.
+    #[must_use]
+    #[inline]
     pub fn rate_limiter(mut self, limiter: crate::security::RateLimiter) -> Self {
         self.config.rate_limiter = Some(limiter);
         self
     }
 
     /// Enable production security (strict validation and rate limiting).
+    #[must_use]
+    #[inline]
     pub fn production_security(mut self) -> Self {
         self.config.security_validator = Some(crate::security::SecurityValidator::production());
         self.config.rate_limiter = Some(crate::security::RateLimiter::new(30)); // Conservative rate limit
@@ -165,25 +181,29 @@ impl WaitConfigBuilder {
     }
 
     /// Enable development security (permissive validation, basic rate limiting).
+    #[must_use]
+    #[inline]
     pub fn development_security(mut self) -> Self {
         self.config.security_validator = Some(crate::security::SecurityValidator::development());
         self.config.rate_limiter = Some(crate::security::RateLimiter::new(120)); // Relaxed rate limit
         self
     }
 
-    /// Build the WaitConfig.
+    /// Build the `WaitConfig`.
+    #[inline]
     pub fn build(self) -> WaitConfig {
         self.config
     }
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code where panics are acceptable")]
 mod tests {
     use super::*;
     use std::time::Duration;
 
     #[test]
-    fn test_wait_config_builder_defaults() {
+    fn wait_config_builder_defaults() {
         let config = WaitConfig::builder().build();
 
         assert_eq!(config.timeout, Duration::from_secs(30));
@@ -196,7 +216,7 @@ mod tests {
     }
 
     #[test]
-    fn test_wait_config_builder_custom_values() {
+    fn wait_config_builder_custom_values() {
         let config = WaitConfig::builder()
             .timeout(Duration::from_secs(120))
             .interval(Duration::from_secs(2))
@@ -215,7 +235,7 @@ mod tests {
     }
 
     #[test]
-    fn test_wait_config_with_cancellation() {
+    fn wait_config_with_cancellation() {
         let (builder, token) = WaitConfig::builder()
             .timeout(Duration::from_secs(30))
             .with_cancellation();
@@ -232,7 +252,7 @@ mod tests {
     }
 
     #[test]
-    fn test_wait_config_security_presets() {
+    fn wait_config_security_presets() {
         let config = WaitConfig::builder().production_security().build();
 
         // Should have security settings applied
@@ -247,7 +267,7 @@ mod tests {
     }
 
     #[test]
-    fn test_wait_config_custom_security() {
+    fn wait_config_custom_security() {
         use crate::security::{RateLimiter, SecurityValidator};
 
         let validator = SecurityValidator::new();
@@ -263,7 +283,7 @@ mod tests {
     }
 
     #[test]
-    fn test_wait_config_builder_chaining() {
+    fn wait_config_builder_chaining() {
         // Test that all methods return Self for fluent chaining
         let config = WaitConfig::builder()
             .timeout(Duration::from_secs(30))

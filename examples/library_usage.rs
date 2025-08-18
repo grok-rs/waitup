@@ -1,11 +1,18 @@
+#![allow(
+    clippy::print_stdout,
+    clippy::uninlined_format_args,
+    clippy::cast_precision_loss,
+    reason = "example code that demonstrates library usage"
+)]
+
 //! Comprehensive library usage example.
 //!
 //! This example showcases all the features available when using wait-for
 //! as a library in your Rust applications.
-//! Run with: cargo run --example library_usage
+//! Run with: cargo run --example `library_usage`
 
 use std::time::Duration;
-use wait_for::{Target, WaitConfig, WaitResult, wait_for_connection, wait_for_single_target};
+use wait_for::{wait_for_connection, wait_for_single_target, Target, WaitConfig, WaitResult};
 
 /// Example of a custom service health checker
 struct ServiceHealthChecker {

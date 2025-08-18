@@ -1,4 +1,4 @@
-# Rust formatting configuration for wait-for project
+# Rust formatting configuration for wait-for project (stable-compatible)
 
 # Basic formatting
 edition = "2021"
@@ -6,52 +6,16 @@ max_width = 100
 hard_tabs = false
 tab_spaces = 4
 
-# Imports
-group_imports = "StdExternalCrate"
-imports_granularity = "Crate"
+# Imports (stable options only)
 reorder_imports = true
-
-# Functions and control flow
-fn_single_line = false
-where_single_line = false
-control_brace_style = "AlwaysSameLine"
-indent_style = "Block"
-
-# Comments and documentation
-comment_width = 80
-doc_comment_code_block_width = 100
-normalize_comments = true
-normalize_doc_attributes = true
 
 # Formatting details
 use_small_heuristics = "Default"
 merge_derives = true
 use_field_init_shorthand = true
-format_code_in_doc_comments = true
-
-# String formatting
-format_strings = false
-
-# Trailing elements
-trailing_comma = "Vertical"
-trailing_semicolon = true
-
-# Spaces
-spaces_around_ranges = false
-type_punctuation_density = "Wide"
 
 # Newlines
 newline_style = "Unix"
-blank_lines_upper_bound = 1
-blank_lines_lower_bound = 0
 
 # Match expressions
 match_block_trailing_comma = false
-match_arm_blocks = true
-match_arm_leading_pipes = "Never"
-
-# Error handling
-use_try_shorthand = false
-
-# Macros
-skip_children = false

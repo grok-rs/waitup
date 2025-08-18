@@ -1,11 +1,18 @@
+#![allow(
+    clippy::print_stdout,
+    clippy::print_stderr,
+    clippy::uninlined_format_args,
+    reason = "example code that demonstrates library usage"
+)]
+
 //! Kubernetes init container example.
 //!
 //! This example demonstrates using wait-for as a Kubernetes init container
 //! to ensure dependencies are ready before the main application starts.
-//! Run with: cargo run --example kubernetes_init
+//! Run with: cargo run --example `kubernetes_init`
 
 use std::time::Duration;
-use wait_for::{Target, WaitConfig, wait_for_connection};
+use wait_for::{wait_for_connection, Target, WaitConfig};
 
 #[tokio::main]
 async fn main() -> Result<(), wait_for::WaitForError> {
@@ -69,7 +76,7 @@ async fn main() -> Result<(), wait_for::WaitForError> {
             println!("🎯 Init container completed successfully. Main container can now start.");
         }
         Err(e) => {
-            eprintln!("❌ Dependencies not ready: {}", e);
+            eprintln!("❌ Dependencies not ready: {e}");
             eprintln!("🔧 Check your service configurations and try again.");
             std::process::exit(1);
         }

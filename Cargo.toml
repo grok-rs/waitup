@@ -1,7 +1,7 @@
 [package]
 name = "wait-for"
 version = "1.0.0"
-edition = "2024"
+edition = "2021"
 authors = ["Serhii Kaliuzhnyi <kalyuzhni.sergei@gmail.com>"]
 description = "A modern, feature-rich CLI tool for waiting until TCP ports, HTTP endpoints, and services become available. Perfect for Docker, Kubernetes, CI/CD pipelines, and microservices orchestration."
 license = "MIT"

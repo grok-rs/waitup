@@ -8,22 +8,51 @@ dev-test = "test --all-features"
 dev-fmt = "fmt --all"
 dev-clippy = "clippy --all-targets --all-features"
 
-# Strict linting aliases
-lint = "clippy --all-targets --all-features -- -D warnings -D clippy::pedantic -D clippy::nursery -W clippy::restriction"
-lint-fix = "clippy --all-targets --all-features --fix -- -D warnings -D clippy::pedantic -W clippy::nursery -W clippy::restriction"
+# Strict linting aliases (matching CI exactly)
+lint = """clippy --all-targets --all-features -- \
+  -D warnings \
+  -D clippy::pedantic \
+  -D clippy::nursery \
+  -W clippy::restriction \
+  -D clippy::unwrap_used \
+  -D clippy::expect_used \
+  -D clippy::panic \
+  -D clippy::todo \
+  -D clippy::unimplemented \
+  -W clippy::dbg_macro \
+  -W clippy::print_stdout \
+  -W clippy::print_stderr"""
+lint-fix = """clippy --all-targets --all-features --fix -- \
+  -D warnings \
+  -D clippy::pedantic \
+  -D clippy::nursery \
+  -W clippy::restriction \
+  -D clippy::unwrap_used \
+  -D clippy::expect_used \
+  -D clippy::panic \
+  -D clippy::todo \
+  -D clippy::unimplemented \
+  -W clippy::dbg_macro \
+  -W clippy::print_stdout \
+  -W clippy::print_stderr"""
 
-# Documentation aliases
+# Documentation aliases (matching CI)
 doc-check = "doc --no-deps --all-features --document-private-items"
+doc-check-strict = "doc --no-deps --all-features --document-private-items"
 doc-open = "doc --no-deps --all-features --document-private-items --open"
 
-# Security and audit aliases
+# Security and audit aliases (matching CI)
 security-audit = "audit --deny warnings"
+audit-strict = "audit --deny warnings"
 deny-check = "deny check"
+unused-deps = "machete"
 
-# Testing aliases
+# Testing aliases (matching CI)
 test-all = "test --all-features --workspace"
+test-lib = "test --lib --all-features"
+test-integration = "test --test integration_tests"
 test-doc = "test --doc --all-features"
-test-examples = "test --examples"
+test-examples = "check --examples"
 
 # Release preparation
 pre-release = [
@@ -34,15 +63,23 @@ pre-release = [
     "cargo-audit --deny warnings"
 ]
 
-# Full quality check (equivalent to CI)
+# Full quality check (equivalent to CI workflows)
 ci-check = [
+    "check --all-targets --all-features",
     "fmt --all -- --check",
-    "clippy --all-targets --all-features -- -D warnings -D clippy::pedantic -D clippy::nursery -W clippy::restriction",
-    "test --all-features --workspace",
+    "lint",
+    "test --lib --all-features",
+    "test --test integration_tests",
     "test --doc --all-features",
-    "doc --no-deps --all-features --document-private-items",
-    "cargo-audit --deny warnings"
+    "check --examples",
+    "unused-deps",
+    "audit-strict",
+    "deny-check"
 ]
+
+# Quick individual commands for local development
+fmt-check = "fmt --all -- --check"
+build-check = "check --all-targets --all-features"
 
 [build]
 # Use all available CPU cores for builds (0 means use all cores)

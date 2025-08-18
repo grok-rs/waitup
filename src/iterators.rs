@@ -5,6 +5,9 @@
 
 use crate::types::{Target, TargetResult, WaitResult};
 
+/// Type alias for `HashMap` of targets grouped by hostname to simplify complex type usage.
+type TargetsByHostname = std::collections::HashMap<String, Vec<Target>>;
+
 /// Extension trait for working with iterators of targets
 pub trait TargetIterExt: Iterator<Item = Target> {
     /// Collect TCP targets from a mixed iterator
@@ -24,7 +27,7 @@ pub trait TargetIterExt: Iterator<Item = Target> {
     }
 
     /// Group targets by hostname
-    fn group_by_hostname(self) -> std::collections::HashMap<String, Vec<Target>>
+    fn group_by_hostname(self) -> TargetsByHostname
     where
         Self: Sized,
     {
@@ -84,7 +87,7 @@ pub trait TargetResultIterExt: Iterator<Item = TargetResult> {
 
 impl<I> TargetResultIterExt for I where I: Iterator<Item = TargetResult> {}
 
-/// Extension trait for slices/Vecs of TargetResult to provide summary functionality
+/// Extension trait for slices/Vecs of `TargetResult` to provide summary functionality
 pub trait TargetResultSliceExt {
     /// Get summary statistics
     fn summary(&self) -> ResultSummary;
@@ -151,6 +154,7 @@ impl WaitResult {
     }
 
     /// Get summary statistics
+    #[must_use]
     pub fn summary(&self) -> ResultSummary {
         let successful_count = self.successful_results().count();
         let failed_count = self.failed_results().count();
@@ -184,12 +188,19 @@ impl WaitResult {
 /// Summary statistics for wait results
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResultSummary {
+    /// Total number of targets checked
     pub total_targets: usize,
+    /// Number of targets that succeeded
     pub successful_count: usize,
+    /// Number of targets that failed
     pub failed_count: usize,
+    /// Total number of connection attempts across all targets
     pub total_attempts: u32,
+    /// Total time elapsed for all operations
     pub total_elapsed: std::time::Duration,
+    /// Fastest response time recorded
     pub fastest_response: Option<std::time::Duration>,
+    /// Slowest response time recorded
     pub slowest_response: Option<std::time::Duration>,
 }
 
@@ -204,6 +215,7 @@ impl std::fmt::Display for ResultSummary {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code where panics are acceptable")]
 mod tests {
     use super::*;
     use crate::types::{Target, TargetResult, WaitResult};
@@ -336,7 +348,7 @@ mod tests {
         )];
 
         let summary = results.summary();
-        let display = format!("{}", summary);
+        let display = format!("{summary}");
         assert!(display.contains("1/1 successful"));
         assert!(display.contains("2 attempts"));
         assert!(display.contains("100ms"));

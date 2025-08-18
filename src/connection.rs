@@ -1,3 +1,9 @@
+#![allow(
+    clippy::pub_with_shorthand,
+    clippy::pub_without_shorthand,
+    reason = "restriction lints have contradictory pub visibility rules"
+)]
+
 //! Connection handling and network operations.
 //!
 //! This module contains the core connection logic for testing TCP and HTTP targets.
@@ -83,21 +89,43 @@
 use std::borrow::Cow;
 use std::net::SocketAddr;
 use std::time::Duration;
-use tokio::net::{TcpStream, lookup_host};
-use tokio::time::{Instant, sleep, timeout};
+use tokio::net::{lookup_host, TcpStream};
+use tokio::time::{sleep, timeout, Instant};
 use url::Url;
 
-use crate::types::{
-    ConnectionError, Hostname, HttpError, Port, Target, TargetResult, WaitConfig, WaitResult,
-};
+use crate::types::{ConnectionError, HttpError, Target, TargetResult, WaitConfig, WaitResult};
 use crate::{Result, ResultExt, WaitForError};
+
+/// Type alias for HTTP headers to simplify complex type usage.
+type HttpHeaders = Option<Vec<(String, String)>>;
 
 /// Resolve a hostname and port to socket addresses.
 pub(crate) async fn resolve_host(host: &str, port: u16) -> Result<Vec<SocketAddr>> {
     let mut host_port_builder = crate::zero_cost::StringBuilder::<64>::new();
-    host_port_builder.push_str(host).unwrap();
-    host_port_builder.push_char(':').unwrap();
-    host_port_builder.push_str(&port.to_string()).unwrap();
+    host_port_builder.push_str(host).map_err(|_| {
+        WaitForError::Connection(ConnectionError::DnsResolution {
+            host: Cow::Owned(host.to_string()),
+            reason: std::io::Error::new(std::io::ErrorKind::InvalidInput, "Host too long"),
+        })
+    })?;
+    host_port_builder.push_char(':').map_err(|_| {
+        WaitForError::Connection(ConnectionError::DnsResolution {
+            host: Cow::Owned(host.to_string()),
+            reason: std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Failed to format host:port",
+            ),
+        })
+    })?;
+    host_port_builder.push_str(&port.to_string()).map_err(|_| {
+        WaitForError::Connection(ConnectionError::DnsResolution {
+            host: Cow::Owned(host.to_string()),
+            reason: std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Failed to format host:port",
+            ),
+        })
+    })?;
     let host_port = host_port_builder.as_str();
     let addrs: Vec<SocketAddr> = lookup_host(&host_port)
         .await
@@ -107,7 +135,7 @@ pub(crate) async fn resolve_host(host: &str, port: u16) -> Result<Vec<SocketAddr
                 reason: e,
             })
         })
-        .with_context(|| format!("Failed to resolve hostname '{}'", host))?
+        .with_context(|| format!("Failed to resolve hostname '{host}'"))?
         .collect();
 
     if addrs.is_empty() {
@@ -116,61 +144,17 @@ pub(crate) async fn resolve_host(host: &str, port: u16) -> Result<Vec<SocketAddr
             reason: std::io::Error::new(std::io::ErrorKind::NotFound, "No addresses found"),
         });
         return Err(dns_error)
-            .with_context(|| format!("No IP addresses found for hostname '{}'", host));
+            .with_context(|| format!("No IP addresses found for hostname '{host}'"));
     }
 
     Ok(addrs)
-}
-
-/// Try to establish a TCP connection.
-pub(crate) async fn try_tcp_connect(
-    host: &Hostname,
-    port: Port,
-    timeout_duration: Duration,
-) -> Result<()> {
-    let addrs = resolve_host(host.as_str(), port.get())
-        .await
-        .with_context(|| format!("Failed to resolve {}:{}", host, port))?;
-
-    let mut last_error = None;
-    for addr in addrs {
-        match timeout(timeout_duration, TcpStream::connect(addr)).await {
-            Ok(Ok(_)) => return Ok(()),
-            Ok(Err(e)) => last_error = Some(e),
-            Err(_) => {
-                return Err(WaitForError::Connection(ConnectionError::Timeout {
-                    timeout_ms: timeout_duration.as_millis() as u64,
-                }))
-                .with_context(|| {
-                    format!(
-                        "Connection timeout after {}ms to {}:{}",
-                        timeout_duration.as_millis(),
-                        host,
-                        port
-                    )
-                });
-            }
-        }
-    }
-
-    Err(WaitForError::Connection(ConnectionError::TcpConnection {
-        host: Cow::Owned(host.to_string()),
-        port: port.get(),
-        reason: last_error.unwrap_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::ConnectionRefused,
-                "No addresses available",
-            )
-        }),
-    }))
-    .with_context(|| format!("Failed to establish TCP connection to {}:{}", host, port))
 }
 
 /// Try to make an HTTP request and check the response.
 pub(crate) async fn try_http_connect(
     url: &Url,
     expected_status: u16,
-    headers: &Option<Vec<(String, String)>>,
+    headers: &HttpHeaders,
     timeout_duration: Duration,
 ) -> Result<()> {
     let client = reqwest::Client::builder()
@@ -182,7 +166,7 @@ pub(crate) async fn try_http_connect(
                 reason: e,
             })
         })
-        .with_context(|| format!("Failed to create HTTP client for {}", url))?;
+        .with_context(|| format!("Failed to create HTTP client for {url}"))?;
 
     let mut request = client.get(url.clone());
 
@@ -190,9 +174,9 @@ pub(crate) async fn try_http_connect(
         for (key, value) in headers {
             if key.is_empty() || value.is_empty() {
                 return Err(WaitForError::Http(HttpError::InvalidHeader {
-                    header: Cow::Owned(format!("{}:{}", key, value)),
+                    header: Cow::Owned(format!("{key}:{value}")),
                 }))
-                .with_context(|| format!("Invalid header for request to {}", url));
+                .with_context(|| format!("Invalid header for request to {url}"));
             }
             request = request.header(key, value);
         }
@@ -207,7 +191,7 @@ pub(crate) async fn try_http_connect(
                 reason: e,
             })
         })
-        .with_context(|| format!("HTTP request failed to {}", url))?;
+        .with_context(|| format!("HTTP request failed to {url}"))?;
 
     let actual_status = response.status().as_u16();
     if actual_status == expected_status {
@@ -219,8 +203,7 @@ pub(crate) async fn try_http_connect(
         }))
         .with_context(|| {
             format!(
-                "Unexpected HTTP status from {}: expected {}, got {}",
-                url, expected_status, actual_status
+                "Unexpected HTTP status from {url}: expected {expected_status}, got {actual_status}"
             )
         })
     }
@@ -228,16 +211,59 @@ pub(crate) async fn try_http_connect(
 
 /// Try to connect to a target with security validation.
 pub(crate) async fn try_connect_target(target: &Target, config: &WaitConfig) -> Result<()> {
-    if let Some(ref validator) = config.security_validator {
+    if let Some(validator) = &config.security_validator {
         validator.validate_target(target)?;
     }
 
-    if let Some(ref rate_limiter) = config.rate_limiter {
+    if let Some(rate_limiter) = &config.rate_limiter {
         rate_limiter.check_rate_limit(target)?;
     }
 
     match target {
-        Target::Tcp { host, port } => try_tcp_connect(host, *port, config.connection_timeout).await,
+        Target::Tcp { host, port } => {
+            let addrs = resolve_host(host.as_str(), port.get())
+                .await
+                .with_context(|| format!("Failed to resolve {host}:{port}"))?;
+
+            let mut last_error = None;
+            for addr in addrs {
+                match timeout(config.connection_timeout, TcpStream::connect(addr)).await {
+                    Ok(Ok(_)) => return Ok(()),
+                    Ok(Err(e)) => last_error = Some(e),
+                    Err(_) => {
+                        return Err(WaitForError::Connection(ConnectionError::Timeout {
+                            timeout_ms: u64::try_from(
+                                config
+                                    .connection_timeout
+                                    .as_millis()
+                                    .min(u128::from(u64::MAX)),
+                            )
+                            .unwrap_or(u64::MAX),
+                        }))
+                        .with_context(|| {
+                            format!(
+                                "Connection timeout after {}ms to {}:{}",
+                                config.connection_timeout.as_millis(),
+                                host,
+                                port
+                            )
+                        });
+                    }
+                }
+            }
+
+            Err(WaitForError::Connection(ConnectionError::TcpConnection {
+                host: Cow::Owned(host.to_string()),
+                port: port.get(),
+                reason: last_error.unwrap_or_else(|| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::ConnectionRefused,
+                        "No addresses available",
+                    )
+                }),
+            }))
+            .with_context(|| format!("Failed to establish TCP connection to {host}:{port}"))
+        }
         Target::Http {
             url,
             expected_status,
@@ -248,11 +274,44 @@ pub(crate) async fn try_connect_target(target: &Target, config: &WaitConfig) -> 
 
 /// Calculate the next retry interval using exponential backoff.
 pub(crate) fn calculate_next_interval(current: Duration, max: Duration) -> Duration {
-    let next = Duration::from_millis((current.as_millis() as f64 * 1.5) as u64);
-    if next > max { max } else { next }
+    // Handle multiplication carefully to avoid precision loss and overflow
+    let current_millis = current.as_millis().min(u128::MAX / 2);
+
+    // Convert to u64 first, then to f64 to minimize precision loss
+    let current_millis_u64 = u64::try_from(current_millis).unwrap_or(u64::MAX);
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "f64 calculation needed for exponential backoff"
+    )]
+    let multiplied = (current_millis_u64 as f64 * 1.5).min(u64::MAX as f64);
+
+    if multiplied < 0.0 || !multiplied.is_finite() {
+        return Duration::from_millis(0);
+    }
+
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "safe cast after bounds check"
+    )]
+    let next = Duration::from_millis(multiplied as u64);
+    if next > max {
+        max
+    } else {
+        next
+    }
 }
 
 /// Wait for a single target to become available.
+///
+/// # Errors
+///
+/// This function returns an error if:
+/// - The target cannot be reached within the configured timeout
+/// - The operation is cancelled via cancellation token
+/// - Network connectivity issues prevent connection
+/// - HTTP endpoints return unexpected status codes
+#[inline]
 pub async fn wait_for_single_target(target: &Target, config: &WaitConfig) -> Result<TargetResult> {
     let start = Instant::now();
     let deadline = start + config.timeout;
@@ -303,7 +362,7 @@ pub async fn wait_for_single_target(target: &Target, config: &WaitConfig) -> Res
                             success: false,
                             elapsed: now.duration_since(start),
                             attempts: attempt,
-                            error: Some(format!("Max retries ({}) exceeded", max_retries)),
+                            error: Some(format!("Max retries ({max_retries}) exceeded")),
                         });
                     }
                 }
@@ -312,8 +371,8 @@ pub async fn wait_for_single_target(target: &Target, config: &WaitConfig) -> Res
 
                 if let Some(token) = &config.cancellation_token {
                     tokio::select! {
-                        _ = sleep(sleep_duration) => {},
-                        _ = token.cancelled() => {
+                        () = sleep(sleep_duration) => {},
+                        () = token.cancelled() => {
                             return Err(WaitForError::Cancelled);
                         }
                     }
@@ -330,6 +389,14 @@ pub async fn wait_for_single_target(target: &Target, config: &WaitConfig) -> Res
 /// Wait for connections to multiple targets.
 ///
 /// This is the main function for waiting on multiple targets with different strategies.
+///
+/// # Errors
+///
+/// This function returns an error if:
+/// - None of the targets can be reached within the configured timeout
+/// - The operation is cancelled via cancellation token
+/// - Network connectivity issues prevent connections
+/// - Security validation fails for any target
 ///
 /// # Examples
 ///
@@ -354,6 +421,7 @@ pub async fn wait_for_single_target(target: &Target, config: &WaitConfig) -> Res
 ///     Ok(())
 /// }
 /// ```
+#[inline]
 pub async fn wait_for_connection(targets: &[Target], config: &WaitConfig) -> Result<WaitResult> {
     let start = Instant::now();
 
@@ -434,6 +502,7 @@ pub async fn wait_for_connection(targets: &[Target], config: &WaitConfig) -> Res
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code where panics are acceptable")]
 mod tests {
     use super::*;
     use std::time::Duration;

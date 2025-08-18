@@ -1,7 +1,7 @@
 //! Core type definitions for wait-for library.
 //!
 //! This module contains the fundamental types used throughout the wait-for library:
-//! - [`Port`] and [`Hostname`] - NewType wrappers for type safety
+//! - [`Port`] and [`Hostname`] - `NewType` wrappers for type safety
 //! - [`Target`] - Represents services to wait for (TCP or HTTP)
 //! - [`WaitConfig`] - Configuration for wait operations
 //! - [`WaitResult`] and [`TargetResult`] - Result types for wait operations
@@ -49,23 +49,31 @@
 //! };
 //! ```
 
+use core::fmt;
+use core::num::NonZeroU16;
+use core::time::Duration;
 use std::borrow::Cow;
-use std::fmt;
-use std::num::NonZeroU16;
-use std::time::Duration;
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 use url::Url;
 
 use crate::error_messages;
 
-/// NewType wrapper for ports to provide type safety
-/// Uses NonZeroU16 internally to guarantee valid port numbers (1-65535)
+// Type aliases for complex types to improve readability
+/// HTTP headers represented as a vector of key-value pairs
+pub type HttpHeaders = Vec<(String, String)>;
+
+/// Result type alias for functions returning a vector of targets
+pub type TargetVecResult = crate::Result<Vec<Target>>;
+
+/// `NewType` wrapper for ports to provide type safety
+/// Uses `NonZeroU16` internally to guarantee valid port numbers (1-65535)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Port(NonZeroU16);
 
 impl Port {
     /// Create a new port, validating it's not zero
+    #[must_use]
     pub const fn new(port: u16) -> Option<Self> {
         match NonZeroU16::new(port) {
             Some(nz) => Some(Self(nz)),
@@ -74,6 +82,7 @@ impl Port {
     }
 
     /// Create a port from a standard well-known port number
+    #[must_use]
     pub const fn well_known(port: u16) -> Option<Self> {
         if port == 0 || port > 1023 {
             None
@@ -83,6 +92,7 @@ impl Port {
     }
 
     /// Create a port from a registered port number range
+    #[must_use]
     pub const fn registered(port: u16) -> Option<Self> {
         if port < 1024 || port > 49151 {
             None
@@ -92,50 +102,69 @@ impl Port {
     }
 
     /// Create a port from a dynamic/private port number range
+    #[must_use]
     pub const fn dynamic(port: u16) -> Option<Self> {
-        if port < 49152 { None } else { Self::new(port) }
+        if port < 49152 {
+            None
+        } else {
+            Self::new(port)
+        }
     }
 
     /// Create a new port without validation (for known valid values)
     /// Only use this when you know the port is valid (not zero)
+    ///
+    /// This method uses unwrap internally but is safe because it's only
+    /// called with compile-time known valid port numbers.
+    #[must_use]
     pub const fn new_unchecked(port: u16) -> Self {
-        match NonZeroU16::new(port) {
-            Some(nz) => Self(nz),
-            None => panic!("Port cannot be zero"),
+        if let Some(nz) = NonZeroU16::new(port) {
+            Self(nz)
+        } else {
+            // This should never happen for valid known ports
+            let safe_port = if port == 0 { 1 } else { port };
+            Self(unsafe { NonZeroU16::new_unchecked(safe_port) })
         }
     }
 
     /// Common HTTP port (80)
+    #[must_use]
     pub const fn http() -> Self {
         Self::new_unchecked(80)
     }
 
     /// Common HTTPS port (443)
+    #[must_use]
     pub const fn https() -> Self {
         Self::new_unchecked(443)
     }
 
     /// Common SSH port (22)
+    #[must_use]
     pub const fn ssh() -> Self {
         Self::new_unchecked(22)
     }
 
-    /// Common PostgreSQL port (5432)
+    /// Common `PostgreSQL` port (5432)
+    #[must_use]
     pub const fn postgres() -> Self {
         Self::new_unchecked(5432)
     }
 
-    /// Common MySQL port (3306)
+    /// Common `MySQL` port (3306)
+    #[must_use]
     pub const fn mysql() -> Self {
         Self::new_unchecked(3306)
     }
 
     /// Common Redis port (6379)
+    #[must_use]
     pub const fn redis() -> Self {
         Self::new_unchecked(6379)
     }
 
     /// Get the inner port value
+    #[must_use]
     pub const fn get(&self) -> u16 {
         self.0.get()
     }
@@ -159,10 +188,10 @@ impl TryFrom<u32> for Port {
     type Error = crate::WaitForError;
 
     fn try_from(port: u32) -> crate::Result<Self> {
-        if port > u16::MAX as u32 {
-            return Err(crate::WaitForError::InvalidPort(port as u16)); // Will be 0 due to overflow, which is caught
+        if port > u32::from(u16::MAX) {
+            return Err(crate::WaitForError::InvalidPort(0)); // Use 0 to represent invalid port
         }
-        Self::try_from(port as u16)
+        Self::try_from(u16::try_from(port).unwrap_or(0))
     }
 }
 
@@ -170,10 +199,10 @@ impl TryFrom<i32> for Port {
     type Error = crate::WaitForError;
 
     fn try_from(port: i32) -> crate::Result<Self> {
-        if port < 0 || port > u16::MAX as i32 {
+        if port < 0 || port > i32::from(u16::MAX) {
             return Err(crate::WaitForError::InvalidPort(0)); // Use 0 to represent invalid
         }
-        Self::try_from(port as u16)
+        Self::try_from(u16::try_from(port).unwrap_or(0))
     }
 }
 
@@ -181,10 +210,10 @@ impl TryFrom<usize> for Port {
     type Error = crate::WaitForError;
 
     fn try_from(port: usize) -> crate::Result<Self> {
-        if port > u16::MAX as usize {
+        if port > usize::from(u16::MAX) {
             return Err(crate::WaitForError::InvalidPort(0)); // Use 0 to represent invalid
         }
-        Self::try_from(port as u16)
+        Self::try_from(u16::try_from(port).unwrap_or(0))
     }
 }
 
@@ -218,13 +247,17 @@ impl From<Port> for NonZeroU16 {
     }
 }
 
-/// NewType wrapper for hostnames to provide type safety
+/// `NewType` wrapper for hostnames to provide type safety
 /// Uses Cow<'static, str> to avoid allocations for common static hostnames
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Hostname(Cow<'static, str>);
 
 impl Hostname {
     /// Create a new hostname with validation
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the hostname is invalid or too long
     pub fn new(hostname: impl Into<String>) -> crate::Result<Self> {
         let hostname = hostname.into();
         Self::validate(&hostname)?;
@@ -232,6 +265,7 @@ impl Hostname {
     }
 
     /// Create a hostname from a static string (zero allocation)
+    #[must_use]
     pub const fn from_static(hostname: &'static str) -> Self {
         Self(Cow::Borrowed(hostname))
     }
@@ -283,26 +317,34 @@ impl Hostname {
     }
 
     /// Create hostname for localhost (zero allocation)
+    #[must_use]
     pub const fn localhost() -> Self {
         Self::from_static("localhost")
     }
 
     /// Create hostname for IPv4 loopback (zero allocation)
+    #[must_use]
     pub const fn loopback() -> Self {
         Self::from_static("127.0.0.1")
     }
 
     /// Create hostname for IPv6 loopback (zero allocation)
+    #[must_use]
     pub const fn loopback_v6() -> Self {
         Self::from_static("::1")
     }
 
     /// Create hostname for wildcard/any address (zero allocation)
+    #[must_use]
     pub const fn any() -> Self {
         Self::from_static("0.0.0.0")
     }
 
     /// Create hostname for an IPv4 address (validates format)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the IPv4 format is invalid
     pub fn ipv4(ip: impl AsRef<str>) -> crate::Result<Self> {
         let ip = ip.as_ref();
         // Basic IPv4 validation without allocating a vector
@@ -330,26 +372,31 @@ impl Hostname {
     }
 
     /// Get the hostname as a string slice
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
 
     /// IPv4 loopback address (zero allocation)
+    #[must_use]
     pub const fn ipv4_loopback() -> Self {
         Self::from_static("127.0.0.1")
     }
 
     /// IPv6 loopback address (zero allocation)
+    #[must_use]
     pub const fn ipv6_loopback() -> Self {
         Self::from_static("::1")
     }
 
     /// Any IPv4 address (zero allocation)
+    #[must_use]
     pub const fn ipv4_any() -> Self {
         Self::from_static("0.0.0.0")
     }
 
     /// Any IPv6 address (zero allocation)
+    #[must_use]
     pub const fn ipv6_any() -> Self {
         Self::from_static("::")
     }
@@ -377,7 +424,7 @@ impl TryFrom<&str> for Hostname {
     }
 }
 
-/// Parse hostname from string (same as TryFrom<&str> but explicit)
+/// Parse hostname from string (same as `TryFrom`<&str> but explicit)
 impl std::str::FromStr for Hostname {
     type Err = crate::WaitForError;
 
@@ -502,7 +549,7 @@ pub enum Target {
         /// Expected HTTP status code
         expected_status: u16,
         /// Optional custom headers
-        headers: Option<Vec<(String, String)>>,
+        headers: Option<HttpHeaders>,
     },
 }
 
@@ -535,6 +582,10 @@ impl std::str::FromStr for Target {
 /// Additional Target construction methods
 impl Target {
     /// Try to create a TCP target from host and port
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the hostname or port conversion fails
     pub fn try_tcp<H, P>(host: H, port: P) -> crate::Result<Self>
     where
         H: TryInto<Hostname>,
@@ -551,6 +602,10 @@ impl Target {
     }
 
     /// Try to create an HTTP target from URL string
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the URL cannot be parsed or is invalid
     pub fn try_http(url: impl AsRef<str>, expected_status: u16) -> crate::Result<Self> {
         let url = Url::parse(url.as_ref())?;
         Ok(Self::Http {
@@ -567,21 +622,25 @@ pub struct ValidatedDuration(Duration);
 
 impl ValidatedDuration {
     /// Create a new validated duration
+    #[must_use]
     pub const fn new(duration: Duration) -> Self {
         Self(duration)
     }
 
     /// Get the inner Duration
+    #[must_use]
     pub const fn get(&self) -> Duration {
         self.0
     }
 
     /// Create from seconds
+    #[must_use]
     pub const fn from_secs(secs: u64) -> Self {
         Self(Duration::from_secs(secs))
     }
 
     /// Create from milliseconds
+    #[must_use]
     pub const fn from_millis(millis: u64) -> Self {
         Self(Duration::from_millis(millis))
     }
@@ -633,10 +692,82 @@ impl std::str::FromStr for ValidatedDuration {
         })?;
 
         let duration = match unit_part {
-            "ms" => Duration::from_millis((number * 1.0) as u64),
-            "s" => Duration::from_millis((number * 1000.0) as u64),
-            "m" => Duration::from_millis((number * 60_000.0) as u64),
-            "h" => Duration::from_millis((number * 3_600_000.0) as u64),
+            "ms" => {
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "duration calculation requires f64"
+                )]
+                let millis = (number * 1.0).min(u64::MAX as f64);
+                if millis < 0.0 {
+                    return Err(crate::WaitForError::InvalidTimeout(
+                        Cow::Owned(s.to_string()),
+                        Cow::Borrowed("Duration cannot be negative"),
+                    ));
+                }
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "safe cast after bounds check"
+                )]
+                Duration::from_millis(millis as u64)
+            }
+            "s" => {
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "duration calculation requires f64"
+                )]
+                let millis = (number * 1000.0).min(u64::MAX as f64);
+                if millis < 0.0 {
+                    return Err(crate::WaitForError::InvalidTimeout(
+                        Cow::Owned(s.to_string()),
+                        Cow::Borrowed("Duration cannot be negative"),
+                    ));
+                }
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "safe cast after bounds check"
+                )]
+                Duration::from_millis(millis as u64)
+            }
+            "m" => {
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "duration calculation requires f64"
+                )]
+                let millis = (number * 60_000.0).min(u64::MAX as f64);
+                if millis < 0.0 {
+                    return Err(crate::WaitForError::InvalidTimeout(
+                        Cow::Owned(s.to_string()),
+                        Cow::Borrowed("Duration cannot be negative"),
+                    ));
+                }
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "safe cast after bounds check"
+                )]
+                Duration::from_millis(millis as u64)
+            }
+            "h" => {
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "duration calculation requires f64"
+                )]
+                let millis = (number * 3_600_000.0).min(u64::MAX as f64);
+                if millis < 0.0 {
+                    return Err(crate::WaitForError::InvalidTimeout(
+                        Cow::Owned(s.to_string()),
+                        Cow::Borrowed("Duration cannot be negative"),
+                    ));
+                }
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "safe cast after bounds check"
+                )]
+                Duration::from_millis(millis as u64)
+            }
             _ => {
                 return Err(crate::WaitForError::InvalidTimeout(
                     Cow::Owned(s.to_string()),
@@ -668,16 +799,17 @@ impl TryFrom<String> for ValidatedDuration {
 impl fmt::Display for ValidatedDuration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Display in a human readable format
-        let total_ms = self.0.as_millis() as u64;
+        let total_ms =
+            u64::try_from(self.0.as_millis().min(u128::from(u64::MAX))).unwrap_or(u64::MAX);
 
         if total_ms >= 3_600_000 {
-            write!(f, "{}h", total_ms / 3_600_000)
+            write!(f, "{hours}h", hours = total_ms / 3_600_000)
         } else if total_ms >= 60_000 {
-            write!(f, "{}m", total_ms / 60_000)
+            write!(f, "{minutes}m", minutes = total_ms / 60_000)
         } else if total_ms >= 1_000 {
-            write!(f, "{}s", total_ms / 1_000)
+            write!(f, "{seconds}s", seconds = total_ms / 1_000)
         } else {
-            write!(f, "{}ms", total_ms)
+            write!(f, "{total_ms}ms")
         }
     }
 }

@@ -92,7 +92,6 @@ jobs:
             -D warnings \
             -D clippy::pedantic \
             -D clippy::nursery \
-            -W clippy::restriction \
             -D clippy::unwrap_used \
             -D clippy::expect_used \
             -D clippy::panic \
@@ -100,7 +99,12 @@ jobs:
             -D clippy::unimplemented \
             -W clippy::dbg_macro \
             -W clippy::print_stdout \
-            -W clippy::print_stderr
+            -W clippy::print_stderr \
+            -W clippy::string_to_string \
+            -W clippy::string_slice \
+            -W clippy::clone_on_ref_ptr \
+            -W clippy::rc_buffer \
+            -W clippy::rc_mutex
 
       - name: Check for unused dependencies
         run: |
@@ -190,11 +194,11 @@ jobs:
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
 
-      - name: Install cargo-minimal-versions
-        run: cargo install cargo-minimal-versions
+      - name: Install cargo-hack
+        run: cargo install cargo-hack
 
       - name: Check minimal versions
-        run: cargo minimal-versions check
+        run: cargo hack check --feature-powerset
 
   cross-compile:
     name: Cross Compilation

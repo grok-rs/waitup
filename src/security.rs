@@ -3,22 +3,25 @@
 //! This module provides security features including rate limiting,
 //! request validation, and protection against common network security issues.
 
-use crate::types::{Hostname, Target};
-use crate::{Result, WaitForError};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::net::IpAddr;
-use std::sync::{
-    RwLock,
-    atomic::{AtomicU64, Ordering},
-};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::RwLock;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use crate::types::{Hostname, Target};
+use crate::{Result, WaitForError};
+
+// Type aliases to reduce complexity warnings
+type RateLimitMap = HashMap<String, Vec<Instant>>;
+type AllowedPorts = Option<Vec<u16>>;
+
 /// Rate limiter to prevent excessive connection attempts
-/// Uses RwLock for better read performance compared to Mutex
+/// Uses `RwLock` for better read performance compared to `Mutex`
 #[derive(Debug)]
 pub struct RateLimiter {
-    limits: RwLock<HashMap<String, Vec<Instant>>>,
+    limits: RwLock<RateLimitMap>,
     max_requests_per_minute: u32,
     cleanup_interval: Duration,
     last_cleanup: AtomicU64, // Store as milliseconds since epoch
@@ -33,11 +36,21 @@ impl Default for RateLimiter {
 // Clone implementation for RateLimiter
 impl Clone for RateLimiter {
     fn clone(&self) -> Self {
-        let limits = self.limits.read().unwrap().clone();
-        let now_millis = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis() as u64;
+        let limits = self.limits.read().map_or_else(
+            |_| {
+                // If the lock is poisoned, create a new empty HashMap
+                HashMap::new()
+            },
+            |guard| guard.clone(),
+        );
+        let now_millis = u64::try_from(
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis()
+                .min(u128::from(u64::MAX)),
+        )
+        .unwrap_or(u64::MAX);
 
         Self {
             limits: RwLock::new(limits),
@@ -50,11 +63,16 @@ impl Clone for RateLimiter {
 
 impl RateLimiter {
     /// Create a new rate limiter with the specified requests per minute
+    #[must_use]
     pub fn new(max_requests_per_minute: u32) -> Self {
-        let now_millis = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis() as u64;
+        let now_millis = u64::try_from(
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis()
+                .min(u128::from(u64::MAX)),
+        )
+        .unwrap_or(u64::MAX);
 
         Self {
             limits: RwLock::new(HashMap::new()),
@@ -65,56 +83,76 @@ impl RateLimiter {
     }
 
     /// Check if a request to the given target is allowed
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the rate limit is exceeded or if internal lock operations fail
     pub fn check_rate_limit(&self, target: &Target) -> Result<()> {
-        let key = self.get_rate_limit_key(target);
+        let key = Self::get_rate_limit_key(target);
         let now = Instant::now();
 
         // Clean up old entries periodically
         self.cleanup_if_needed(now);
 
-        // Use write lock for modifying the limits
-        let mut limits = self
-            .limits
-            .write()
-            .map_err(|_| WaitForError::InvalidTarget(Cow::Borrowed("Rate limiter lock error")))?;
+        // Use write lock for modifying the limits - keep scope tight and drop early
+        {
+            let mut limits = self.limits.write().map_err(|_| {
+                WaitForError::InvalidTarget(Cow::Borrowed("Rate limiter lock error"))
+            })?;
 
-        let requests = limits.entry(key).or_insert_with(Vec::new);
+            let requests = limits.entry(key).or_insert_with(Vec::new);
 
-        // Remove requests older than 1 minute
-        requests.retain(|&time| now.duration_since(time) < Duration::from_secs(60));
+            // Remove requests older than 1 minute
+            requests.retain(|&time| now.duration_since(time) < Duration::from_secs(60));
 
-        if requests.len() >= self.max_requests_per_minute as usize {
-            return Err(WaitForError::RetryLimitExceeded {
-                limit: self.max_requests_per_minute,
-            });
+            if requests.len() >= self.max_requests_per_minute as usize {
+                return Err(WaitForError::RetryLimitExceeded {
+                    limit: self.max_requests_per_minute,
+                });
+            }
+
+            requests.push(now);
+            // Explicitly drop the lock guard to satisfy clippy::significant_drop_tightening
+            drop(limits);
         }
-
-        requests.push(now);
         Ok(())
     }
 
-    fn get_rate_limit_key(&self, target: &Target) -> String {
+    fn get_rate_limit_key(target: &Target) -> String {
         match target {
-            Target::Tcp { host, port } => format!("tcp://{}:{}", host.as_str(), port.get()),
+            Target::Tcp { host, port } => format!(
+                "tcp://{host}:{port}",
+                host = host.as_str(),
+                port = port.get()
+            ),
             Target::Http { url, .. } => {
                 format!(
-                    "http://{}:{}",
-                    url.host_str().unwrap_or("unknown"),
-                    url.port()
-                        .unwrap_or(if url.scheme() == "https" { 443 } else { 80 })
+                    "http://{host}:{port}",
+                    host = url.host_str().unwrap_or("unknown"),
+                    port = url.port().unwrap_or_else(|| if url.scheme() == "https" {
+                        443
+                    } else {
+                        80
+                    })
                 )
             }
         }
     }
 
     fn cleanup_if_needed(&self, now: Instant) {
-        let now_millis = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis() as u64;
+        let now_millis = u64::try_from(
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis()
+                .min(u128::from(u64::MAX)),
+        )
+        .unwrap_or(u64::MAX);
 
         let last_cleanup_millis = self.last_cleanup.load(Ordering::Relaxed);
-        let cleanup_interval_millis = self.cleanup_interval.as_millis() as u64;
+        let cleanup_interval_millis =
+            u64::try_from(self.cleanup_interval.as_millis().min(u128::from(u64::MAX)))
+                .unwrap_or(u64::MAX);
 
         if now_millis.saturating_sub(last_cleanup_millis) > cleanup_interval_millis {
             // Try to update the cleanup time atomically
@@ -145,7 +183,7 @@ impl RateLimiter {
 pub struct SecurityValidator {
     allow_private_ips: bool,
     allow_localhost: bool,
-    allowed_ports: Option<Vec<u16>>,
+    allowed_ports: AllowedPorts,
     blocked_ports: Vec<u16>,
     max_hostname_length: usize,
     max_url_length: usize,
@@ -175,47 +213,58 @@ impl Default for SecurityValidator {
 
 impl SecurityValidator {
     /// Create a new security validator with custom settings
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Allow or disallow private IP addresses
-    pub fn allow_private_ips(mut self, allow: bool) -> Self {
+    #[must_use]
+    pub const fn allow_private_ips(mut self, allow: bool) -> Self {
         self.allow_private_ips = allow;
         self
     }
 
     /// Allow or disallow localhost connections
-    pub fn allow_localhost(mut self, allow: bool) -> Self {
+    #[must_use]
+    pub const fn allow_localhost(mut self, allow: bool) -> Self {
         self.allow_localhost = allow;
         self
     }
 
     /// Set allowed ports (if None, all ports except blocked are allowed)
-    pub fn allowed_ports(mut self, ports: Option<Vec<u16>>) -> Self {
+    #[must_use]
+    pub fn allowed_ports(mut self, ports: AllowedPorts) -> Self {
         self.allowed_ports = ports;
         self
     }
 
     /// Set blocked ports
+    #[must_use]
     pub fn blocked_ports(mut self, ports: Vec<u16>) -> Self {
         self.blocked_ports = ports;
         self
     }
 
     /// Set maximum hostname length
-    pub fn max_hostname_length(mut self, length: usize) -> Self {
+    #[must_use]
+    pub const fn max_hostname_length(mut self, length: usize) -> Self {
         self.max_hostname_length = length;
         self
     }
 
     /// Set maximum URL length
-    pub fn max_url_length(mut self, length: usize) -> Self {
+    #[must_use]
+    pub const fn max_url_length(mut self, length: usize) -> Self {
         self.max_url_length = length;
         self
     }
 
     /// Validate a target against security rules
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the target fails any security validation checks
     pub fn validate_target(&self, target: &Target) -> Result<()> {
         match target {
             Target::Tcp { host, port } => {
@@ -255,7 +304,7 @@ impl SecurityValidator {
 
         if !self.allow_private_ips {
             if let Ok(ip) = host_str.parse::<IpAddr>() {
-                if self.is_private_ip(&ip) {
+                if Self::is_private_ip(&ip) {
                     return Err(WaitForError::InvalidHostname(Cow::Borrowed(
                         "Private IP addresses are not allowed",
                     )));
@@ -271,7 +320,7 @@ impl SecurityValidator {
             return Err(WaitForError::InvalidPort(port));
         }
 
-        if let Some(ref allowed) = self.allowed_ports {
+        if let Some(allowed) = &self.allowed_ports {
             if !allowed.contains(&port) {
                 return Err(WaitForError::InvalidPort(port));
             }
@@ -299,7 +348,7 @@ impl SecurityValidator {
         Ok(())
     }
 
-    fn is_private_ip(&self, ip: &IpAddr) -> bool {
+    const fn is_private_ip(ip: &IpAddr) -> bool {
         match ip {
             IpAddr::V4(ipv4) => {
                 let octets = ipv4.octets();
@@ -317,6 +366,7 @@ impl SecurityValidator {
 /// Production-ready security configuration
 impl SecurityValidator {
     /// Strict security configuration for production environments
+    #[must_use]
     pub fn production() -> Self {
         Self {
             allow_private_ips: false,
@@ -331,6 +381,7 @@ impl SecurityValidator {
     }
 
     /// Development-friendly security configuration
+    #[must_use]
     pub fn development() -> Self {
         Self {
             allow_private_ips: true,

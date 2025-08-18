@@ -1,11 +1,17 @@
+#![allow(
+    clippy::print_stdout,
+    clippy::uninlined_format_args,
+    reason = "example code that demonstrates library usage"
+)]
+
 //! Multiple services orchestration example.
 //!
 //! This example demonstrates complex service orchestration with different
 //! wait strategies for different groups of services.
-//! Run with: cargo run --example multiple_services
+//! Run with: cargo run --example `multiple_services`
 
 use std::time::Duration;
-use wait_for::{Target, WaitConfig, wait_for_connection};
+use wait_for::{wait_for_connection, Target, WaitConfig};
 
 async fn wait_for_core_services() -> Result<(), wait_for::WaitForError> {
     println!("🏗️  Phase 1: Waiting for core infrastructure services...");

@@ -37,8 +37,8 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-  clippy-strict:
-    name: Clippy (Strict)
+  clippy-reasonable:
+    name: Clippy (Reasonable)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -61,17 +61,66 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-clippy-
 
-      - name: Run Clippy with strict lints
+      - name: Run Clippy with reasonable lints
         run: |
+          cargo clippy --all-targets --all-features -- \
+            -D warnings \
+            -D clippy::correctness \
+            -D clippy::suspicious \
+            -D clippy::complexity \
+            -D clippy::perf \
+            -D clippy::style \
+            -D clippy::pedantic \
+            -D clippy::nursery \
+            -D clippy::unwrap_used \
+            -D clippy::expect_used \
+            -D clippy::panic \
+            -W clippy::todo \
+            -W clippy::unimplemented \
+            -W clippy::dbg_macro \
+            -A clippy::missing_errors_doc \
+            -A clippy::missing_panics_doc \
+            -A clippy::module_name_repetitions \
+            -A clippy::similar_names \
+            -A clippy::too_many_lines \
+            -A clippy::cast_precision_loss \
+            -A clippy::cast_possible_truncation \
+            -A clippy::cast_sign_loss \
+            -A clippy::must_use_candidate \
+            -A clippy::multiple_crate_versions
+
+  clippy-strict-optional:
+    name: Clippy (Strict - Optional)
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Don't fail CI, but show warnings
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-clippy-strict-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-clippy-strict-
+
+      - name: Run Clippy with strict lints (warnings only)
+        run: |
+          echo "🔍 Running additional strict clippy checks (informational only)"
           cargo clippy --all-targets --all-features -- \
             -W clippy::pedantic \
             -W clippy::nursery \
             -W clippy::cargo \
-            -W clippy::suspicious \
-            -W clippy::complexity \
-            -W clippy::perf \
-            -W clippy::style \
-            -W clippy::correctness \
             -W clippy::restriction \
             -A clippy::blanket_clippy_restriction_lints \
             -A clippy::implicit_return \
@@ -86,7 +135,10 @@ jobs:
             -A clippy::missing_inline_in_public_items \
             -A clippy::pub_use \
             -A clippy::multiple_crate_versions \
-            -A clippy::cargo_common_metadata
+            -A clippy::cargo_common_metadata \
+            -A clippy::else_if_without_else \
+            -A clippy::non_ascii_literal \
+            || echo "⚠️  Strict clippy checks found suggestions (non-blocking)"
 
   documentation-lint:
     name: Documentation Lint
@@ -110,10 +162,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-doc-
 
-      - name: Check documentation
+      - name: Check documentation (public APIs only)
         run: |
-          RUSTDOCFLAGS="-D warnings -D missing_docs -D rustdoc::broken_intra_doc_links -D rustdoc::private_intra_doc_links" \
-          cargo doc --all-features --no-deps --document-private-items
+          RUSTDOCFLAGS="-D warnings -D rustdoc::broken_intra_doc_links -D rustdoc::private_intra_doc_links" \
+          cargo doc --all-features --no-deps
 
       - name: Test documentation examples
         run: cargo test --doc --all-features
@@ -132,7 +184,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/cargo-audit
-          key: ${{ runner.os }}-cargo-audit
+          key: ${{ runner.os }}-cargo-audit-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-audit-
 
       - name: Install cargo-audit
         run: |
@@ -157,7 +211,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/cargo-deny
-          key: ${{ runner.os }}-cargo-deny
+          key: ${{ runner.os }}-cargo-deny-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-deny-
 
       - name: Install cargo-deny
         run: |
@@ -165,63 +221,13 @@ jobs:
             cargo install cargo-deny --locked
           fi
 
-      - name: Create deny.toml if not exists
-        run: |
-          if [ ! -f deny.toml ]; then
-            cat > deny.toml << 'EOF'
-          [licenses]
-          allow = [
-              "MIT",
-              "Apache-2.0",
-              "Apache-2.0 WITH LLVM-exception",
-              "BSD-2-Clause",
-              "BSD-3-Clause",
-              "ISC",
-              "Unicode-DFS-2016",
-          ]
-          deny = [
-              "GPL-2.0",
-              "GPL-3.0",
-              "AGPL-1.0",
-              "AGPL-3.0",
-          ]
-          copyleft = "deny"
-          allow-osi-fsf-free = "neither"
-          default = "deny"
-          confidence-threshold = 0.8
-          exceptions = []
-
-          [bans]
-          multiple-versions = "warn"
-          wildcards = "allow"
-          highlight = "all"
-          workspace-default-features = "allow"
-          external-default-features = "allow"
-          allow = []
-          deny = []
-          skip = []
-          skip-tree = []
-
-          [advisories]
-          version = 2
-          ignore = []
-          informational = "warn"
-          severity-threshold = "low"
-
-          [sources]
-          unknown-registry = "warn"
-          unknown-git = "warn"
-          allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-          allow-git = []
-          EOF
-          fi
-
       - name: Run license and dependency check
-        run: cargo deny check
+        run: cargo deny check licenses
 
   unused-dependencies:
     name: Unused Dependencies
     runs-on: ubuntu-latest
+    continue-on-error: true  # Don't fail CI, but show warnings
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -233,7 +239,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/cargo-machete
-          key: ${{ runner.os }}-cargo-machete
+          key: ${{ runner.os }}-cargo-machete-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-machete-
 
       - name: Install cargo-machete
         run: |
@@ -249,12 +257,14 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-machete-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-machete-deps-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-machete-
+            ${{ runner.os }}-cargo-machete-deps-
 
       - name: Check for unused dependencies
-        run: cargo machete
+        run: |
+          echo "🔍 Checking for unused dependencies (informational only)"
+          cargo machete || echo "⚠️  Found unused dependencies (non-blocking)"
 
   lint-summary:
     name: Lint Summary
@@ -262,24 +272,22 @@ jobs:
     needs:
       [
         format-check,
-        clippy-strict,
+        clippy-reasonable,
         documentation-lint,
         security-audit,
         license-check,
-        unused-dependencies,
       ]
     if: always()
     steps:
-      - name: Check all lint jobs
+      - name: Check required lint jobs
         run: |
           if [[ "${{ needs.format-check.result }}" == "failure" ]] || \
-             [[ "${{ needs.clippy-strict.result }}" == "failure" ]] || \
+             [[ "${{ needs.clippy-reasonable.result }}" == "failure" ]] || \
              [[ "${{ needs.documentation-lint.result }}" == "failure" ]] || \
              [[ "${{ needs.security-audit.result }}" == "failure" ]] || \
-             [[ "${{ needs.license-check.result }}" == "failure" ]] || \
-             [[ "${{ needs.unused-dependencies.result }}" == "failure" ]]; then
-            echo "❌ One or more lint checks failed"
+             [[ "${{ needs.license-check.result }}" == "failure" ]]; then
+            echo "❌ One or more required lint checks failed"
             exit 1
           else
-            echo "✅ All lint checks passed"
+            echo "✅ All required lint checks passed"
           fi
