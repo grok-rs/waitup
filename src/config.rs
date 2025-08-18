@@ -31,7 +31,7 @@
 //! use wait_for::WaitConfig;
 //! use std::time::Duration;
 //!
-//! let (config, cancel_token) = WaitConfig::builder()
+//! let (builder, cancel_token) = WaitConfig::builder()
 //!     .timeout(Duration::from_secs(60))
 //!     .interval(Duration::from_millis(500))
 //!     .max_interval(Duration::from_secs(10))
@@ -39,6 +39,8 @@
 //!     .max_retries(Some(20))
 //!     .wait_for_any(false)
 //!     .with_cancellation();
+//!
+//! let config = builder.build();
 //!
 //! // Later, cancel the operation
 //! // cancel_token.cancel();

@@ -109,10 +109,12 @@
 //! async fn main() -> Result<(), wait_for::WaitForError> {
 //!     let target = Target::tcp("slow-service", 8080)?;
 //!
-//!     let (config, cancel_token) = WaitConfig::builder()
+//!     let (builder, cancel_token) = WaitConfig::builder()
 //!         .timeout(Duration::from_secs(60))
 //!         .interval(Duration::from_millis(500))
 //!         .with_cancellation();
+//!
+//!     let config = builder.build();
 //!
 //!     // Cancel after 10 seconds
 //!     let cancel_handle = {
