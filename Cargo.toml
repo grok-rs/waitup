@@ -45,10 +45,6 @@ tokio-test = "0.4"
 proptest = "1.4"
 test-case = "3.3"
 
-[lib]
-name = "wait_for"
-path = "src/lib.rs"
-
 [[bin]]
 name = "wait-for"
 path = "src/main.rs"
