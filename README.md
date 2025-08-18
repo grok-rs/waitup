@@ -220,7 +220,7 @@ Supports human-readable durations:
 - `1h30m` - 1 hour 30 minutes
 - `500ms` - 500 milliseconds
 
-## Contributing
+## Development
 
 1. Fork the repository
 2. Create a feature branch
