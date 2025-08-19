@@ -55,7 +55,7 @@ version-resolver:
       - "bugfix"
       - "bug"
       - "security"
-  default: none
+  default: patch
 
 template: |
   ## Changes

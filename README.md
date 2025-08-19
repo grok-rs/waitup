@@ -1,6 +1,6 @@
 # waitup - Wait for TCP Ports & HTTP Services | Docker/Kubernetes Ready
 
-*The Modern Port Checker and Service Health Monitor for DevOps*
+## The Modern Port Checker and Service Health Monitor for DevOps
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT "MIT License")
 [![CI Status](https://github.com/grok-rs/waitup/workflows/CI/badge.svg?style=flat-square)](https://github.com/grok-rs/waitup/actions "Continuous Integration")
@@ -12,6 +12,7 @@
 ---
 
 ## 📖 Table of Contents
+
 - [🚀 Why waitup?](#-why-waitup-the-best-port-checker-for-modern-devops)
 - [📊 vs Other Tools](#-waitup-vs-other-tools)
 - [🎯 Common Use Cases](#-common-use-cases---when-to-use-waitup)
@@ -26,6 +27,7 @@
 ## 🚀 Why waitup? The Best Port Checker for Modern DevOps
 
 Perfect for developers who need to:
+
 - **Wait for database startup** in Docker containers
 - **Check if port is open** before starting services
 - **Monitor service health** in Kubernetes clusters
@@ -61,6 +63,7 @@ Choose the best port checker and service health monitor:
 ## 🎯 Common Use Cases - When to Use waitup
 
 ### Database Startup in Docker
+
 ```bash
 # Wait for PostgreSQL before running migrations
 waitup postgres:5432 --timeout 60s -- npm run migrate
@@ -70,24 +73,28 @@ waitup mysql:3306 redis:6379 postgres:5432 --all -- npm start
 ```
 
 ### Kubernetes Init Containers
+
 ```bash
 # Wait for external services before pod starts
 waitup external-api:443 database:5432 --timeout 300s
 ```
 
 ### CI/CD Pipeline Dependencies
+
 ```bash
 # Ensure test services are ready
 waitup localhost:5432 localhost:6379 --timeout 30s -- npm test
 ```
 
 ### Microservices Health Checks
+
 ```bash
 # Wait for API dependencies with custom headers
 waitup https://auth-service/health --header "X-Health-Check:true" --expect-status 200
 ```
 
 ### Docker Compose Service Dependencies
+
 ```yaml
 services:
   app:
@@ -138,7 +145,8 @@ waitup --help
 
 #### 🐳 Docker
 
-**Option 1: Use pre-built image from source**
+##### Option 1: Use pre-built image from source
+
 ```bash
 # Build the standard image
 docker build -t waitup .
@@ -147,7 +155,8 @@ docker build -t waitup .
 docker run --rm waitup --version
 ```
 
-**Option 2: Use Alpine variant (smaller size)**
+##### Option 2: Use Alpine variant (smaller size)
+
 ```bash
 # Build Alpine image (recommended for production)
 docker build -f Dockerfile.alpine -t waitup:alpine .
@@ -156,7 +165,8 @@ docker build -f Dockerfile.alpine -t waitup:alpine .
 docker run --rm waitup:alpine --version
 ```
 
-**Option 3: Use in your Dockerfile**
+##### Option 3: Use in your Dockerfile
+
 ```dockerfile
 # Multi-stage build example
 FROM rust:1.70 as builder
@@ -243,6 +253,7 @@ waitup <TAB><TAB>  # Should show available options
 ### Troubleshooting
 
 **Command not found after installation:**
+
 ```bash
 # Ensure Cargo's bin directory is in your PATH
 echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
@@ -250,6 +261,7 @@ source ~/.bashrc
 ```
 
 **Permission denied for shell completions:**
+
 ```bash
 # Use user-specific directories instead of system-wide
 mkdir -p ~/.local/share/bash-completion/completions
@@ -257,6 +269,7 @@ waitup --generate-completion bash > ~/.local/share/bash-completion/completions/w
 ```
 
 **Docker build fails:**
+
 ```bash
 # Ensure you have the latest base images
 docker pull rust:1.70
@@ -492,7 +505,6 @@ services:
     image: postgres:15
 ```
 
-
 ## Configuration Options
 
 | Option                 | Environment Variable | Description                           |
@@ -507,15 +519,19 @@ services:
 ## ❓ Frequently Asked Questions
 
 ### How do I wait for a database to start in Docker?
+
 Use `waitup database:5432 --timeout 60s -- your-app-command` to wait for PostgreSQL, MySQL, or any database before starting your application.
 
 ### What's the best way to check if a port is open?
+
 ```bash
 waitup hostname:port --timeout 10s
 ```
+
 Returns exit code 0 if successful, 1 if timeout, 2 for invalid arguments.
 
 ### How do I wait for multiple services before starting my app?
+
 ```bash
 # Wait for ALL services (default)
 waitup db:5432 redis:6379 api:8080 -- npm start
@@ -525,7 +541,9 @@ waitup primary-db:5432 backup-db:5432 --any -- npm start
 ```
 
 ### Can waitup replace wait-for-it in Docker containers?
+
 **Yes!** waitup is a modern replacement with better features:
+
 - ✅ HTTP health checks (wait-for-it only does TCP)
 - ✅ JSON output for automation
 - ✅ Multiple target strategies
@@ -533,6 +551,7 @@ waitup primary-db:5432 backup-db:5432 --any -- npm start
 - ✅ Smaller binary size (~6MB vs bash dependency)
 
 ### How do I wait for HTTP services with authentication?
+
 ```bash
 waitup https://api.example.com/health \
   --header "Authorization:Bearer $TOKEN" \
@@ -541,9 +560,11 @@ waitup https://api.example.com/health \
 ```
 
 ### Does waitup work with IPv6 addresses?
+
 **Yes!** waitup supports both IPv4 and IPv6 through Rust's standard networking stack. Use IPv6 addresses normally: `waitup [::1]:8080`
 
 ### What's the difference between waitup and dockerize?
+
 | Feature | waitup | dockerize |
 |---------|--------|-----------|
 | HTTP Headers | ✅ Yes | ❌ No |
@@ -553,13 +574,16 @@ waitup https://api.example.com/health \
 | Binary Size | ~6MB | ~8MB |
 
 ### How do I troubleshoot "connection refused" errors?
+
 1. **Check the service is running**: `docker ps` or `kubectl get pods`
 2. **Verify the port**: Use `--verbose` flag to see connection attempts
 3. **Increase timeout**: Services might take longer to start
 4. **Check networking**: Ensure containers can reach each other
 
 ### Can I use waitup in Kubernetes init containers?
+
 **Absolutely!** Perfect for waiting for external dependencies:
+
 ```yaml
 initContainers:
   - name: wait-for-db
@@ -568,7 +592,9 @@ initContainers:
 ```
 
 ### How do I wait for a service to be completely ready, not just accepting connections?
+
 Use HTTP health checks instead of TCP:
+
 ```bash
 # Instead of: waitup api:8080
 # Use health endpoint:
@@ -578,6 +604,7 @@ waitup https://api:8080/health --expect-status 200
 ## 🔧 Quick Solutions for Common Problems
 
 ### "Connection Refused" Error
+
 ```bash
 # Problem: Service not accepting connections yet
 # Solution: Increase timeout and add verbose logging
@@ -588,6 +615,7 @@ docker network ls
 ```
 
 ### Service Takes Too Long to Start
+
 ```bash
 # Problem: Default timeout too short
 # Solution: Increase timeout and interval
@@ -595,6 +623,7 @@ waitup slow-service:8080 --timeout 5m --interval 10s --max-interval 30s
 ```
 
 ### Docker Compose Dependencies Not Working
+
 ```yaml
 # Problem: App starts before database ready
 # Solution: Use waitup in entrypoint
@@ -606,6 +635,7 @@ services:
 ```
 
 ### Kubernetes Pod Won't Start
+
 ```yaml
 # Problem: External dependencies not ready
 # Solution: Add waitup init container
@@ -616,6 +646,7 @@ initContainers:
 ```
 
 ### HTTP Health Check Failing
+
 ```bash
 # Problem: API returns 503 during startup
 # Solution: Wait for specific status or use different endpoint
@@ -625,6 +656,7 @@ waitup https://api/health --header "Accept:application/json"
 ```
 
 ### CI/CD Pipeline Timeouts
+
 ```bash
 # Problem: Tests failing because services not ready
 # Solution: Add explicit wait with JSON output
@@ -640,6 +672,7 @@ if [ $? -eq 0 ]; then npm test; fi
 - **[12-Factor App Dependencies](https://12factor.net/dependencies)** - Dependency management best practices
 
 ### Migration Guides
+
 - **From wait-for-it**: Replace `./wait-for-it.sh host:port` with `waitup host:port`
 - **From dockerize**: Replace `dockerize -wait tcp://host:port` with `waitup host:port`
 - **From wait-on**: Replace `wait-on tcp:host:port` with `waitup host:port`
