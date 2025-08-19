@@ -1,0 +1,188 @@
+name: ⚡ Performance Issue
+description: Report a performance problem or suggest performance improvements
+title: "[PERF] "
+labels: ["performance", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a performance issue! Please provide detailed information to help us understand and reproduce the problem.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm you have completed the following before submitting this performance report.
+      options:
+        - label: I have searched existing issues to ensure this hasn't been reported before
+          required: true
+        - label: I have tested with the latest version of waitup
+          required: true
+        - label: I have verified this is not caused by network or external service issues
+          required: false
+
+  - type: dropdown
+    id: performance_category
+    attributes:
+      label: Performance Category
+      description: What type of performance issue is this?
+      options:
+        - Slow startup time
+        - High memory usage
+        - High CPU usage
+        - Slow connection attempts
+        - Inefficient retries
+        - Slow DNS resolution
+        - HTTP request performance
+        - Large binary size
+        - Other (specify below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem_description
+    attributes:
+      label: Performance Problem
+      description: Describe the performance issue you're experiencing
+      placeholder: |
+        Describe what's slow or inefficient:
+        - What operation is slow?
+        - How long does it take vs. your expectations?
+        - When did you first notice this issue?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction_command
+    attributes:
+      label: Command to Reproduce
+      description: Provide the exact command that demonstrates the performance issue
+      placeholder: |
+        # Example:
+        waitup localhost:8080 redis:6379 postgres:5432 --timeout 60s --verbose
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: performance_metrics
+    attributes:
+      label: Performance Measurements
+      description: Provide specific measurements if available
+      placeholder: |
+        Current performance:
+        - Execution time: 45 seconds
+        - Memory usage: 50MB RSS
+        - CPU usage: 80% during execution
+
+        Expected performance:
+        - Should complete in under 10 seconds
+        - Memory usage should be under 10MB
+      render: markdown
+
+  - type: textarea
+    id: environment_details
+    attributes:
+      label: Environment Details
+      description: Detailed information about your environment
+      value: |
+        - OS: [e.g., Ubuntu 22.04, macOS 13.0]
+        - Architecture: [e.g., x86_64, aarch64]
+        - waitup version: [run `waitup --version`]
+        - Installation method: [cargo, docker, binary]
+        - Available RAM: [e.g., 16GB]
+        - CPU cores: [e.g., 8 cores]
+        - Network conditions: [local, slow network, high latency]
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: target_details
+    attributes:
+      label: Target Service Details
+      description: Information about the services you're waiting for
+      placeholder: |
+        - Number of targets: 3
+        - Target types: TCP ports, HTTP endpoints
+        - Service locations: local, remote, containerized
+        - Service startup times: immediate, 30s delay
+        - Network latency to targets: <1ms, 100ms, etc.
+      render: markdown
+
+  - type: textarea
+    id: profiling_data
+    attributes:
+      label: Profiling/Debugging Data
+      description: Any profiling output, verbose logs, or debugging information
+      placeholder: |
+        Verbose output, profiling data, strace output, etc.
+        Run with --verbose for detailed timing information
+      render: shell
+
+  - type: dropdown
+    id: impact_severity
+    attributes:
+      label: Impact Severity
+      description: How severely does this performance issue impact you?
+      options:
+        - Critical - Completely unusable
+        - High - Significantly impacts productivity
+        - Medium - Noticeable but manageable
+        - Low - Minor annoyance
+    validations:
+      required: true
+
+  - type: textarea
+    id: comparison
+    attributes:
+      label: Performance Comparison
+      description: How does this compare to similar tools or previous versions?
+      placeholder: |
+        - Previous waitup version: v1.0.0 was 5x faster
+        - Alternative tool: dockerize completes the same task in 2 seconds
+        - Expected based on: simple TCP connection should be instant
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution
+      description: If you have ideas for improving performance, please share them
+      placeholder: |
+        Potential improvements:
+        - Connection pooling for multiple targets
+        - Parallel DNS resolution
+        - More efficient retry backoff
+        - Reduced memory allocations
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Current Workaround
+      description: Are you using any workarounds for this performance issue?
+      placeholder: |
+        - Using smaller timeout values
+        - Running with fewer targets
+        - Using alternative tool for some cases
+
+  - type: checkboxes
+    id: willingness
+    attributes:
+      label: Contribution
+      description: Are you willing to help improve performance?
+      options:
+        - label: I can help with performance testing
+        - label: I can provide profiling data or benchmarks
+        - label: I am willing to submit a pull request to fix this issue
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Any other relevant information about this performance issue
+      placeholder: |
+        - Links to performance profiling tools or methodologies used
+        - Comparison data with other similar tools
+        - Specific use case or deployment scenario

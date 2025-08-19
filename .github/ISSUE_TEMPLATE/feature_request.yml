@@ -1,0 +1,154 @@
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement for waitup
+title: "[FEATURE] "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a new feature! Please fill out the form below to help us understand your request.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm you have completed the following before submitting this feature request.
+      options:
+        - label: I have searched existing issues and discussions to ensure this hasn't been requested before
+          required: true
+        - label: I have read the documentation and confirmed this functionality doesn't already exist
+          required: true
+        - label: This feature would benefit the broader waitup community, not just my specific use case
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? What pain point are you experiencing?
+      placeholder: |
+        Describe the current limitation or problem you're facing.
+        Example: "When waiting for multiple HTTP endpoints, there's no way to specify different expected status codes for each endpoint."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature you'd like to see implemented.
+      placeholder: |
+        Provide a clear and detailed description of what you want to happen.
+        Include specific examples of how the feature would work.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What alternatives have you considered? What workarounds are you currently using?
+      placeholder: |
+        Describe any alternative solutions or workarounds you've considered or are currently using.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: What category does this feature fall into?
+      options:
+        - CLI interface/options
+        - HTTP health checks
+        - TCP connection handling
+        - DNS resolution
+        - Output formatting
+        - Performance optimization
+        - Library/API enhancement
+        - Docker/Container support
+        - Documentation
+        - Other (specify in additional context)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - High - Blocking my use case
+        - Medium - Would significantly improve my workflow
+        - Low - Nice to have enhancement
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_cases
+    attributes:
+      label: Use Cases
+      description: Provide specific examples of how this feature would be used
+      placeholder: |
+        Example 1: In CI/CD pipelines, I need to...
+        Example 2: When orchestrating microservices, it would help to...
+        Example 3: For container deployments, this would enable...
+    validations:
+      required: true
+
+  - type: textarea
+    id: example_syntax
+    attributes:
+      label: Example Usage
+      description: If this is a CLI feature, show how you envision it being used
+      placeholder: |
+        # Example command syntax:
+        waitup endpoint1:8080 --expect-status 200 endpoint2:8080 --expect-status 204
+
+        # Example configuration:
+        [endpoint1]
+        host = "api.example.com"
+        port = 8080
+        expected_status = 200
+      render: shell
+
+  - type: textarea
+    id: implementation_notes
+    attributes:
+      label: Implementation Considerations
+      description: Any thoughts on how this might be implemented or potential challenges?
+      placeholder: |
+        - This might require changes to the configuration parser
+        - Could impact performance if not implemented carefully
+        - Should maintain backward compatibility
+
+  - type: textarea
+    id: related_issues
+    attributes:
+      label: Related Issues
+      description: Are there any related issues or discussions?
+      placeholder: |
+        - Fixes #123
+        - Related to #456
+        - Builds on discussion in #789
+
+  - type: checkboxes
+    id: willingness
+    attributes:
+      label: Contribution
+      description: Are you willing to help implement this feature?
+      options:
+        - label: I am willing to submit a pull request to implement this feature
+        - label: I can help with testing this feature
+        - label: I can help with documentation for this feature
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or examples about the feature request
+      placeholder: |
+        - Links to similar features in other tools
+        - Screenshots or mockups
+        - Performance considerations
+        - Security implications

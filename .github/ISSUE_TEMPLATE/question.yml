@@ -1,0 +1,138 @@
+name: ❓ Question
+description: Ask a question about waitup usage, configuration, or behavior
+title: "[QUESTION] "
+labels: ["question", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question about waitup? We're here to help! Please provide as much detail as possible.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm you have done the following before asking your question.
+      options:
+        - label: I have read the README and documentation
+          required: true
+        - label: I have searched existing issues and discussions for similar questions
+          required: true
+        - label: I have tried the `--help` command for relevant usage information
+          required: false
+
+  - type: dropdown
+    id: question_category
+    attributes:
+      label: Question Category
+      description: What category does your question fall into?
+      options:
+        - Installation and setup
+        - Basic usage and CLI options
+        - HTTP health checks configuration
+        - TCP connection handling
+        - Docker and container usage
+        - Kubernetes integration
+        - CI/CD pipeline integration
+        - Library/API usage (Rust)
+        - Performance and optimization
+        - Troubleshooting and debugging
+        - Configuration and environment variables
+        - Comparison with other tools
+        - Other (general question)
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know about waitup?
+      placeholder: |
+        Please be as specific as possible with your question.
+        Include context about what you're trying to achieve and any specific requirements.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and Use Case
+      description: What are you trying to accomplish? Provide context for your question.
+      placeholder: |
+        Describe your use case:
+        - What are you trying to build or deploy?
+        - What services or endpoints are involved?
+        - What constraints or requirements do you have?
+    validations:
+      required: true
+
+  - type: textarea
+    id: current_approach
+    attributes:
+      label: What Have You Tried?
+      description: What approaches have you already attempted?
+      placeholder: |
+        Describe what you've tried so far:
+        - Commands you've run
+        - Configurations you've attempted
+        - Documentation you've read
+        - Other tools you've considered
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Information
+      description: Information about your environment (if relevant to your question)
+      value: |
+        - OS: [e.g., Ubuntu 22.04, macOS 13.0, Windows 11]
+        - waitup version: [run `waitup --version`]
+        - Installation method: [cargo, docker, binary]
+        - Container/orchestration: [Docker, Kubernetes, etc.]
+      render: markdown
+
+  - type: textarea
+    id: example_scenario
+    attributes:
+      label: Example Scenario
+      description: If helpful, provide a concrete example of what you're trying to do
+      placeholder: |
+        Example:
+        "I have a web application that depends on a PostgreSQL database and Redis cache.
+        I want to wait for both services to be ready before starting my app in Docker Compose.
+        The database takes about 30 seconds to initialize, and I want to make sure my app
+        doesn't start until both services are accepting connections."
+      render: markdown
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected Behavior
+      description: What outcome are you hoping to achieve?
+      placeholder: |
+        Describe what you expect to happen or what result you're looking for.
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Urgency
+      description: How urgent is this question for you?
+      options:
+        - Low - Just curious, no rush
+        - Medium - Would help with current project
+        - High - Blocking current work
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Any other information that might be helpful
+      placeholder: |
+        - Screenshots of error messages
+        - Configuration files (sanitized)
+        - Related documentation or resources you've found
+        - Specific constraints or requirements

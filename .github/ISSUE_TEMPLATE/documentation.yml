@@ -1,0 +1,144 @@
+name: 📚 Documentation Issue
+description: Report an issue with documentation or request documentation improvements
+title: "[DOCS] "
+labels: ["documentation", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve our documentation! Please fill out the form below.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm you have completed the following.
+      options:
+        - label: I have searched existing issues to ensure this hasn't been reported before
+          required: true
+        - label: I have checked the latest documentation to confirm the issue still exists
+          required: true
+
+  - type: dropdown
+    id: doc_type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation issue is this?
+      options:
+        - README.md
+        - API documentation (docs.rs)
+        - CLI help text
+        - Examples/tutorials
+        - Installation instructions
+        - Configuration guide
+        - Troubleshooting guide
+        - Contributing guidelines
+        - Other (specify below)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: Issue Type
+      description: What kind of documentation issue is this?
+      options:
+        - Missing information
+        - Incorrect information
+        - Outdated information
+        - Unclear/confusing explanation
+        - Broken link
+        - Formatting issue
+        - Typo/grammar error
+        - New documentation needed
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Documentation Location
+      description: Where is the documentation issue located?
+      placeholder: "e.g., README.md line 42, docs.rs API reference for WaitConfig, --help output for --timeout flag"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current_content
+    attributes:
+      label: Current Content
+      description: What does the documentation currently say? (copy/paste the relevant section)
+      placeholder: Paste the current documentation content here
+      render: markdown
+
+  - type: textarea
+    id: issue_description
+    attributes:
+      label: Issue Description
+      description: What's wrong with the current documentation?
+      placeholder: |
+        Describe the problem with the current documentation:
+        - What's missing or incorrect?
+        - Why is it confusing or unclear?
+        - What did you expect to find?
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested_improvement
+    attributes:
+      label: Suggested Improvement
+      description: How should the documentation be improved?
+      placeholder: |
+        Provide your suggestion for improving the documentation:
+        - What should be added, changed, or removed?
+        - How can it be made clearer?
+        - Include example text if you have it
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use Case
+      description: What were you trying to accomplish when you found this issue?
+      placeholder: |
+        Describe your use case:
+        - What task were you trying to complete?
+        - What information were you looking for?
+        - How did the documentation issue impact you?
+
+  - type: dropdown
+    id: user_level
+    attributes:
+      label: User Experience Level
+      description: What's your experience level with waitup?
+      options:
+        - New user (first time using waitup)
+        - Beginner (used a few times)
+        - Intermediate (regular user)
+        - Advanced (heavy user/contributor)
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any additional context about the documentation issue
+      placeholder: |
+        - Screenshots of confusing sections
+        - Examples of better documentation from similar tools
+        - Specific audience this would help (beginners, advanced users, etc.)
+
+  - type: checkboxes
+    id: willingness
+    attributes:
+      label: Contribution
+      description: Are you willing to help improve the documentation?
+      options:
+        - label: I am willing to submit a pull request to fix this documentation issue
+        - label: I can help review documentation improvements
+        - label: I can provide examples or use cases to improve the documentation
