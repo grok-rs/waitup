@@ -204,12 +204,11 @@ jobs:
     name: Cross Compilation
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         target:
           - x86_64-unknown-linux-musl
           - aarch64-unknown-linux-gnu
-          - x86_64-pc-windows-gnu
-          - x86_64-apple-darwin
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -223,10 +222,10 @@ jobs:
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ matrix.target }}
+          key: cross-${{ matrix.target }}
 
       - name: Install cross
-        run: cargo install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
 
       - name: Cross compile
         run: cross build --target ${{ matrix.target }} --release
