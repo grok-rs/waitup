@@ -122,13 +122,18 @@ jobs:
           category: trivy-${{ matrix.variant }}
         if: always()
 
+      - name: Install Grype
+        run: |
+          mkdir -p $HOME/.local/bin
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b $HOME/.local/bin
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
       - name: Run Grype vulnerability scanner
-        uses: anchore/scan-action@v3
-        with:
-          image: test-image:latest
-          fail-build: false
-          output-format: sarif
-          output-file: grype-results-${{ matrix.variant }}.sarif
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          grype version
+          grype test-image:latest --output sarif --file ./grype-results-${{ matrix.variant }}.sarif
+        continue-on-error: true
 
       - name: Upload Grype scan results
         uses: github/codeql-action/upload-sarif@v3
