@@ -342,64 +342,39 @@ jobs:
         run: |
           echo "🔍 Checking code examples in README..."
 
-          # Check that README contains at least one Rust code example
-          if ! grep -q '```rust' README.md; then
-            echo "❌ No Rust code examples found in README"
+          # For CLI tools, check that README contains usage examples (bash/shell commands)
+          # This is more appropriate than requiring Rust code for end-user documentation
+          if ! grep -q '```bash' README.md; then
+            echo "❌ No bash/shell usage examples found in README"
             exit 1
           fi
 
-          # Check basic syntax patterns in Rust code blocks
+          # Check that usage examples contain the tool name
           python3 << 'EOF'
           import re
 
           with open('README.md', 'r') as f:
               content = f.read()
 
-          # Find all rust code blocks
-          rust_blocks = re.findall(r'```rust\n(.*?)\n```', content, re.DOTALL)
+          # Find all bash code blocks
+          bash_blocks = re.findall(r'```bash\n(.*?)\n```', content, re.DOTALL)
 
-          if not rust_blocks:
-              print("❌ No Rust code blocks found")
+          if not bash_blocks:
+              print("❌ No bash code blocks found")
               exit(1)
 
-          for i, block in enumerate(rust_blocks):
-              print(f"📋 Checking Rust code block {i+1}...")
+          # Check if at least some bash blocks contain the tool name
+          tool_usage_found = False
+          for i, block in enumerate(bash_blocks):
+              if 'waitup' in block:
+                  tool_usage_found = True
+                  print(f"✅ Found tool usage examples in bash block {i+1}")
 
-              # Basic syntax checks
-              lines = block.strip().split('\n')
+          if not tool_usage_found:
+              print("❌ No usage examples found with 'waitup' command")
+              exit(1)
 
-              # Check for basic Rust structure
-              has_use = any('use ' in line for line in lines)
-              has_main = any('fn main' in line for line in lines)
-
-              if has_main:
-                  # Check for proper main function syntax
-                  main_lines = [line for line in lines if 'fn main' in line]
-                  for main_line in main_lines:
-                      if 'async fn main' in main_line and '#[tokio::main]' not in block:
-                          print(f"⚠️  Warning: async main without #[tokio::main] in block {i+1}")
-                      if 'fn main()' in main_line and '->' not in main_line:
-                          print(f"✅ Simple main function in block {i+1}")
-                      elif 'Result<' in main_line:
-                          print(f"✅ Result-returning main function in block {i+1}")
-
-              if has_use:
-                  print(f"✅ Has use statements in block {i+1}")
-
-              # Check for common syntax errors
-              brace_count = block.count('{') - block.count('}')
-              if brace_count != 0:
-                  print(f"❌ Unmatched braces in code block {i+1}")
-                  exit(1)
-
-              paren_count = block.count('(') - block.count(')')
-              if paren_count != 0:
-                  print(f"❌ Unmatched parentheses in code block {i+1}")
-                  exit(1)
-
-              print(f"✅ Basic syntax checks passed for block {i+1}")
-
-          print("✅ All Rust code examples passed basic validation")
+          print(f"✅ Found {len(bash_blocks)} bash code blocks with proper usage examples")
           EOF
 
   # Summary
