@@ -2,13 +2,19 @@
 # Produces a minimal container with just the waitup binary
 
 # Build stage
-FROM rust:1.89-slim AS builder
+FROM debian:bookworm-slim AS builder
 
-# Install build dependencies
+# Install build dependencies including Rust
 RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
     pkg-config \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Rust toolchain
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Create a new empty shell project
 RUN USER=root cargo new --bin waitup
