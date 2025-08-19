@@ -2,20 +2,28 @@
 name = "wait-for"
 version = "1.0.1"
 edition = "2021"
+rust-version = "1.70.0"
 authors = ["Serhii Kaliuzhnyi <kalyuzhni.sergei@gmail.com>"]
-description = "A modern, feature-rich CLI tool for waiting until TCP ports, HTTP endpoints, and services become available. Perfect for Docker, Kubernetes, CI/CD pipelines, and microservices orchestration."
+description = "Wait for TCP ports and HTTP endpoints to be available. Essential for Docker, K8s, and CI/CD pipelines to ensure services are ready before proceeding."
 license = "MIT"
 repository = "https://github.com/grok-rs/wait-for"
 homepage = "https://github.com/grok-rs/wait-for"
 documentation = "https://docs.rs/wait-for"
 readme = "README.md"
-keywords = ["cli", "tcp", "http", "health-check", "docker", "kubernetes", "microservices", "port", "networking", "connectivity"]
+keywords = ["cli", "health-check", "docker", "tcp", "http"]
 categories = ["command-line-utilities", "network-programming", "development-tools", "web-programming"]
 exclude = [
     "target/*",
     ".github/*",
     "*.log"
 ]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
 
 [dependencies]
 clap = { version = "4.0", features = ["derive", "env"] }
