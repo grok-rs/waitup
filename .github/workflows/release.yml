@@ -292,31 +292,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Trigger Docker build
-  trigger-docker:
-    name: Trigger Docker Build
-    runs-on: ubuntu-latest
-    needs: [pre-release, publish-crates]
-    steps:
-      - name: Trigger Docker workflow
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'docker.yml',
-              ref: 'main',
-              inputs: {
-                version: '${{ needs.pre-release.outputs.version }}'
-              }
-            });
 
   # Post-release notifications
   post-release:
     name: Post-release Tasks
     runs-on: ubuntu-latest
-    needs: [pre-release, create-release, trigger-docker]
+    needs: [pre-release, create-release]
     if: always()
     steps:
       - name: Release Summary
