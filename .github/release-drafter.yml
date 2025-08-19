@@ -70,16 +70,16 @@ template: |
 
   ### Cargo
   ```bash
-  cargo install wait-for
+  cargo install waitup
   ```
 
   ### Docker
   ```bash
   # Standard image
-  docker pull ghcr.io/grok-rs/wait-for:v$RESOLVED_VERSION
+  docker pull ghcr.io/grok-rs/waitup:v$RESOLVED_VERSION
 
   # Alpine image (smaller)
-  docker pull ghcr.io/grok-rs/wait-for:v$RESOLVED_VERSION-alpine
+  docker pull ghcr.io/grok-rs/waitup:v$RESOLVED_VERSION-alpine
   ```
 
   ### Binary Downloads
@@ -87,33 +87,33 @@ template: |
 
   **Verify downloads with SHA256 checksums:**
   ```bash
-  sha256sum -c wait-for-*.sha256
+  sha256sum -c waitup-*.sha256
   ```
 
   ## Supported Platforms
 
   | Platform | Architecture | Binary |
   |----------|-------------|--------|
-  | Linux | x86_64 | `wait-for-$RESOLVED_VERSION-x86_64-linux.tar.gz` |
-  | Linux (musl) | x86_64 | `wait-for-$RESOLVED_VERSION-x86_64-linux-musl.tar.gz` |
-  | Linux | ARM64 | `wait-for-$RESOLVED_VERSION-aarch64-linux.tar.gz` |
-  | macOS | x86_64 | `wait-for-$RESOLVED_VERSION-x86_64-macos.tar.gz` |
-  | macOS | ARM64 | `wait-for-$RESOLVED_VERSION-aarch64-macos.tar.gz` |
-  | Windows | x86_64 | `wait-for-$RESOLVED_VERSION-x86_64-windows.zip` |
+  | Linux | x86_64 | `waitup-$RESOLVED_VERSION-x86_64-linux.tar.gz` |
+  | Linux (musl) | x86_64 | `waitup-$RESOLVED_VERSION-x86_64-linux-musl.tar.gz` |
+  | Linux | ARM64 | `waitup-$RESOLVED_VERSION-aarch64-linux.tar.gz` |
+  | macOS | x86_64 | `waitup-$RESOLVED_VERSION-x86_64-macos.tar.gz` |
+  | macOS | ARM64 | `waitup-$RESOLVED_VERSION-aarch64-macos.tar.gz` |
+  | Windows | x86_64 | `waitup-$RESOLVED_VERSION-x86_64-windows.zip` |
 
   ## Shell Completions
 
   Each binary release includes shell completion scripts in the `completions/` directory:
-  - `wait-for.bash` - Bash completion
-  - `_wait-for` - Zsh completion
-  - `wait-for.fish` - Fish completion
-  - `wait-for.ps1` - PowerShell completion
+  - `waitup.bash` - Bash completion
+  - `_waitup` - Zsh completion
+  - `waitup.fish` - Fish completion
+  - `waitup.ps1` - PowerShell completion
 
   ## What's Next?
 
-  - 📖 Check the [documentation](https://docs.rs/wait-for)
-  - 🐛 Report issues on [GitHub](https://github.com/grok-rs/wait-for/issues)
-  - 💬 Join the discussion in [Discussions](https://github.com/grok-rs/wait-for/discussions)
+  - 📖 Check the [documentation](https://docs.rs/waitup)
+  - 🐛 Report issues on [GitHub](https://github.com/grok-rs/waitup/issues)
+  - 💬 Join the discussion in [Discussions](https://github.com/grok-rs/waitup/discussions)
 
 exclude-labels:
   - "skip-changelog"

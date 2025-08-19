@@ -32,11 +32,11 @@
 //! ## Single target check
 //!
 //! ```rust,no_run
-//! use wait_for::{Target, WaitConfig, wait_for_single_target};
+//! use waitup::{Target, WaitConfig, wait_for_single_target};
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), wait_for::WaitForError> {
+//! async fn main() -> Result<(), waitup::WaitForError> {
 //!     let target = Target::tcp("localhost", 8080)?;
 //!     let config = WaitConfig::builder()
 //!         .timeout(Duration::from_secs(30))
@@ -54,11 +54,11 @@
 //! ## Multiple targets with different strategies
 //!
 //! ```rust,no_run
-//! use wait_for::{Target, WaitConfig, wait_for_connection};
+//! use waitup::{Target, WaitConfig, wait_for_connection};
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), wait_for::WaitForError> {
+//! async fn main() -> Result<(), waitup::WaitForError> {
 //!     let targets = vec![
 //!         Target::tcp("database", 5432)?,
 //!         Target::tcp("cache", 6379)?,
@@ -401,11 +401,11 @@ pub async fn wait_for_single_target(target: &Target, config: &WaitConfig) -> Res
 /// # Examples
 ///
 /// ```rust,no_run
-/// use wait_for::{Target, WaitConfig, wait_for_connection};
+/// use waitup::{Target, WaitConfig, wait_for_connection};
 /// use std::time::Duration;
 ///
 /// #[tokio::main]
-/// async fn main() -> Result<(), wait_for::WaitForError> {
+/// async fn main() -> Result<(), waitup::WaitForError> {
 ///     let targets = vec![
 ///         Target::tcp("localhost", 8080)?,
 ///         Target::tcp("localhost", 5432)?,

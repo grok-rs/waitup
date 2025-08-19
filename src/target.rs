@@ -17,7 +17,7 @@
 //! ## Basic target creation
 //!
 //! ```rust
-//! use wait_for::Target;
+//! use waitup::Target;
 //! use url::Url;
 //!
 //! // Create TCP targets
@@ -30,13 +30,13 @@
 //!     Url::parse("https://status.example.com")?,
 //!     200
 //! )?;
-//! # Ok::<(), wait_for::WaitForError>(())
+//! # Ok::<(), waitup::WaitForError>(())
 //! ```
 //!
 //! ## Using builders for complex configurations
 //!
 //! ```rust
-//! use wait_for::Target;
+//! use waitup::Target;
 //! use url::Url;
 //!
 //! // HTTP target with custom headers
@@ -51,19 +51,19 @@
 //! let service = Target::tcp_builder("service.example.com")?
 //!     .registered_port(8080)
 //!     .build()?;
-//! # Ok::<(), wait_for::WaitForError>(())
+//! # Ok::<(), waitup::WaitForError>(())
 //! ```
 //!
 //! ## Parsing targets from strings
 //!
 //! ```rust
-//! use wait_for::Target;
+//! use waitup::Target;
 //!
 //! // Parse various target formats
 //! let tcp_target = Target::parse("localhost:8080", 200)?;
 //! let http_target = Target::parse("https://example.com/health", 200)?;
 //! let custom_port = Target::parse("api.example.com:3000", 200)?;
-//! # Ok::<(), wait_for::WaitForError>(())
+//! # Ok::<(), waitup::WaitForError>(())
 //! ```
 
 use std::borrow::Cow;
@@ -112,10 +112,10 @@ impl Target {
     /// # Examples
     ///
     /// ```rust
-    /// use wait_for::Target;
+    /// use waitup::Target;
     ///
     /// let target = Target::tcp("localhost", 8080)?;
-    /// # Ok::<(), wait_for::WaitForError>(())
+    /// # Ok::<(), waitup::WaitForError>(())
     /// ```
     pub fn tcp(host: impl AsRef<str>, port: u16) -> Result<Self> {
         let hostname = Hostname::new(host.as_ref())
@@ -136,10 +136,10 @@ impl Target {
     /// # Examples
     ///
     /// ```rust
-    /// use wait_for::Target;
+    /// use waitup::Target;
     ///
     /// let target = Target::localhost(8080)?;
-    /// # Ok::<(), wait_for::WaitForError>(())
+    /// # Ok::<(), waitup::WaitForError>(())
     /// ```
     pub fn localhost(port: u16) -> Result<Self> {
         let port = Port::try_from(port).with_context(|| format!("Invalid port {port}"))?;
@@ -158,10 +158,10 @@ impl Target {
     /// # Examples
     ///
     /// ```rust
-    /// use wait_for::Target;
+    /// use waitup::Target;
     ///
     /// let target = Target::loopback(8080)?;
-    /// # Ok::<(), wait_for::WaitForError>(())
+    /// # Ok::<(), waitup::WaitForError>(())
     /// ```
     pub fn loopback(port: u16) -> Result<Self> {
         let port = Port::try_from(port).with_context(|| format!("Invalid port {port}"))?;
@@ -180,10 +180,10 @@ impl Target {
     /// # Examples
     ///
     /// ```rust
-    /// use wait_for::Target;
+    /// use waitup::Target;
     ///
     /// let target = Target::loopback_v6(8080)?;
-    /// # Ok::<(), wait_for::WaitForError>(())
+    /// # Ok::<(), waitup::WaitForError>(())
     /// ```
     pub fn loopback_v6(port: u16) -> Result<Self> {
         let port = Port::try_from(port).with_context(|| format!("Invalid port {port}"))?;
@@ -198,7 +198,7 @@ impl Target {
     /// # Examples
     ///
     /// ```rust
-    /// use wait_for::{Target, Hostname, Port};
+    /// use waitup::{Target, Hostname, Port};
     ///
     /// let hostname = Hostname::localhost();
     /// let port = Port::new(8080).unwrap();
@@ -218,12 +218,12 @@ impl Target {
     /// # Examples
     ///
     /// ```rust
-    /// use wait_for::Target;
+    /// use waitup::Target;
     /// use url::Url;
     ///
     /// let url = Url::parse("https://api.example.com/health")?;
     /// let target = Target::http(url, 200)?;
-    /// # Ok::<(), wait_for::WaitForError>(())
+    /// # Ok::<(), waitup::WaitForError>(())
     /// ```
     pub fn http(url: Url, expected_status: u16) -> Result<Self> {
         Self::validate_http_config(&url, expected_status, None)?;
@@ -243,10 +243,10 @@ impl Target {
     /// # Examples
     ///
     /// ```rust
-    /// use wait_for::Target;
+    /// use waitup::Target;
     ///
     /// let target = Target::http_url("https://api.example.com/health", 200)?;
-    /// # Ok::<(), wait_for::WaitForError>(())
+    /// # Ok::<(), waitup::WaitForError>(())
     /// ```
     pub fn http_url(url: impl AsRef<str>, expected_status: u16) -> Result<Self> {
         let url = Url::parse(url.as_ref())
@@ -312,13 +312,13 @@ impl Target {
     /// # Examples
     ///
     /// ```rust
-    /// use wait_for::Target;
+    /// use waitup::Target;
     /// use url::Url;
     ///
     /// let url = Url::parse("https://api.example.com/health")?;
     /// let headers = vec![("Authorization".to_string(), "Bearer token".to_string())];
     /// let target = Target::http_with_headers(url, 200, headers)?;
-    /// # Ok::<(), wait_for::WaitForError>(())
+    /// # Ok::<(), waitup::WaitForError>(())
     /// ```
     pub fn http_with_headers(
         url: Url,
@@ -346,11 +346,11 @@ impl Target {
     /// # Examples
     ///
     /// ```rust
-    /// use wait_for::Target;
+    /// use waitup::Target;
     ///
     /// let tcp_target = Target::parse("localhost:8080", 200)?;
     /// let http_target = Target::parse("https://api.example.com/health", 200)?;
-    /// # Ok::<(), wait_for::WaitForError>(())
+    /// # Ok::<(), waitup::WaitForError>(())
     /// ```
     pub fn parse(target_str: &str, default_http_status: u16) -> Result<Self> {
         if target_str.starts_with("http://") || target_str.starts_with("https://") {

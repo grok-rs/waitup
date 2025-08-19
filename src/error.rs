@@ -4,9 +4,9 @@
     reason = "restriction lints have contradictory pub visibility rules"
 )]
 
-//! Error types and handling for wait-for operations.
+//! Error types and handling for waitup operations.
 //!
-//! This module provides comprehensive error handling for the wait-for library,
+//! This module provides comprehensive error handling for the waitup library,
 //! including structured error types, error context, and helpful error messages.
 //!
 //! # Error Types
@@ -21,7 +21,7 @@
 //! The [`ResultExt`] trait allows adding contextual information to errors:
 //!
 //! ```rust
-//! use wait_for::{Target, ResultExt};
+//! use waitup::{Target, ResultExt};
 //!
 //! let result = Target::tcp("invalid-host", 0)
 //!     .context("Failed to create database target");
@@ -32,7 +32,7 @@
 //! ## Handling different error types
 //!
 //! ```rust
-//! use wait_for::{WaitForError, ConnectionError, HttpError};
+//! use waitup::{WaitForError, ConnectionError, HttpError};
 //!
 //! fn handle_error(err: WaitForError) {
 //!     match err {
@@ -58,10 +58,10 @@
 //! ## Adding context to operations
 //!
 //! ```rust
-//! use wait_for::{Target, WaitConfig, wait_for_connection, ResultExt};
+//! use waitup::{Target, WaitConfig, wait_for_connection, ResultExt};
 //! use std::time::Duration;
 //!
-//! async fn wait_for_services() -> Result<(), wait_for::WaitForError> {
+//! async fn wait_for_services() -> Result<(), waitup::WaitForError> {
 //!     let targets = vec![
 //!         Target::tcp("database", 5432)
 //!             .context("Database target creation failed")?,
@@ -156,7 +156,7 @@ pub enum WaitForError {
     Cancelled,
 }
 
-/// Result type alias for wait-for operations.
+/// Result type alias for waitup operations.
 pub type Result<T> = std::result::Result<T, WaitForError>;
 
 // Convenient From implementations for error types

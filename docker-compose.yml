@@ -1,4 +1,4 @@
-# Example Docker Compose demonstrating wait-for usage
+# Example Docker Compose demonstrating waitup usage
 version: "3.8"
 
 services:
@@ -39,8 +39,8 @@ services:
       redis:
         condition: service_healthy
 
-  # Example: Using wait-for as init container
-  app-with-wait-for:
+  # Example: Using waitup as init container
+  app-with-waitup:
     image: alpine:latest
     depends_on:
       - postgres
@@ -48,16 +48,16 @@ services:
       - web-api
     command: |
       sh -c "
-        # Install wait-for (in real usage, you'd use the wait-for image)
-        echo 'Simulating wait-for checking dependencies...'
+        # Install waitup (in real usage, you'd use the waitup image)
+        echo 'Simulating waitup checking dependencies...'
         sleep 2
         echo 'Dependencies ready! Starting application...'
         sleep 10
         echo 'Application running...'
       "
 
-  # Example: Using wait-for container directly
-  wait-for-example:
+  # Example: Using waitup container directly
+  waitup-example:
     build:
       context: .
       dockerfile: Dockerfile
@@ -76,7 +76,7 @@ services:
       - web-api
 
   # Example: Wait for external HTTP service
-  wait-for-http:
+  waitup-http:
     build:
       context: .
       dockerfile: Dockerfile
@@ -89,7 +89,7 @@ services:
       - http-example
 
   # Example: Wait for any of multiple services (failover scenario)
-  wait-for-any:
+  waitup-any:
     build:
       context: .
       dockerfile: Dockerfile

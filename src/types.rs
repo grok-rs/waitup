@@ -1,6 +1,6 @@
-//! Core type definitions for wait-for library.
+//! Core type definitions for waitup library.
 //!
-//! This module contains the fundamental types used throughout the wait-for library:
+//! This module contains the fundamental types used throughout the waitup library:
 //! - [`Port`] and [`Hostname`] - `NewType` wrappers for type safety
 //! - [`Target`] - Represents services to wait for (TCP or HTTP)
 //! - [`WaitConfig`] - Configuration for wait operations
@@ -12,7 +12,7 @@
 //! ## Creating type-safe network identifiers
 //!
 //! ```rust
-//! use wait_for::{Port, Hostname};
+//! use waitup::{Port, Hostname};
 //!
 //! // Create a validated port
 //! let port = Port::new(8080).expect("Valid port");
@@ -32,13 +32,13 @@
 //! ## Defining targets
 //!
 //! ```rust
-//! use wait_for::Target;
+//! use waitup::Target;
 //! use url::Url;
 //!
 //! // TCP target
 //! let tcp_target = Target::Tcp {
-//!     host: wait_for::Hostname::new("database.example.com").unwrap(),
-//!     port: wait_for::Port::new(5432).unwrap(),
+//!     host: waitup::Hostname::new("database.example.com").unwrap(),
+//!     port: waitup::Port::new(5432).unwrap(),
 //! };
 //!
 //! // HTTP target

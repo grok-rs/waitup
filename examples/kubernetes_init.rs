@@ -7,15 +7,15 @@
 
 //! Kubernetes init container example.
 //!
-//! This example demonstrates using wait-for as a Kubernetes init container
+//! This example demonstrates using waitup as a Kubernetes init container
 //! to ensure dependencies are ready before the main application starts.
 //! Run with: cargo run --example `kubernetes_init`
 
 use std::time::Duration;
-use wait_for::{wait_for_connection, Target, WaitConfig};
+use waitup::{wait_for_connection, Target, WaitConfig};
 
 #[tokio::main]
-async fn main() -> Result<(), wait_for::WaitForError> {
+async fn main() -> Result<(), waitup::WaitForError> {
     println!("☸️  Kubernetes Init Container: Checking dependencies...");
 
     // Environment variables typically set in Kubernetes

@@ -62,27 +62,27 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            name: wait-for-${{ needs.pre-release.outputs.version }}-x86_64-linux
+            name: waitup-${{ needs.pre-release.outputs.version }}-x86_64-linux
             archive: tar.gz
           - os: ubuntu-latest
             target: x86_64-unknown-linux-musl
-            name: wait-for-${{ needs.pre-release.outputs.version }}-x86_64-linux-musl
+            name: waitup-${{ needs.pre-release.outputs.version }}-x86_64-linux-musl
             archive: tar.gz
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            name: wait-for-${{ needs.pre-release.outputs.version }}-aarch64-linux
+            name: waitup-${{ needs.pre-release.outputs.version }}-aarch64-linux
             archive: tar.gz
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            name: wait-for-${{ needs.pre-release.outputs.version }}-x86_64-windows
+            name: waitup-${{ needs.pre-release.outputs.version }}-x86_64-windows
             archive: zip
           - os: macos-latest
             target: x86_64-apple-darwin
-            name: wait-for-${{ needs.pre-release.outputs.version }}-x86_64-macos
+            name: waitup-${{ needs.pre-release.outputs.version }}-x86_64-macos
             archive: tar.gz
           - os: macos-latest
             target: aarch64-apple-darwin
-            name: wait-for-${{ needs.pre-release.outputs.version }}-aarch64-macos
+            name: waitup-${{ needs.pre-release.outputs.version }}-aarch64-macos
             archive: tar.gz
     steps:
       - name: Checkout code
@@ -119,21 +119,21 @@ jobs:
           # Only generate completions for native targets that can run on the host
           if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" || "${{ matrix.target }}" == "x86_64-pc-windows-msvc" || "${{ matrix.target }}" == "x86_64-apple-darwin" || "${{ matrix.target }}" == "aarch64-apple-darwin" ]]; then
             if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-              BINARY="./target/${{ matrix.target }}/release/wait-for.exe"
+              BINARY="./target/${{ matrix.target }}/release/waitup.exe"
             else
-              BINARY="./target/${{ matrix.target }}/release/wait-for"
+              BINARY="./target/${{ matrix.target }}/release/waitup"
             fi
 
-            $BINARY --generate-completion bash > completions/wait-for.bash
-            $BINARY --generate-completion zsh > completions/_wait-for
-            $BINARY --generate-completion fish > completions/wait-for.fish
-            $BINARY --generate-completion powershell > completions/wait-for.ps1
+            $BINARY --generate-completion bash > completions/waitup.bash
+            $BINARY --generate-completion zsh > completions/_waitup
+            $BINARY --generate-completion fish > completions/waitup.fish
+            $BINARY --generate-completion powershell > completions/waitup.ps1
           else
             # For cross-compiled targets, create empty completion files
-            touch completions/wait-for.bash
-            touch completions/_wait-for
-            touch completions/wait-for.fish
-            touch completions/wait-for.ps1
+            touch completions/waitup.bash
+            touch completions/_waitup
+            touch completions/waitup.fish
+            touch completions/waitup.ps1
             echo "Skipping completion generation for cross-compiled target: ${{ matrix.target }}"
           fi
         shell: bash
@@ -143,11 +143,11 @@ jobs:
           mkdir -p dist
 
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            BINARY="wait-for.exe"
-            cp target/${{ matrix.target }}/release/wait-for.exe dist/
+            BINARY="waitup.exe"
+            cp target/${{ matrix.target }}/release/waitup.exe dist/
           else
-            BINARY="wait-for"
-            cp target/${{ matrix.target }}/release/wait-for dist/
+            BINARY="waitup"
+            cp target/${{ matrix.target }}/release/waitup dist/
           fi
 
           # Copy additional files
@@ -263,12 +263,12 @@ jobs:
 
           ### Cargo
           ```bash
-          cargo install wait-for
+          cargo install waitup
           ```
 
           ### Docker
           ```bash
-          docker pull ghcr.io/grok-rs/wait-for:v${{ needs.pre-release.outputs.version }}
+          docker pull ghcr.io/grok-rs/waitup:v${{ needs.pre-release.outputs.version }}
           ```
 
           ### Binary Downloads
@@ -276,7 +276,7 @@ jobs:
 
           Verify the download with the provided SHA256 checksums:
           ```bash
-          sha256sum -c wait-for-*.sha256
+          sha256sum -c waitup-*.sha256
           ```
           EOF
 
@@ -322,6 +322,6 @@ jobs:
       - name: Release Summary
         run: |
           echo "🎉 Release v${{ needs.pre-release.outputs.version }} completed!"
-          echo "📦 Published to crates.io: https://crates.io/crates/wait-for"
+          echo "📦 Published to crates.io: https://crates.io/crates/waitup"
           echo "🐳 Docker images building..."
-          echo "📁 GitHub release: https://github.com/grok-rs/wait-for/releases/tag/v${{ needs.pre-release.outputs.version }}"
+          echo "📁 GitHub release: https://github.com/grok-rs/waitup/releases/tag/v${{ needs.pre-release.outputs.version }}"

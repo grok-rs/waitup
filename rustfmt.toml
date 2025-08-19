@@ -1,4 +1,4 @@
-# Rust formatting configuration for wait-for project (stable-compatible)
+# Rust formatting configuration for waitup project (stable-compatible)
 
 # Basic formatting
 edition = "2021"

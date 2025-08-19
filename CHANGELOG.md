@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🏥 **HTTP/HTTPS Health Checks**: Support for HTTP endpoints with customizable status code validation
 - 📈 **Exponential Backoff**: Smart retry strategy with configurable maximum intervals
 - 🛡️ **Better Error Handling**: Structured error types using thiserror for clear error messages
-- 🔧 **Environment Variables**: Configure timeout and interval defaults via `WAIT_FOR_TIMEOUT` and `WAIT_FOR_INTERVAL`
+- 🔧 **Environment Variables**: Configure timeout and interval defaults via `WAITUP_TIMEOUT` and `WAITUP_INTERVAL`
 - ⚡ **Release Optimizations**: LTO, strip symbols, size optimization for minimal binary
 - ⏱️ **Human-readable Time**: Support for time formats like "30s", "2m", "1h30m" using humantime
 - 🎯 **Type Safety**: Full Rust type safety with proper error propagation

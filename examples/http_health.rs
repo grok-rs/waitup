@@ -12,9 +12,9 @@
 
 use std::time::Duration;
 use url::Url;
-use wait_for::{wait_for_connection, Target, WaitConfig, WaitResult};
+use waitup::{wait_for_connection, Target, WaitConfig, WaitResult};
 
-async fn basic_health_check() -> Result<(), wait_for::WaitForError> {
+async fn basic_health_check() -> Result<(), waitup::WaitForError> {
     println!("\n📊 Example 1: Basic health check");
     let basic_target = vec![Target::parse("https://httpbin.org/status/200", 200)?];
 
@@ -30,7 +30,7 @@ async fn basic_health_check() -> Result<(), wait_for::WaitForError> {
     Ok(())
 }
 
-async fn custom_status_check() -> Result<(), wait_for::WaitForError> {
+async fn custom_status_check() -> Result<(), waitup::WaitForError> {
     println!("\n📊 Example 2: Custom status code health check");
     let custom_status_target = vec![Target::parse("https://httpbin.org/status/204", 204)?];
 
@@ -49,7 +49,7 @@ async fn custom_status_check() -> Result<(), wait_for::WaitForError> {
     Ok(())
 }
 
-async fn auth_header_check() -> Result<(), wait_for::WaitForError> {
+async fn auth_header_check() -> Result<(), waitup::WaitForError> {
     println!("\n📊 Example 3: Health check with authentication header");
     let auth_url = Url::parse("https://httpbin.org/bearer")?;
     let auth_headers = vec![
@@ -57,7 +57,7 @@ async fn auth_header_check() -> Result<(), wait_for::WaitForError> {
             "Authorization".to_string(),
             "Bearer your-token-here".to_string(),
         ),
-        ("User-Agent".to_string(), "wait-for/1.0".to_string()),
+        ("User-Agent".to_string(), "waitup/1.0".to_string()),
     ];
 
     let auth_target = vec![
@@ -76,7 +76,7 @@ async fn auth_header_check() -> Result<(), wait_for::WaitForError> {
     Ok(())
 }
 
-async fn multiple_endpoints_check() -> Result<(), wait_for::WaitForError> {
+async fn multiple_endpoints_check() -> Result<(), waitup::WaitForError> {
     println!("\n📊 Example 4: Multiple health endpoints - ANY strategy");
     let multiple_targets = vec![
         Target::parse("https://httpbin.org/status/200", 200)?,
@@ -105,7 +105,7 @@ async fn multiple_endpoints_check() -> Result<(), wait_for::WaitForError> {
     Ok(())
 }
 
-async fn production_config_check() -> Result<WaitResult, wait_for::WaitForError> {
+async fn production_config_check() -> Result<WaitResult, waitup::WaitForError> {
     println!("\n📊 Example 5: Production-ready health check configuration");
     let production_targets = vec![Target::parse("https://httpbin.org/status/200", 200)?];
 
@@ -148,7 +148,7 @@ fn print_results(result: &WaitResult) {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), wait_for::WaitForError> {
+async fn main() -> Result<(), waitup::WaitForError> {
     println!("🏥 HTTP Health Check Example");
     println!("============================");
 

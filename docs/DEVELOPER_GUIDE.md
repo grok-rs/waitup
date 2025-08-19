@@ -1,6 +1,6 @@
 # Developer Guide
 
-This guide is for developers who want to understand, extend, or contribute to wait-for's codebase. It complements the [Contributing Guide](../CONTRIBUTING.md) with deeper technical details.
+This guide is for developers who want to understand, extend, or contribute to waitup's codebase. It complements the [Contributing Guide](../CONTRIBUTING.md) with deeper technical details.
 
 ## Table of Contents
 
@@ -180,7 +180,7 @@ impl AsyncConnectionStrategy for WaitForAllStrategy {
 
 ### Error Handling Philosophy
 
-wait-for uses a hierarchical error system:
+waitup uses a hierarchical error system:
 
 ```rust
 // error.rs
@@ -288,7 +288,7 @@ use predicates::prelude::*;
 fn cli_basic_tcp_success() {
     let server = start_test_server(8080);
 
-    let mut cmd = Command::cargo_bin("wait-for").unwrap();
+    let mut cmd = Command::cargo_bin("waitup").unwrap();
     cmd.arg("localhost:8080")
        .arg("--timeout=5s")
        .assert()
@@ -564,11 +564,11 @@ RUST_LOG=debug cargo run -- localhost:8080 --verbose
 
 # Memory debugging with valgrind
 cargo build
-valgrind --tool=memcheck ./target/debug/wait-for localhost:8080
+valgrind --tool=memcheck ./target/debug/waitup localhost:8080
 
 # Performance profiling
 cargo build --release
-perf record ./target/release/wait-for localhost:8080
+perf record ./target/release/waitup localhost:8080
 perf report
 ```
 
@@ -646,7 +646,7 @@ cargo fmt --all -- --check
 
 # 4. Test release build
 cargo build --release
-./target/release/wait-for --version
+./target/release/waitup --version
 
 # 5. Create release commit and tag
 git commit -am "chore: bump version to v1.x.y"
@@ -669,7 +669,7 @@ cross build --target x86_64-pc-windows-gnu --release
 cross build --target aarch64-unknown-linux-gnu --release
 
 # Test cross-compiled binaries
-docker run --rm -v $(pwd):/app alpine /app/target/x86_64-unknown-linux-gnu/release/wait-for --help
+docker run --rm -v $(pwd):/app alpine /app/target/x86_64-unknown-linux-gnu/release/waitup --help
 ```
 
 ### Docker Images
@@ -683,9 +683,9 @@ RUN cargo build --release
 
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app/target/release/wait-for /usr/local/bin/wait-for
+COPY --from=builder /app/target/release/waitup /usr/local/bin/waitup
 USER 1000:1000
-ENTRYPOINT ["wait-for"]
+ENTRYPOINT ["waitup"]
 ```
 
 ### Automated Testing
@@ -747,4 +747,4 @@ Co-authored-by: Name <email>
 
 Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
-This guide should give you a comprehensive understanding of wait-for's internals and how to work with the codebase effectively. For specific questions, check the inline documentation or reach out to the maintainers.
+This guide should give you a comprehensive understanding of waitup's internals and how to work with the codebase effectively. For specific questions, check the inline documentation or reach out to the maintainers.

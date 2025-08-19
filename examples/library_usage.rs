@@ -7,12 +7,12 @@
 
 //! Comprehensive library usage example.
 //!
-//! This example showcases all the features available when using wait-for
+//! This example showcases all the features available when using waitup
 //! as a library in your Rust applications.
 //! Run with: cargo run --example `library_usage`
 
 use std::time::Duration;
-use wait_for::{wait_for_connection, wait_for_single_target, Target, WaitConfig, WaitResult};
+use waitup::{wait_for_connection, wait_for_single_target, Target, WaitConfig, WaitResult};
 
 /// Example of a custom service health checker
 struct ServiceHealthChecker {
@@ -30,12 +30,12 @@ impl ServiceHealthChecker {
         }
     }
 
-    fn add_tcp_target(mut self, host: &str, port: u16) -> Result<Self, wait_for::WaitForError> {
+    fn add_tcp_target(mut self, host: &str, port: u16) -> Result<Self, waitup::WaitForError> {
         self.targets.push(Target::tcp(host, port)?);
         Ok(self)
     }
 
-    fn add_http_target(mut self, url: &str, status: u16) -> Result<Self, wait_for::WaitForError> {
+    fn add_http_target(mut self, url: &str, status: u16) -> Result<Self, waitup::WaitForError> {
         self.targets.push(Target::parse(url, status)?);
         Ok(self)
     }
@@ -64,7 +64,7 @@ impl ServiceHealthChecker {
         self
     }
 
-    async fn check_health(&self) -> Result<WaitResult, wait_for::WaitForError> {
+    async fn check_health(&self) -> Result<WaitResult, waitup::WaitForError> {
         println!("🔍 Checking health for service: {}", self.name);
 
         let result = wait_for_connection(&self.targets, &self.config).await?;
@@ -88,7 +88,7 @@ impl ServiceHealthChecker {
     }
 }
 
-async fn example_basic_usage() -> Result<(), wait_for::WaitForError> {
+async fn example_basic_usage() -> Result<(), waitup::WaitForError> {
     println!("\n📚 Example 1: Basic Library Usage");
     println!("================================");
 
@@ -108,7 +108,7 @@ async fn example_basic_usage() -> Result<(), wait_for::WaitForError> {
     Ok(())
 }
 
-async fn example_advanced_configuration() -> Result<(), wait_for::WaitForError> {
+async fn example_advanced_configuration() -> Result<(), waitup::WaitForError> {
     println!("\n⚙️  Example 2: Advanced Configuration");
     println!("===================================");
 
@@ -146,7 +146,7 @@ async fn example_advanced_configuration() -> Result<(), wait_for::WaitForError> 
     Ok(())
 }
 
-async fn example_custom_service_checker() -> Result<(), wait_for::WaitForError> {
+async fn example_custom_service_checker() -> Result<(), waitup::WaitForError> {
     println!("\n🏗️  Example 3: Custom Service Health Checker");
     println!("===========================================");
 
@@ -188,7 +188,7 @@ async fn example_custom_service_checker() -> Result<(), wait_for::WaitForError> 
     Ok(())
 }
 
-async fn example_error_handling() -> Result<(), wait_for::WaitForError> {
+async fn example_error_handling() -> Result<(), waitup::WaitForError> {
     println!("\n🚨 Example 4: Error Handling");
     println!("============================");
 
@@ -211,7 +211,7 @@ async fn example_error_handling() -> Result<(), wait_for::WaitForError> {
     Ok(())
 }
 
-async fn example_performance_monitoring() -> Result<(), wait_for::WaitForError> {
+async fn example_performance_monitoring() -> Result<(), waitup::WaitForError> {
     println!("\n⚡ Example 5: Performance Monitoring");
     println!("===================================");
 
@@ -242,8 +242,8 @@ async fn example_performance_monitoring() -> Result<(), wait_for::WaitForError> 
 }
 
 #[tokio::main]
-async fn main() -> Result<(), wait_for::WaitForError> {
-    println!("📖 Wait-For Library Usage Examples");
+async fn main() -> Result<(), waitup::WaitForError> {
+    println!("📖 waitup Library Usage Examples");
     println!("==================================");
 
     // Run all examples
@@ -254,7 +254,7 @@ async fn main() -> Result<(), wait_for::WaitForError> {
     example_performance_monitoring().await?;
 
     println!("\n🎉 All library examples completed successfully!");
-    println!("💡 You can now integrate wait-for into your Rust applications!");
+    println!("💡 You can now integrate waitup into your Rust applications!");
 
     Ok(())
 }

@@ -1,13 +1,13 @@
 # Tutorials
 
-This guide provides step-by-step tutorials to help you learn wait-for from basic usage to advanced scenarios. Each tutorial builds on previous knowledge.
+This guide provides step-by-step tutorials to help you learn waitup from basic usage to advanced scenarios. Each tutorial builds on previous knowledge.
 
 ## Tutorial 1: Your First Connection Check
 
 Let's start with the simplest possible use case: checking if a service is available.
 
 ### Prerequisites
-- wait-for installed ([Installation Guide](../README.md#installation))
+- waitup installed ([Installation Guide](../README.md#installation))
 - A service running on your machine (we'll use a web server on port 8080)
 
 ### Step 1: Start a Test Service
@@ -30,7 +30,7 @@ docker run -p 8080:80 nginx:alpine
 Now test if the service is reachable:
 
 ```bash
-wait-for localhost:8080
+waitup localhost:8080
 ```
 
 **Expected result:** The command should complete successfully (exit code 0) since the service is running.
@@ -40,7 +40,7 @@ wait-for localhost:8080
 Stop your test service and try again:
 
 ```bash
-wait-for localhost:8080
+waitup localhost:8080
 ```
 
 **Expected result:** After 30 seconds (default timeout), the command fails with exit code 1.
@@ -50,11 +50,11 @@ wait-for localhost:8080
 Let's reduce the wait time:
 
 ```bash
-wait-for localhost:8080 --timeout 5s
+waitup localhost:8080 --timeout 5s
 ```
 
 **What you learned:**
-- Basic `wait-for hostname:port` syntax
+- Basic `waitup hostname:port` syntax
 - Default timeout is 30 seconds
 - Exit codes indicate success (0) or failure (1)
 - You can customize timeout with `--timeout`
@@ -86,7 +86,7 @@ curl http://localhost:8080
 Check the HTTP endpoint:
 
 ```bash
-wait-for http://localhost:8080
+waitup http://localhost:8080
 ```
 
 This expects a 200 status code by default.
@@ -97,10 +97,10 @@ Some health endpoints return different status codes:
 
 ```bash
 # If your endpoint returns 204 No Content
-wait-for http://localhost:8080/health --expect-status 204
+waitup http://localhost:8080/health --expect-status 204
 
 # Or 202 Accepted
-wait-for http://localhost:8080/status --expect-status 202
+waitup http://localhost:8080/status --expect-status 202
 ```
 
 ### Step 4: HTTPS Endpoints
@@ -108,7 +108,7 @@ wait-for http://localhost:8080/status --expect-status 202
 For secure endpoints:
 
 ```bash
-wait-for https://httpbin.org/status/200
+waitup https://httpbin.org/status/200
 ```
 
 ### Step 5: Custom Headers
@@ -116,11 +116,11 @@ wait-for https://httpbin.org/status/200
 Some APIs require authentication:
 
 ```bash
-wait-for https://httpbin.org/bearer \
+waitup https://httpbin.org/bearer \
   --header "Authorization:Bearer your-token-here"
 
 # Multiple headers
-wait-for https://api.example.com/health \
+waitup https://api.example.com/health \
   --header "Authorization:Bearer token" \
   --header "X-API-Key:secret" \
   --header "Content-Type:application/json"
@@ -132,10 +132,10 @@ Let's test a real API:
 
 ```bash
 # GitHub API (public, no auth needed)
-wait-for https://api.github.com --expect-status 200
+waitup https://api.github.com --expect-status 200
 
 # JSONPlaceholder (test API)
-wait-for https://jsonplaceholder.typicode.com/posts/1
+waitup https://jsonplaceholder.typicode.com/posts/1
 ```
 
 ### Cleanup
@@ -155,7 +155,7 @@ docker rm nginx-test
 
 ## Tutorial 3: Managing Timeouts and Retries
 
-Understanding how wait-for handles timing is crucial for production use.
+Understanding how waitup handles timing is crucial for production use.
 
 ### Prerequisites
 - Completed Tutorial 2
@@ -165,7 +165,7 @@ Understanding how wait-for handles timing is crucial for production use.
 
 ```bash
 # Default settings
-wait-for localhost:9999 --verbose
+waitup localhost:9999 --verbose
 ```
 
 Observe:
@@ -177,13 +177,13 @@ Observe:
 
 ```bash
 # Longer total timeout
-wait-for localhost:9999 --timeout 2m
+waitup localhost:9999 --timeout 2m
 
 # Faster checking interval
-wait-for localhost:9999 --interval 500ms --timeout 10s
+waitup localhost:9999 --interval 500ms --timeout 10s
 
 # Control maximum interval
-wait-for localhost:9999 --interval 1s --max-interval 10s --timeout 30s
+waitup localhost:9999 --interval 1s --max-interval 10s --timeout 30s
 ```
 
 ### Step 3: Simulating Slow Startup
@@ -198,7 +198,7 @@ docker run -d --name slow-start -p 9999:80 \
   nginx:alpine
 
 # Wait for it with appropriate settings
-wait-for localhost:9999 --timeout 30s --interval 2s --verbose
+waitup localhost:9999 --timeout 30s --interval 2s --verbose
 ```
 
 ### Step 4: Retry Limits
@@ -207,10 +207,10 @@ Sometimes you want to limit attempts rather than time:
 
 ```bash
 # Maximum 10 attempts regardless of time
-wait-for unreliable-service:8080 --retry-limit 10
+waitup unreliable-service:8080 --retry-limit 10
 
 # Combine with other settings
-wait-for unreliable-service:8080 \
+waitup unreliable-service:8080 \
   --retry-limit 5 \
   --interval 3s \
   --timeout 30s
@@ -222,18 +222,18 @@ Set defaults for your environment:
 
 ```bash
 # Set environment defaults
-export WAIT_FOR_TIMEOUT=60s
-export WAIT_FOR_INTERVAL=2s
+export WAITUP_TIMEOUT=60s
+export WAITUP_INTERVAL=2s
 
 # These now use your defaults
-wait-for service1:8080
-wait-for service2:8081
+waitup service1:8080
+waitup service2:8081
 
 # Command line options override environment
-wait-for service3:8082 --timeout 10s
+waitup service3:8082 --timeout 10s
 
 # Clean up
-unset WAIT_FOR_TIMEOUT WAIT_FOR_INTERVAL
+unset WAITUP_TIMEOUT WAITUP_INTERVAL
 ```
 
 ### Cleanup
@@ -296,7 +296,7 @@ docker-compose up -d
 
 ```bash
 # Wait for all services to be ready
-wait-for localhost:5432 localhost:6379 localhost:8080 --timeout 60s
+waitup localhost:5432 localhost:6379 localhost:8080 --timeout 60s
 ```
 
 This succeeds only when ALL services are ready.
@@ -307,17 +307,17 @@ Sometimes you want to proceed when any service is ready:
 
 ```bash
 # Primary and backup databases
-wait-for primary-db:5432 backup-db:5432 --any --timeout 30s
+waitup primary-db:5432 backup-db:5432 --any --timeout 30s
 
 # For our example (both should work, so this will succeed quickly)
-wait-for localhost:5432 localhost:6379 --any --timeout 10s
+waitup localhost:5432 localhost:6379 --any --timeout 10s
 ```
 
 ### Step 4: Mixed TCP and HTTP Targets
 
 ```bash
 # Mix TCP and HTTP checks
-wait-for \
+waitup \
   localhost:5432 \
   localhost:6379 \
   http://localhost:8080 \
@@ -329,7 +329,7 @@ wait-for \
 
 ```bash
 # Get detailed results in JSON
-wait-for localhost:5432 localhost:6379 localhost:8080 --json
+waitup localhost:5432 localhost:6379 localhost:8080 --json
 ```
 
 Example output:
@@ -356,15 +356,15 @@ Sometimes services have dependencies on each other:
 
 ```bash
 # Database first
-wait-for localhost:5432 --timeout 30s && \
+waitup localhost:5432 --timeout 30s && \
 echo "Database ready" && \
 
 # Then cache
-wait-for localhost:6379 --timeout 15s && \
+waitup localhost:6379 --timeout 15s && \
 echo "Cache ready" && \
 
 # Finally web service
-wait-for http://localhost:8080 --timeout 15s && \
+waitup http://localhost:8080 --timeout 15s && \
 echo "Web service ready"
 ```
 
@@ -372,13 +372,13 @@ echo "Web service ready"
 
 ```bash
 # Run a command after services are ready
-wait-for localhost:5432 localhost:6379 -- echo "Services are ready!"
+waitup localhost:5432 localhost:6379 -- echo "Services are ready!"
 
 # More realistic example
-wait-for localhost:5432 localhost:6379 -- npm start
+waitup localhost:5432 localhost:6379 -- npm start
 
 # With shell command
-wait-for localhost:5432 -- sh -c "echo 'DB ready at $(date)'"
+waitup localhost:5432 -- sh -c "echo 'DB ready at $(date)'"
 ```
 
 ### Cleanup
@@ -399,7 +399,7 @@ docker-compose down
 
 ## Tutorial 5: Docker Integration
 
-Learn to use wait-for effectively in containerized environments.
+Learn to use waitup effectively in containerized environments.
 
 ### Prerequisites
 - Completed Tutorial 4
@@ -409,16 +409,16 @@ Learn to use wait-for effectively in containerized environments.
 
 ```bash
 # Pull the official image
-docker pull ghcr.io/grok-rs/wait-for:latest
+docker pull ghcr.io/grok-rs/waitup:latest
 
 # Basic usage
-docker run --rm ghcr.io/grok-rs/wait-for:latest --help
+docker run --rm ghcr.io/grok-rs/waitup:latest --help
 
 # Test connectivity (this will fail, showing the pattern)
-docker run --rm ghcr.io/grok-rs/wait-for:latest google.com:80 --timeout 5s
+docker run --rm ghcr.io/grok-rs/waitup:latest google.com:80 --timeout 5s
 ```
 
-### Step 2: Docker Compose with wait-for
+### Step 2: Docker Compose with waitup
 
 Create `tutorial-compose.yml`:
 
@@ -447,8 +447,8 @@ services:
         condition: service_completed_successfully
 
   postgres-ready:
-    image: ghcr.io/grok-rs/wait-for:alpine
-    command: ["wait-for", "postgres:5432", "--timeout", "60s"]
+    image: ghcr.io/grok-rs/waitup:alpine
+    command: ["waitup", "postgres:5432", "--timeout", "60s"]
     depends_on:
       - postgres
 ```
@@ -479,8 +479,8 @@ services:
       - init-wait
 
   init-wait:
-    image: ghcr.io/grok-rs/wait-for:alpine
-    command: ["wait-for", "db:5432", "--timeout", "30s", "--verbose"]
+    image: ghcr.io/grok-rs/waitup:alpine
+    command: ["waitup", "db:5432", "--timeout", "30s", "--verbose"]
     depends_on:
       - db
 ```
@@ -501,10 +501,10 @@ services:
     image: redis:alpine
 
   migrate:
-    image: ghcr.io/grok-rs/wait-for:alpine
+    image: ghcr.io/grok-rs/waitup:alpine
     command: |
       sh -c "
-        wait-for postgres:5432 --timeout 60s &&
+        waitup postgres:5432 --timeout 60s &&
         echo 'Running migrations...' &&
         sleep 2 &&
         echo 'Migrations complete'
@@ -513,10 +513,10 @@ services:
       - postgres
 
   app:
-    image: ghcr.io/grok-rs/wait-for:alpine
+    image: ghcr.io/grok-rs/waitup:alpine
     command: |
       sh -c "
-        wait-for postgres:5432 redis:6379 --timeout 30s &&
+        waitup postgres:5432 redis:6379 --timeout 30s &&
         echo 'All dependencies ready, starting app...'
       "
     depends_on:
@@ -539,13 +539,13 @@ RUN cargo build --release
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Install wait-for
-COPY --from=ghcr.io/grok-rs/wait-for:latest /usr/local/bin/wait-for /usr/local/bin/wait-for
+# Install waitup
+COPY --from=ghcr.io/grok-rs/waitup:latest /usr/local/bin/waitup /usr/local/bin/waitup
 
 COPY --from=builder /app/target/release/myapp /usr/local/bin/myapp
 
 # Your app waits for dependencies, then starts
-CMD ["wait-for", "postgres:5432", "redis:6379", "--timeout", "60s", "--", "myapp"]
+CMD ["waitup", "postgres:5432", "redis:6379", "--timeout", "60s", "--", "myapp"]
 ```
 
 ### Step 6: Health Checks in Docker
@@ -558,7 +558,7 @@ services:
   api:
     image: my-api:latest
     healthcheck:
-      test: ["CMD", "wait-for", "localhost:8080", "--timeout", "3s"]
+      test: ["CMD", "waitup", "localhost:8080", "--timeout", "3s"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -573,7 +573,7 @@ docker-compose -f init-container.yml down
 ```
 
 **What you learned:**
-- Using official wait-for Docker images
+- Using official waitup Docker images
 - Docker Compose integration patterns
 - Init container pattern for dependencies
 - Multi-stage dependency waiting
@@ -584,7 +584,7 @@ docker-compose -f init-container.yml down
 
 ## Tutorial 6: Kubernetes Integration
 
-Learn to use wait-for in Kubernetes environments.
+Learn to use waitup in Kubernetes environments.
 
 ### Prerequisites
 - Completed Tutorial 5
@@ -602,9 +602,9 @@ metadata:
   name: app-with-wait
 spec:
   initContainers:
-  - name: wait-for-db
-    image: ghcr.io/grok-rs/wait-for:alpine
-    command: ["wait-for"]
+  - name: waitup-db
+    image: ghcr.io/grok-rs/waitup:alpine
+    command: ["waitup"]
     args: ["postgres.default.svc.cluster.local:5432", "--timeout", "120s"]
 
   containers:
@@ -653,7 +653,7 @@ Deploy and test:
 ```bash
 kubectl apply -f k8s-basic.yaml
 kubectl get pods -w  # Watch the init container run
-kubectl logs app-with-wait -c wait-for-db
+kubectl logs app-with-wait -c waitup-db
 ```
 
 ### Step 2: ConfigMap Configuration
@@ -666,8 +666,8 @@ kind: ConfigMap
 metadata:
   name: wait-config
 data:
-  WAIT_FOR_TIMEOUT: "300s"
-  WAIT_FOR_INTERVAL: "5s"
+  WAITUP_TIMEOUT: "300s"
+  WAITUP_INTERVAL: "5s"
 
 ---
 apiVersion: v1
@@ -676,12 +676,12 @@ metadata:
   name: app-with-config
 spec:
   initContainers:
-  - name: wait-for-services
-    image: ghcr.io/grok-rs/wait-for:alpine
+  - name: waitup-services
+    image: ghcr.io/grok-rs/waitup:alpine
     envFrom:
     - configMapRef:
         name: wait-config
-    command: ["wait-for"]
+    command: ["waitup"]
     args: ["postgres:5432", "redis:6379", "--verbose"]
 
   containers:
@@ -702,19 +702,19 @@ metadata:
 spec:
   initContainers:
   # Wait for database first
-  - name: wait-for-db
-    image: ghcr.io/grok-rs/wait-for:alpine
-    command: ["wait-for", "postgres:5432", "--timeout", "60s"]
+  - name: waitup-db
+    image: ghcr.io/grok-rs/waitup:alpine
+    command: ["waitup", "postgres:5432", "--timeout", "60s"]
 
   # Then wait for cache
-  - name: wait-for-cache
-    image: ghcr.io/grok-rs/wait-for:alpine
-    command: ["wait-for", "redis:6379", "--timeout", "30s"]
+  - name: waitup-cache
+    image: ghcr.io/grok-rs/waitup:alpine
+    command: ["waitup", "redis:6379", "--timeout", "30s"]
 
   # Finally wait for API
-  - name: wait-for-api
-    image: ghcr.io/grok-rs/wait-for:alpine
-    command: ["wait-for", "http://api-service/health", "--timeout", "45s"]
+  - name: waitup-api
+    image: ghcr.io/grok-rs/waitup:alpine
+    command: ["waitup", "http://api-service/health", "--timeout", "45s"]
 
   containers:
   - name: app
@@ -743,8 +743,8 @@ spec:
     spec:
       initContainers:
       - name: wait-dependencies
-        image: ghcr.io/grok-rs/wait-for:alpine
-        command: ["wait-for"]
+        image: ghcr.io/grok-rs/waitup:alpine
+        command: ["waitup"]
         args:
         - "postgres:5432"
         - "redis:6379"
@@ -771,9 +771,9 @@ spec:
   template:
     spec:
       initContainers:
-      - name: wait-for-db
-        image: ghcr.io/grok-rs/wait-for:alpine
-        command: ["wait-for", "postgres:5432", "--timeout", "300s"]
+      - name: waitup-db
+        image: ghcr.io/grok-rs/waitup:alpine
+        command: ["waitup", "postgres:5432", "--timeout", "300s"]
 
       containers:
       - name: migrate
@@ -792,9 +792,9 @@ Create `helm-template.yaml`:
 {{- if .Values.waitFor.enabled }}
 initContainers:
 {{- range .Values.waitFor.services }}
-- name: wait-for-{{ .name }}
+- name: waitup-{{ .name }}
   image: {{ $.Values.waitFor.image }}
-  command: ["wait-for"]
+  command: ["waitup"]
   args:
   - "{{ .target }}"
   - "--timeout={{ .timeout | default "60s" }}"
@@ -813,7 +813,7 @@ With `values.yaml`:
 ```yaml
 waitFor:
   enabled: true
-  image: "ghcr.io/grok-rs/wait-for:alpine"
+  image: "ghcr.io/grok-rs/waitup:alpine"
   services:
   - name: database
     target: "postgres:5432"
@@ -831,7 +831,7 @@ waitFor:
 kubectl describe pod app-with-wait
 
 # View init container logs
-kubectl logs app-with-wait -c wait-for-db
+kubectl logs app-with-wait -c waitup-db
 
 # Debug failed init containers
 kubectl get events --sort-by=.metadata.creationTimestamp
@@ -866,7 +866,7 @@ kubectl delete -f k8s-deployment.yaml
 
 ## Next Steps
 
-Congratulations! You've completed all the wait-for tutorials. You now know:
+Congratulations! You've completed all the waitup tutorials. You now know:
 
 ✅ Basic connection checking
 ✅ HTTP health checks with authentication
@@ -879,24 +879,24 @@ Congratulations! You've completed all the wait-for tutorials. You now know:
 
 - [Integration Patterns](INTEGRATION_PATTERNS.md) - Common real-world patterns
 - [Troubleshooting Guide](TROUBLESHOOTING.md) - Solve common issues
-- [Developer Guide](DEVELOPER_GUIDE.md) - Extend and customize wait-for
+- [Developer Guide](DEVELOPER_GUIDE.md) - Extend and customize waitup
 - [Performance Guide](PERFORMANCE.md) - Optimize for your use case
 
 ### Practice Projects
 
 Try these to cement your knowledge:
 
-1. **Microservices Stack**: Create a Docker Compose setup with 5+ services using wait-for
-2. **CI/CD Pipeline**: Integrate wait-for into GitHub Actions or GitLab CI
+1. **Microservices Stack**: Create a Docker Compose setup with 5+ services using waitup
+2. **CI/CD Pipeline**: Integrate waitup into GitHub Actions or GitLab CI
 3. **Kubernetes App**: Deploy a real application with proper dependency waiting
 4. **Health Check Dashboard**: Use JSON output to create a service status dashboard
-5. **Custom Integration**: Write a script that uses wait-for for your specific use case
+5. **Custom Integration**: Write a script that uses waitup for your specific use case
 
 ### Community and Support
 
 - 📖 [Documentation](../README.md)
-- 🐛 [Report Issues](https://github.com/grok-rs/wait-for/issues)
-- 💡 [Feature Requests](https://github.com/grok-rs/wait-for/issues/new)
+- 🐛 [Report Issues](https://github.com/grok-rs/waitup/issues)
+- 💡 [Feature Requests](https://github.com/grok-rs/waitup/issues/new)
 - 🤝 [Contribute](../CONTRIBUTING.md)
 
 Happy waiting! 🚀

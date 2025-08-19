@@ -1,4 +1,4 @@
-# Lefthook configuration for wait-for project
+# Lefthook configuration for waitup project
 # Fast Git hooks manager written in Go
 # Install: https://github.com/evilmartians/lefthook#installation
 # Setup: lefthook install

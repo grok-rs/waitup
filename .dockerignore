@@ -1,4 +1,4 @@
-# Docker ignore file for wait-for
+# Docker ignore file for waitup
 
 # Rust build artifacts
 target/

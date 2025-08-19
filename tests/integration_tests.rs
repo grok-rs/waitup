@@ -22,8 +22,8 @@ mod tests {
             let (_stream, _addr) = listener.accept().await.unwrap();
         });
 
-        // Test wait-for
-        let output = Command::new("./target/debug/wait-for")
+        // Test waitup
+        let output = Command::new("./target/debug/waitup")
             .args([
                 &format!("127.0.0.1:{}", addr.port()),
                 "--timeout",
@@ -31,17 +31,17 @@ mod tests {
                 "--quiet",
             ])
             .output()
-            .expect("Failed to execute wait-for");
+            .expect("Failed to execute waitup");
 
         assert!(output.status.success());
     }
 
     #[tokio::test]
     async fn timeout_failure() {
-        let output = Command::new("./target/debug/wait-for")
+        let output = Command::new("./target/debug/waitup")
             .args(["127.0.0.1:65534", "--timeout", "1s", "--quiet"])
             .output()
-            .expect("Failed to execute wait-for");
+            .expect("Failed to execute waitup");
 
         assert!(!output.status.success());
         assert_eq!(output.status.code(), Some(1));
@@ -49,10 +49,10 @@ mod tests {
 
     #[tokio::test]
     async fn dns_resolution() {
-        let output = Command::new("./target/debug/wait-for")
+        let output = Command::new("./target/debug/waitup")
             .args(["google.com:80", "--timeout", "10s", "--quiet"])
             .output()
-            .expect("Failed to execute wait-for");
+            .expect("Failed to execute waitup");
 
         assert!(output.status.success());
     }
@@ -67,7 +67,7 @@ mod tests {
             let (_stream, _addr) = listener.accept().await.unwrap();
         });
 
-        let output = Command::new("./target/debug/wait-for")
+        let output = Command::new("./target/debug/waitup")
             .args([
                 &format!("127.0.0.1:{}", addr.port()),
                 "127.0.0.1:65534", // This will fail
@@ -77,7 +77,7 @@ mod tests {
                 "--quiet",
             ])
             .output()
-            .expect("Failed to execute wait-for");
+            .expect("Failed to execute waitup");
 
         assert!(output.status.success());
     }
@@ -92,7 +92,7 @@ mod tests {
             let (_stream, _addr) = listener.accept().await.unwrap();
         });
 
-        let output = Command::new("./target/debug/wait-for")
+        let output = Command::new("./target/debug/waitup")
             .args([
                 &format!("127.0.0.1:{}", addr.port()),
                 "--timeout",
@@ -103,17 +103,17 @@ mod tests {
                 "command executed",
             ])
             .output()
-            .expect("Failed to execute wait-for");
+            .expect("Failed to execute waitup");
 
         assert!(output.status.success());
     }
 
     #[test]
     fn invalid_target_format() {
-        let output = Command::new("./target/debug/wait-for")
+        let output = Command::new("./target/debug/waitup")
             .args(["invalid-target", "--quiet"])
             .output()
-            .expect("Failed to execute wait-for");
+            .expect("Failed to execute waitup");
 
         assert!(!output.status.success());
         assert_eq!(output.status.code(), Some(2));
@@ -121,10 +121,10 @@ mod tests {
 
     #[test]
     fn invalid_timeout_format() {
-        let output = Command::new("./target/debug/wait-for")
+        let output = Command::new("./target/debug/waitup")
             .args(["localhost:8080", "--timeout", "invalid", "--quiet"])
             .output()
-            .expect("Failed to execute wait-for");
+            .expect("Failed to execute waitup");
 
         assert!(!output.status.success());
         assert_eq!(output.status.code(), Some(2));

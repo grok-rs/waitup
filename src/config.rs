@@ -16,7 +16,7 @@
 //! ## Basic configuration
 //!
 //! ```rust
-//! use wait_for::WaitConfig;
+//! use waitup::WaitConfig;
 //! use std::time::Duration;
 //!
 //! let config = WaitConfig::builder()
@@ -28,7 +28,7 @@
 //! ## Advanced configuration with cancellation
 //!
 //! ```rust
-//! use wait_for::WaitConfig;
+//! use waitup::WaitConfig;
 //! use std::time::Duration;
 //!
 //! let (builder, cancel_token) = WaitConfig::builder()
@@ -49,7 +49,7 @@
 //! ## Microservice readiness configuration
 //!
 //! ```rust
-//! use wait_for::WaitConfig;
+//! use waitup::WaitConfig;
 //! use std::time::Duration;
 //!
 //! // Fast polling for local services

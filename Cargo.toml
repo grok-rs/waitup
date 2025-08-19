@@ -1,14 +1,14 @@
 [package]
-name = "wait-for-rs"
+name = "waitup"
 version = "1.0.2"
 edition = "2021"
 rust-version = "1.70.0"
 authors = ["Serhii Kaliuzhnyi <kalyuzhni.sergei@gmail.com>"]
 description = "Wait for TCP ports and HTTP endpoints to be available. Essential for Docker, K8s, and CI/CD pipelines to ensure services are ready before proceeding."
 license = "MIT"
-repository = "https://github.com/grok-rs/wait-for"
-homepage = "https://github.com/grok-rs/wait-for"
-documentation = "https://docs.rs/wait-for-rs"
+repository = "https://github.com/grok-rs/waitup"
+homepage = "https://github.com/grok-rs/waitup"
+documentation = "https://docs.rs/waitup"
 readme = "README.md"
 keywords = ["cli", "health-check", "docker", "tcp", "http"]
 categories = ["command-line-utilities", "network-programming", "development-tools", "web-programming"]
@@ -54,5 +54,5 @@ proptest = "1.4"
 test-case = "3.3"
 
 [[bin]]
-name = "wait-for"
+name = "waitup"
 path = "src/main.rs"

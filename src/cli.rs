@@ -3,7 +3,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use std::borrow::Cow;
 use std::process::Command;
 use std::time::Duration;
-use wait_for::{wait_for_connection, Target, WaitConfig, WaitForError, WaitResult};
+use waitup::{wait_for_connection, Target, WaitConfig, WaitForError, WaitResult};
 
 /// Extended error type for CLI-specific errors
 #[derive(thiserror::Error, Debug)]
@@ -23,7 +23,7 @@ enum CliError {
 type Result<T> = std::result::Result<T, CliError>;
 
 #[derive(Parser)]
-#[command(name = "wait-for")]
+#[command(name = "waitup")]
 #[command(about = "Block until host:port is reachable; exit non-zero on timeout")]
 #[command(version)]
 #[expect(
@@ -36,11 +36,11 @@ struct Args {
     targets: Vec<String>,
 
     /// Connection timeout (e.g., "30s", "2m", "1h")
-    #[arg(short, long, env = "WAIT_FOR_TIMEOUT", default_value = "30s")]
+    #[arg(short, long, env = "WAITUP_TIMEOUT", default_value = "30s")]
     timeout: String,
 
     /// Initial retry interval (e.g., "1s", "500ms", "2s")
-    #[arg(short, long, env = "WAIT_FOR_INTERVAL", default_value = "1s")]
+    #[arg(short, long, env = "WAITUP_INTERVAL", default_value = "1s")]
     interval: String,
 
     /// Maximum retry interval for exponential backoff

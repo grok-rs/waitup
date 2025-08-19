@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-We provide security updates for the following versions of wait-for:
+We provide security updates for the following versions of waitup:
 
 | Version | Supported          |
 | ------- | ------------------ |
@@ -11,7 +11,7 @@ We provide security updates for the following versions of wait-for:
 
 ## Reporting a Vulnerability
 
-We take security seriously. If you discover a security vulnerability in wait-for, please report it responsibly.
+We take security seriously. If you discover a security vulnerability in waitup, please report it responsibly.
 
 ### How to Report
 
@@ -51,7 +51,7 @@ Please include the following information in your report:
 
 ### Network Security
 
-wait-for makes network connections to test connectivity. Consider these security aspects:
+waitup makes network connections to test connectivity. Consider these security aspects:
 
 #### DNS Resolution
 
@@ -74,7 +74,7 @@ wait-for makes network connections to test connectivity. Consider these security
 
 ### Input Validation
 
-wait-for validates:
+waitup validates:
 
 - Host/port formats
 - URL formats
@@ -86,16 +86,16 @@ wait-for validates:
 When using the `-- command` feature:
 
 - Executes arbitrary commands after successful connections
-- Commands run with the same privileges as wait-for
+- Commands run with the same privileges as waitup
 - Consider principle of least privilege
 - Validate command arguments in scripts
 
 ### Environment Variables
 
-wait-for reads environment variables:
+waitup reads environment variables:
 
-- `WAIT_FOR_TIMEOUT`
-- `WAIT_FOR_INTERVAL`
+- `WAITUP_TIMEOUT`
+- `WAITUP_INTERVAL`
 
 These are not security-sensitive but could affect behavior.
 
@@ -119,8 +119,8 @@ USER 1000:1000
 
 # Minimal image
 FROM scratch
-COPY wait-for /usr/local/bin/
-ENTRYPOINT ["/usr/local/bin/wait-for"]
+COPY waitup /usr/local/bin/
+ENTRYPOINT ["/usr/local/bin/waitup"]
 ```
 
 ### Kubernetes Security
@@ -174,4 +174,4 @@ If you have questions about security but not a vulnerability to report, please:
 - Open a GitHub issue with the `security` label
 - Email <kalyuzhni.sergei@gmail.com> with "SECURITY QUESTION" in subject
 
-Thank you for helping keep wait-for secure!
+Thank you for helping keep waitup secure!

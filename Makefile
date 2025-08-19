@@ -1,4 +1,4 @@
-# Makefile for wait-for project
+# Makefile for waitup project
 # Provides convenient commands for common development tasks
 
 .PHONY: help lint-quick lint-reasonable lint-strict lint-ci lint-fix format check test clean install

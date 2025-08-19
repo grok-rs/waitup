@@ -1,12 +1,12 @@
 # Troubleshooting Guide
 
-This guide helps you diagnose and resolve common issues when using wait-for.
+This guide helps you diagnose and resolve common issues when using waitup.
 
 ## Quick Diagnostics
 
 Before diving into specific issues, try these general diagnostic steps:
 
-1. **Test basic connectivity**: `wait-for localhost:80 --timeout 5s`
+1. **Test basic connectivity**: `waitup localhost:80 --timeout 5s`
 2. **Enable verbose output**: Add `--verbose` to see detailed progress
 3. **Check network basics**: `ping hostname` or `telnet hostname port`
 4. **Verify target syntax**: Ensure proper `host:port` or URL format
@@ -38,13 +38,13 @@ Error: Connection failed: Connection refused (os error 111)
    dig hostname
 
    # Try IP directly
-   wait-for 192.168.1.100:8080 --timeout 10s
+   waitup 192.168.1.100:8080 --timeout 10s
    ```
 
 3. **Firewall blocking connection**
    ```bash
    # Test from same machine
-   wait-for localhost:8080
+   waitup localhost:8080
 
    # Check firewall rules
    sudo iptables -L
@@ -54,7 +54,7 @@ Error: Connection failed: Connection refused (os error 111)
 4. **Service binding to localhost only**
    ```bash
    # Service might only bind to 127.0.0.1
-   wait-for 127.0.0.1:8080 instead of hostname:8080
+   waitup 127.0.0.1:8080 instead of hostname:8080
    ```
 
 #### "Connection timed out" Error
@@ -68,7 +68,7 @@ Error: Connection failed: Connection timed out (os error 110)
 
 1. **Increase connection timeout**
    ```bash
-   wait-for slow-service:8080 --connection-timeout 30s
+   waitup slow-service:8080 --connection-timeout 30s
    ```
 
 2. **Check network latency**
@@ -80,7 +80,7 @@ Error: Connection failed: Connection timed out (os error 110)
 3. **Verify service is responsive**
    ```bash
    # Use verbose mode to see retry attempts
-   wait-for hostname:8080 --verbose
+   waitup hostname:8080 --verbose
    ```
 
 #### "Name resolution failed" Error
@@ -99,13 +99,13 @@ Error: Invalid target: Name resolution failed
    dig hostname
 
    # Try with IP address instead
-   wait-for 192.168.1.100:8080
+   waitup 192.168.1.100:8080
    ```
 
 2. **Use localhost for local services**
    ```bash
-   wait-for localhost:8080
-   wait-for 127.0.0.1:8080
+   waitup localhost:8080
+   waitup 127.0.0.1:8080
    ```
 
 3. **Check /etc/hosts for local entries**
@@ -127,7 +127,7 @@ Error: HTTP request failed: status code 404
 1. **Check expected status code**
    ```bash
    # Default expects 200, adjust as needed
-   wait-for https://api.example.com/health --expect-status 204
+   waitup https://api.example.com/health --expect-status 204
    ```
 
 2. **Verify URL path**
@@ -135,13 +135,13 @@ Error: HTTP request failed: status code 404
    # Test with curl first
    curl -I https://api.example.com/health
 
-   # Then use wait-for
-   wait-for https://api.example.com/health
+   # Then use waitup
+   waitup https://api.example.com/health
    ```
 
 3. **Add required headers**
    ```bash
-   wait-for https://api.example.com/private \
+   waitup https://api.example.com/private \
      --header "Authorization:Bearer token123" \
      --header "X-API-Key:secret"
    ```
@@ -158,7 +158,7 @@ Error: HTTP request failed: certificate verify failed
 1. **For development/testing** (⚠️ Not recommended for production)
    ```bash
    # Use HTTP instead of HTTPS
-   wait-for http://api.example.com/health
+   waitup http://api.example.com/health
    ```
 
 2. **Check certificate validity**
@@ -186,26 +186,26 @@ Error: Timeout after 30s waiting for targets to become available
 
 1. **Increase overall timeout**
    ```bash
-   wait-for slow-service:8080 --timeout 5m
+   waitup slow-service:8080 --timeout 5m
    ```
 
 2. **Adjust retry intervals**
    ```bash
-   wait-for slow-service:8080 \
+   waitup slow-service:8080 \
      --interval 5s \
      --max-interval 30s
    ```
 
 3. **Limit retry attempts**
    ```bash
-   wait-for unreliable-service:8080 --retry-limit 10
+   waitup unreliable-service:8080 --retry-limit 10
    ```
 
 4. **Use environment variables for defaults**
    ```bash
-   export WAIT_FOR_TIMEOUT=120s
-   export WAIT_FOR_INTERVAL=5s
-   wait-for slow-service:8080
+   export WAITUP_TIMEOUT=120s
+   export WAITUP_INTERVAL=5s
+   waitup slow-service:8080
    ```
 
 ### Multiple Target Issues
@@ -222,35 +222,35 @@ Error: Not all targets became available within timeout
 1. **Check which target is failing**
    ```bash
    # Use JSON output to see individual results
-   wait-for db:5432 redis:6379 api:8080 --json
+   waitup db:5432 redis:6379 api:8080 --json
    ```
 
 2. **Test targets individually**
    ```bash
-   wait-for db:5432 --timeout 30s
-   wait-for redis:6379 --timeout 30s
-   wait-for api:8080 --timeout 30s
+   waitup db:5432 --timeout 30s
+   waitup redis:6379 --timeout 30s
+   waitup api:8080 --timeout 30s
    ```
 
 3. **Use "wait for any" strategy**
    ```bash
    # Succeed when any target is ready
-   wait-for primary-db:5432 backup-db:5432 --any
+   waitup primary-db:5432 backup-db:5432 --any
    ```
 
 4. **Stagger target checking**
    ```bash
    # Check dependencies in order
-   wait-for db:5432 --timeout 60s && \
-   wait-for redis:6379 --timeout 30s && \
-   wait-for api:8080 --timeout 30s
+   waitup db:5432 --timeout 60s && \
+   waitup redis:6379 --timeout 30s && \
+   waitup api:8080 --timeout 30s
    ```
 
 ## Docker-Specific Issues
 
 ### Container Networking
 
-**Problem:** wait-for works on host but fails in Docker container
+**Problem:** waitup works on host but fails in Docker container
 
 **Solutions:**
 
@@ -259,7 +259,7 @@ Error: Not all targets became available within timeout
    # docker-compose.yml
    services:
      app:
-       command: ["wait-for", "postgres:5432", "--", "npm", "start"]
+       command: ["waitup", "postgres:5432", "--", "npm", "start"]
        depends_on:
          - postgres
      postgres:
@@ -292,12 +292,12 @@ Error: Not all targets became available within timeout
    FROM rust:slim
    RUN adduser --disabled-password --gecos '' waituser
    USER waituser
-   COPY --chown=waituser:waituser wait-for /usr/local/bin/
+   COPY --chown=waituser:waituser waitup /usr/local/bin/
    ```
 
 2. **Use official Docker image**
    ```bash
-   docker run --rm ghcr.io/grok-rs/wait-for:alpine hostname:port
+   docker run --rm ghcr.io/grok-rs/waitup:alpine hostname:port
    ```
 
 ## Kubernetes-Specific Issues
@@ -316,9 +316,9 @@ Error: Not all targets became available within timeout
 2. **Use appropriate timeout**
    ```yaml
    initContainers:
-   - name: wait-for-deps
-     image: wait-for:alpine
-     command: ["wait-for"]
+   - name: waitup-deps
+     image: waitup:alpine
+     command: ["waitup"]
      args: ["postgres:5432", "--timeout", "300s"]
    ```
 
@@ -336,7 +336,7 @@ Error: Not all targets became available within timeout
 
 1. **Use fully qualified service names**
    ```bash
-   wait-for postgres.default.svc.cluster.local:5432
+   waitup postgres.default.svc.cluster.local:5432
    ```
 
 2. **Check service discovery**
@@ -355,10 +355,10 @@ Error: Not all targets became available within timeout
 1. **Set appropriate timeouts for CI**
    ```bash
    # GitHub Actions
-   wait-for db:5432 --timeout 120s -- npm test
+   waitup db:5432 --timeout 120s -- npm test
 
    # GitLab CI
-   wait-for db:5432 --timeout 2m -- ./run-tests.sh
+   waitup db:5432 --timeout 2m -- ./run-tests.sh
    ```
 
 2. **Use background services**
@@ -382,38 +382,38 @@ Error: Not all targets became available within timeout
 
 1. **Explicit parameters override env vars**
    ```bash
-   # This works even if WAIT_FOR_TIMEOUT is set
-   wait-for db:5432 --timeout 60s
+   # This works even if WAITUP_TIMEOUT is set
+   waitup db:5432 --timeout 60s
    ```
 
 2. **Clear environment variables**
    ```bash
-   unset WAIT_FOR_TIMEOUT WAIT_FOR_INTERVAL
-   wait-for db:5432 --timeout 30s
+   unset WAITUP_TIMEOUT WAITUP_INTERVAL
+   waitup db:5432 --timeout 30s
    ```
 
 ## Performance Issues
 
 ### Slow Connection Checking
 
-**Problem:** wait-for seems slow
+**Problem:** waitup seems slow
 
 **Solutions:**
 
 1. **Reduce retry interval**
    ```bash
-   wait-for fast-service:8080 --interval 100ms
+   waitup fast-service:8080 --interval 100ms
    ```
 
 2. **Use parallel checking for multiple targets**
    ```bash
-   # wait-for automatically parallelizes multiple targets
-   wait-for db:5432 redis:6379 api:8080
+   # waitup automatically parallelizes multiple targets
+   waitup db:5432 redis:6379 api:8080
    ```
 
 3. **Set connection timeout**
    ```bash
-   wait-for slow-service:8080 --connection-timeout 5s
+   waitup slow-service:8080 --connection-timeout 5s
    ```
 
 ### Memory Usage
@@ -424,13 +424,13 @@ Error: Not all targets became available within timeout
 
 1. **Check targets in batches**
    ```bash
-   wait-for db:5432 cache:6379 && \
-   wait-for api:8080 worker:8081
+   waitup db:5432 cache:6379 && \
+   waitup api:8080 worker:8081
    ```
 
 2. **Use lightweight Docker image**
    ```dockerfile
-   FROM ghcr.io/grok-rs/wait-for:alpine
+   FROM ghcr.io/grok-rs/waitup:alpine
    ```
 
 ## Debugging Tips
@@ -438,7 +438,7 @@ Error: Not all targets became available within timeout
 ### Enable Verbose Output
 
 ```bash
-wait-for hostname:port --verbose
+waitup hostname:port --verbose
 ```
 
 This shows:
@@ -450,20 +450,20 @@ This shows:
 ### Use JSON Output for Scripting
 
 ```bash
-wait-for db:5432 redis:6379 --json | jq '.targets[] | select(.success == false)'
+waitup db:5432 redis:6379 --json | jq '.targets[] | select(.success == false)'
 ```
 
 ### Test with Minimal Configuration
 
 ```bash
 # Simplest possible test
-wait-for localhost:80 --timeout 5s --interval 1s
+waitup localhost:80 --timeout 5s --interval 1s
 ```
 
 ### Check Exit Codes
 
 ```bash
-wait-for hostname:port
+waitup hostname:port
 echo "Exit code: $?"
 ```
 
@@ -498,12 +498,12 @@ netstat -tulpn
 
 If you're still experiencing issues:
 
-1. **Check the GitHub issues**: [github.com/grok-rs/wait-for/issues](https://github.com/grok-rs/wait-for/issues)
+1. **Check the GitHub issues**: [github.com/grok-rs/waitup/issues](https://github.com/grok-rs/waitup/issues)
 2. **Enable verbose output** and include it in your issue report
 3. **Provide minimal reproduction case**
 4. **Include environment information**:
    ```bash
-   wait-for --version
+   waitup --version
    uname -a
    docker --version  # if using Docker
    ```
@@ -514,10 +514,10 @@ If you're still experiencing issues:
 
 ```bash
 # Install via Homebrew if available
-brew install wait-for
+brew install waitup
 
 # Or use Docker
-docker run --rm ghcr.io/grok-rs/wait-for:alpine hostname:port
+docker run --rm ghcr.io/grok-rs/waitup:alpine hostname:port
 ```
 
 ### Windows
@@ -525,10 +525,10 @@ docker run --rm ghcr.io/grok-rs/wait-for:alpine hostname:port
 ```bash
 # Use WSL2
 wsl
-wait-for hostname:port
+waitup hostname:port
 
 # Or use Docker Desktop
-docker run --rm ghcr.io/grok-rs/wait-for:alpine hostname:port
+docker run --rm ghcr.io/grok-rs/waitup:alpine hostname:port
 ```
 
 ### Alpine Linux
@@ -538,7 +538,7 @@ docker run --rm ghcr.io/grok-rs/wait-for:alpine hostname:port
 apk add gcompat
 
 # Or use Alpine-specific build
-docker run --rm ghcr.io/grok-rs/wait-for:alpine hostname:port
+docker run --rm ghcr.io/grok-rs/waitup:alpine hostname:port
 ```
 
-This troubleshooting guide covers the most common issues. For more complex scenarios, refer to the [Architecture Documentation](ARCHITECTURE.md) for deeper understanding of wait-for's internals.
+This troubleshooting guide covers the most common issues. For more complex scenarios, refer to the [Architecture Documentation](ARCHITECTURE.md) for deeper understanding of waitup's internals.

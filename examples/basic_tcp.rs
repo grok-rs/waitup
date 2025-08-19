@@ -4,16 +4,16 @@
     reason = "example code that demonstrates library usage"
 )]
 
-//! Basic TCP connection example using wait-for as a library.
+//! Basic TCP connection example using waitup as a library.
 //!
 //! This example demonstrates waiting for a single TCP service to become available.
 //! Run with: cargo run --example `basic_tcp`
 
 use std::time::Duration;
-use wait_for::{wait_for_connection, Target, WaitConfig};
+use waitup::{wait_for_connection, Target, WaitConfig};
 
 #[tokio::main]
-async fn main() -> Result<(), wait_for::WaitForError> {
+async fn main() -> Result<(), waitup::WaitForError> {
     println!("🔍 Waiting for TCP service to become available...");
 
     // Create a TCP target

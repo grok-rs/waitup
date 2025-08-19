@@ -7,15 +7,15 @@
 
 //! Docker Compose integration example.
 //!
-//! This example shows how to use wait-for in a Docker Compose environment
+//! This example shows how to use waitup in a Docker Compose environment
 //! to wait for dependent services before starting your application.
 //! Run with: cargo run --example `docker_compose`
 
 use std::time::Duration;
-use wait_for::{wait_for_connection, Target, WaitConfig};
+use waitup::{wait_for_connection, Target, WaitConfig};
 
 #[tokio::main]
-async fn main() -> Result<(), wait_for::WaitForError> {
+async fn main() -> Result<(), waitup::WaitForError> {
     println!("\u{1F433} Docker Compose: Waiting for dependent services...");
 
     // Typical services in a Docker Compose setup

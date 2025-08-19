@@ -261,27 +261,27 @@ jobs:
       - name: Test binary help output
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            ./target/${{ matrix.target }}/release/wait-for.exe --help
+            ./target/${{ matrix.target }}/release/waitup.exe --help
           else
-            ./target/${{ matrix.target }}/release/wait-for --help
+            ./target/${{ matrix.target }}/release/waitup --help
           fi
         shell: bash
 
       - name: Test binary version output
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            ./target/${{ matrix.target }}/release/wait-for.exe --version
+            ./target/${{ matrix.target }}/release/waitup.exe --version
           else
-            ./target/${{ matrix.target }}/release/wait-for --version
+            ./target/${{ matrix.target }}/release/waitup --version
           fi
         shell: bash
 
       - name: Test shell completion generation
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            ./target/${{ matrix.target }}/release/wait-for.exe --generate-completion bash > completions.bash
+            ./target/${{ matrix.target }}/release/waitup.exe --generate-completion bash > completions.bash
           else
-            ./target/${{ matrix.target }}/release/wait-for --generate-completion bash > completions.bash
+            ./target/${{ matrix.target }}/release/waitup --generate-completion bash > completions.bash
           fi
           test -s completions.bash
         shell: bash

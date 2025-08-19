@@ -1,5 +1,5 @@
 #!/bin/bash
-# Setup script for wait-for development environment
+# Setup script for waitup development environment
 # This script installs and configures pre-commit hooks and development tools
 
 set -euo pipefail
@@ -18,7 +18,7 @@ INFO="ℹ️"
 WARNING="⚠️"
 ROCKET="🚀"
 
-echo -e "${BLUE}${ROCKET} Setting up wait-for development environment${NC}"
+echo -e "${BLUE}${ROCKET} Setting up waitup development environment${NC}"
 echo "=================================================="
 
 # Function to check if command exists

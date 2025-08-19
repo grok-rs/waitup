@@ -1,6 +1,6 @@
 # Integration Patterns
 
-This guide provides proven patterns for integrating wait-for into various environments and workflows. These patterns are based on real-world usage and community best practices.
+This guide provides proven patterns for integrating waitup into various environments and workflows. These patterns are based on real-world usage and community best practices.
 
 ## Table of Contents
 
@@ -23,7 +23,7 @@ version: "3.8"
 services:
   app:
     image: myapp:latest
-    command: ["wait-for", "postgres:5432", "--timeout", "60s", "--", "npm", "start"]
+    command: ["waitup", "postgres:5432", "--timeout", "60s", "--", "npm", "start"]
     depends_on:
       - postgres
 
@@ -59,7 +59,7 @@ services:
     image: myapp:latest
     command: |
       sh -c "
-        wait-for postgres:5432 --timeout 60s &&
+        waitup postgres:5432 --timeout 60s &&
         npm run migrate
       "
     depends_on:
@@ -71,7 +71,7 @@ services:
     image: myapp:latest
     command: |
       sh -c "
-        wait-for postgres:5432 --timeout 30s &&
+        waitup postgres:5432 --timeout 30s &&
         npm start
       "
     depends_on:
@@ -88,7 +88,7 @@ services:
   app:
     image: myapp:latest
     healthcheck:
-      test: ["CMD", "wait-for", "localhost:8080", "/health", "--timeout", "5s"]
+      test: ["CMD", "waitup", "localhost:8080", "/health", "--timeout", "5s"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -107,8 +107,8 @@ services:
     image: myapp:latest
     command: |
       sh -c "
-        wait-for localhost:9901 --timeout 30s && # Envoy admin
-        wait-for postgres:5432 --timeout 60s &&
+        waitup localhost:9901 --timeout 30s && # Envoy admin
+        waitup postgres:5432 --timeout 60s &&
         npm start
       "
 
@@ -129,14 +129,14 @@ services:
 services:
   app:
     image: myapp:latest
-    command: ["wait-for", "postgres:5432", "--", "npm", "start"]
+    command: ["waitup", "postgres:5432", "--", "npm", "start"]
 
 # docker-compose.override.yml (for development)
 services:
   app:
     command: |
       sh -c "
-        wait-for postgres:5432 --timeout 120s &&
+        waitup postgres:5432 --timeout 120s &&
         npm run dev -- --reload
       "
     volumes:
@@ -167,9 +167,9 @@ spec:
         app: web-app
     spec:
       initContainers:
-      - name: wait-for-dependencies
-        image: ghcr.io/grok-rs/wait-for:alpine
-        command: ["wait-for"]
+      - name: waitup-dependencies
+        image: ghcr.io/grok-rs/waitup:alpine
+        command: ["waitup"]
         args: ["postgres.database.svc.cluster.local:5432", "--timeout", "300s"]
 
       containers:
@@ -195,9 +195,9 @@ spec:
   template:
     spec:
       initContainers:
-      - name: wait-for-db
-        image: ghcr.io/grok-rs/wait-for:alpine
-        command: ["wait-for", "postgres:5432", "--timeout", "300s", "--verbose"]
+      - name: waitup-db
+        image: ghcr.io/grok-rs/waitup:alpine
+        command: ["waitup", "postgres:5432", "--timeout", "300s", "--verbose"]
 
       containers:
       - name: migrate
@@ -233,12 +233,12 @@ spec:
     spec:
       initContainers:
       - name: wait-dependencies
-        image: ghcr.io/grok-rs/wait-for:alpine
+        image: ghcr.io/grok-rs/waitup:alpine
         command: |
           sh -c "
             while read dep; do
               echo \"Waiting for $dep\"
-              wait-for $dep --timeout 60s
+              waitup $dep --timeout 60s
             done < /config/dependencies.txt
           "
         volumeMounts:
@@ -260,9 +260,9 @@ spec:
 {{- if .Values.dependencies.enabled }}
 initContainers:
 {{- range .Values.dependencies.services }}
-- name: wait-for-{{ .name }}
+- name: waitup-{{ .name }}
   image: {{ $.Values.dependencies.waitFor.image }}
-  command: ["wait-for"]
+  command: ["waitup"]
   args:
     - {{ .target | quote }}
     - "--timeout={{ .timeout | default "60s" }}"
@@ -284,7 +284,7 @@ dependencies:
   enabled: true
   verbose: true
   waitFor:
-    image: "ghcr.io/grok-rs/wait-for:alpine"
+    image: "ghcr.io/grok-rs/waitup:alpine"
   services:
     - name: postgres
       target: "postgres.database.svc.cluster.local:5432"
@@ -312,10 +312,10 @@ spec:
         spec:
           containers:
           - name: health-check
-            image: ghcr.io/grok-rs/wait-for:alpine
+            image: ghcr.io/grok-rs/waitup:alpine
             command: |
               sh -c "
-                wait-for api-service:80 --json > /tmp/result.json
+                waitup api-service:80 --json > /tmp/result.json
                 if [ $? -eq 0 ]; then
                   echo 'Health check passed'
                 else
@@ -355,15 +355,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install wait-for
+      - name: Install waitup
         run: |
-          wget -O wait-for https://github.com/grok-rs/wait-for/releases/latest/download/wait-for-linux-x86_64
-          chmod +x wait-for
-          sudo mv wait-for /usr/local/bin/
+          wget -O waitup https://github.com/grok-rs/waitup/releases/latest/download/waitup-linux-x86_64
+          chmod +x waitup
+          sudo mv waitup /usr/local/bin/
 
       - name: Wait for services
         run: |
-          wait-for localhost:5432 --timeout 30s
+          waitup localhost:5432 --timeout 30s
 
       - name: Run tests
         run: |
@@ -391,9 +391,9 @@ test:
   image: node:18
   before_script:
     - apt-get update && apt-get install -y wget
-    - wget -O wait-for https://github.com/grok-rs/wait-for/releases/latest/download/wait-for-linux-x86_64
-    - chmod +x wait-for && mv wait-for /usr/local/bin/
-    - wait-for postgres:5432 --timeout 60s
+    - wget -O waitup https://github.com/grok-rs/waitup/releases/latest/download/waitup-linux-x86_64
+    - chmod +x waitup && mv waitup /usr/local/bin/
+    - waitup postgres:5432 --timeout 60s
   script:
     - npm ci
     - npm test
@@ -406,7 +406,7 @@ integration_test:
   script:
     - docker-compose -f docker-compose.test.yml up -d
     - docker run --rm --network container:$(docker-compose -f docker-compose.test.yml ps -q app)
-        ghcr.io/grok-rs/wait-for:alpine
+        ghcr.io/grok-rs/waitup:alpine
         localhost:8080 --timeout 60s
     - # Run integration tests
 ```
@@ -431,7 +431,7 @@ pipeline {
             steps {
                 sh '''
                     docker run --rm --network myapp_default
-                        ghcr.io/grok-rs/wait-for:alpine
+                        ghcr.io/grok-rs/waitup:alpine
                         postgres:5432 redis:6379 --timeout 120s --verbose
                 '''
             }
@@ -448,7 +448,7 @@ pipeline {
                 sh 'docker-compose up -d app'
                 sh '''
                     docker run --rm --network myapp_default
-                        ghcr.io/grok-rs/wait-for:alpine
+                        ghcr.io/grok-rs/waitup:alpine
                         app:8080 --timeout 60s
                 '''
             }
@@ -495,12 +495,12 @@ stages:
               POSTGRES_PASSWORD: $(POSTGRES_PASSWORD)
         steps:
           - script: |
-              curl -L https://github.com/grok-rs/wait-for/releases/latest/download/wait-for-linux-x86_64 -o wait-for
-              chmod +x wait-for
-              sudo mv wait-for /usr/local/bin/
-            displayName: 'Install wait-for'
+              curl -L https://github.com/grok-rs/waitup/releases/latest/download/waitup-linux-x86_64 -o waitup
+              chmod +x waitup
+              sudo mv waitup /usr/local/bin/
+            displayName: 'Install waitup'
 
-          - script: wait-for localhost:5432 --timeout 30s
+          - script: waitup localhost:5432 --timeout 30s
             displayName: 'Wait for database'
 
           - script: npm test
@@ -551,14 +551,14 @@ spec:
     spec:
       initContainers:
       # Wait for Istio proxy
-      - name: wait-for-proxy
-        image: ghcr.io/grok-rs/wait-for:alpine
-        command: ["wait-for", "localhost:15000", "--timeout", "30s"]
+      - name: waitup-proxy
+        image: ghcr.io/grok-rs/waitup:alpine
+        command: ["waitup", "localhost:15000", "--timeout", "30s"]
 
       # Wait for dependencies
-      - name: wait-for-deps
-        image: ghcr.io/grok-rs/wait-for:alpine
-        command: ["wait-for"]
+      - name: waitup-deps
+        image: ghcr.io/grok-rs/waitup:alpine
+        command: ["waitup"]
         args:
           - "postgres.database:5432"
           - "http://auth-service:8080/health"
@@ -590,8 +590,8 @@ services:
     image: producer-service:latest
     command: |
       sh -c "
-        wait-for kafka:9092 --timeout 120s &&
-        wait-for http://schema-registry:8081/subjects --timeout 60s &&
+        waitup kafka:9092 --timeout 120s &&
+        waitup http://schema-registry:8081/subjects --timeout 60s &&
         npm start
       "
     depends_on:
@@ -603,8 +603,8 @@ services:
     image: consumer-service:latest
     command: |
       sh -c "
-        wait-for kafka:9092 --timeout 120s &&
-        wait-for postgres:5432 --timeout 60s &&
+        waitup kafka:9092 --timeout 120s &&
+        waitup postgres:5432 --timeout 60s &&
         npm start
       "
     depends_on:
@@ -635,7 +635,7 @@ services:
     image: api-gateway:latest
     command: |
       sh -c "
-        wait-for user-service:8080 order-service:8080 --all --timeout 180s &&
+        waitup user-service:8080 order-service:8080 --all --timeout 180s &&
         echo 'All upstream services ready' &&
         nginx -g 'daemon off;'
       "
@@ -666,9 +666,9 @@ services:
     image: payment-service:latest
     command: |
       sh -c "
-        wait-for jaeger:14268 --timeout 60s &&
-        wait-for postgres:5432 --timeout 60s &&
-        wait-for http://external-api:8080/health --timeout 30s &&
+        waitup jaeger:14268 --timeout 60s &&
+        waitup postgres:5432 --timeout 60s &&
+        waitup http://external-api:8080/health --timeout 30s &&
         npm start
       "
     environment:
@@ -692,7 +692,7 @@ echo "Starting development environment..."
 docker-compose -f docker-compose.dev.yml up -d postgres redis
 
 # Wait for services
-wait-for localhost:5432 localhost:6379 --timeout 60s --verbose
+waitup localhost:5432 localhost:6379 --timeout 60s --verbose
 
 # Run migrations
 npm run migrate
@@ -722,7 +722,7 @@ echo "Setting up test environment..."
 docker-compose -f docker-compose.test.yml up -d
 
 echo "Waiting for services to be ready..."
-wait-for \
+waitup \
   localhost:5432 \
   localhost:6379 \
   localhost:9200 \
@@ -750,8 +750,8 @@ services:
     image: myapp:${BRANCH_NAME:-main}
     command: |
       sh -c "
-        wait-for postgres:5432 --timeout 60s &&
-        wait-for redis:6379 --timeout 30s &&
+        waitup postgres:5432 --timeout 60s &&
+        waitup redis:6379 --timeout 30s &&
         npm start
       "
     environment:
@@ -790,7 +790,7 @@ echo "======================="
 for service in "${services[@]}"; do
   echo -n "Checking $service... "
 
-  result=$(wait-for "$service" --timeout 5s --json 2>/dev/null)
+  result=$(waitup "$service" --timeout 5s --json 2>/dev/null)
 
   if [ $? -eq 0 ]; then
     elapsed=$(echo "$result" | jq -r '.elapsed_ms')
@@ -822,7 +822,7 @@ for service_def in "${services[@]}"; do
   IFS=':' read -r name host port <<< "$service_def"
 
   start_time=$(date +%s%3N)
-  wait-for "$host:$port" --timeout 10s --json > /tmp/result.json 2>&1
+  waitup "$host:$port" --timeout 10s --json > /tmp/result.json 2>&1
   exit_code=$?
   end_time=$(date +%s%3N)
 
@@ -846,7 +846,7 @@ check_service() {
   local service=$1
   local name=$2
 
-  if ! wait-for "$service" --timeout 10s >/dev/null 2>&1; then
+  if ! waitup "$service" --timeout 10s >/dev/null 2>&1; then
     curl -X POST -H 'Content-type: application/json' \
       --data "{\"text\":\"🚨 Service $name is unavailable: $service\"}" \
       "$SLACK_WEBHOOK"
@@ -889,4 +889,4 @@ check_service "http://api:8080/health" "API Service"
 - Monitor resource usage in production
 - Cache DNS resolution when appropriate
 
-These patterns provide a solid foundation for integrating wait-for into your infrastructure. Adapt them to your specific needs and environment constraints.
+These patterns provide a solid foundation for integrating waitup into your infrastructure. Adapt them to your specific needs and environment constraints.

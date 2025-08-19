@@ -1,5 +1,5 @@
 [build]
-# Cross-compilation configuration for wait-for
+# Cross-compilation configuration for waitup
 # This file ensures proper cross-compilation setup for all target platforms
 
 [target.aarch64-unknown-linux-gnu]

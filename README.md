@@ -1,14 +1,14 @@
-# wait-for
+# waitup
 
-[![Crates.io](https://img.shields.io/crates/v/wait-for.svg)](https://github.com/grok-rs/wait-for)
-[![Documentation](https://docs.rs/wait-for/badge.svg)](https://docs.rs/wait-for)
+[![Crates.io](https://img.shields.io/crates/v/waitup.svg)](https://github.com/grok-rs/waitup)
+[![Documentation](https://docs.rs/waitup/badge.svg)](https://docs.rs/waitup)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI](https://github.com/grok-rs/wait-for/workflows/CI/badge.svg)](https://github.com/grok-rs/wait-for/actions)
-[![GitHub Container Registry](https://img.shields.io/badge/GHCR-Available-blue)](https://ghcr.io/grok-rs/wait-for)
+[![CI](https://github.com/grok-rs/waitup/workflows/CI/badge.svg)](https://github.com/grok-rs/waitup/actions)
+[![GitHub Container Registry](https://img.shields.io/badge/GHCR-Available-blue)](https://ghcr.io/grok-rs/waitup)
 
 > A modern, feature-rich CLI tool for waiting until TCP ports, HTTP endpoints, and services become available. Perfect for Docker, Kubernetes, CI/CD pipelines, and microservices orchestration.
 
-**Why choose wait-for?**
+**Why choose waitup?**
 
 - **DNS Resolution**: Supports both hostnames and IP addresses
 - **Multiple Targets**: Wait for multiple services with flexible strategies
@@ -35,37 +35,37 @@
 ### From Crates.io (Recommended)
 
 ```bash
-cargo install wait-for
+cargo install waitup
 ```
 
 ### Docker
 
 ```bash
 # Pull from GitHub Container Registry (recommended)
-docker pull ghcr.io/grok-rs/wait-for:latest
-docker run --rm ghcr.io/grok-rs/wait-for:latest --help
+docker pull ghcr.io/grok-rs/waitup:latest
+docker run --rm ghcr.io/grok-rs/waitup:latest --help
 
 # Or use the Alpine build (smaller)
-docker pull ghcr.io/grok-rs/wait-for:alpine
-docker run --rm ghcr.io/grok-rs/wait-for:alpine --help
+docker pull ghcr.io/grok-rs/waitup:alpine
+docker run --rm ghcr.io/grok-rs/waitup:alpine --help
 
 # Build from source using Docker
-docker build -t wait-for .
-docker run --rm wait-for --help
+docker build -t waitup .
+docker run --rm waitup --help
 
 # Or build the Alpine variant from source
-docker build -f Dockerfile.alpine -t wait-for:alpine .
+docker build -f Dockerfile.alpine -t waitup:alpine .
 ```
 
 ### Pre-built Binaries
 
-Download from [GitHub Releases](https://github.com/grok-rs/wait-for/releases)
+Download from [GitHub Releases](https://github.com/grok-rs/waitup/releases)
 
 ### From Source
 
 ```bash
-git clone https://github.com/grok-rs/wait-for
-cd wait-for
+git clone https://github.com/grok-rs/waitup
+cd waitup
 cargo install --path .
 ```
 
@@ -75,13 +75,13 @@ Generate completion scripts for your shell:
 
 ```bash
 # Bash
-wait-for --generate-completion bash > /etc/bash_completion.d/wait-for
+waitup --generate-completion bash > /etc/bash_completion.d/waitup
 
 # Zsh
-wait-for --generate-completion zsh > ~/.local/share/zsh/completions/_wait-for
+waitup --generate-completion zsh > ~/.local/share/zsh/completions/_waitup
 
 # Fish
-wait-for --generate-completion fish > ~/.config/fish/completions/wait-for.fish
+waitup --generate-completion fish > ~/.config/fish/completions/waitup.fish
 ```
 
 ## Usage
@@ -90,71 +90,71 @@ wait-for --generate-completion fish > ~/.config/fish/completions/wait-for.fish
 
 ```bash
 # Wait for a service to be ready
-wait-for localhost:8080
+waitup localhost:8080
 
 # With timeout and custom interval
-wait-for db:5432 --timeout 2m --interval 5s
+waitup db:5432 --timeout 2m --interval 5s
 ```
 
 ### DNS Resolution
 
 ```bash
 # Works with hostnames
-wait-for postgres-db:5432
-wait-for api.example.com:443
+waitup postgres-db:5432
+waitup api.example.com:443
 ```
 
 ### Multiple Targets
 
 ```bash
 # Wait for all services (default)
-wait-for db:5432 redis:6379 api:8080
+waitup db:5432 redis:6379 api:8080
 
 # Wait for any service to be ready
-wait-for primary-db:5432 backup-db:5432 --any
+waitup primary-db:5432 backup-db:5432 --any
 ```
 
 ### HTTP Health Checks
 
 ```bash
 # HTTP endpoint health check
-wait-for https://api.example.com/health
+waitup https://api.example.com/health
 
 # Custom status code expectation
-wait-for http://localhost:8080/ready --expect-status 204
+waitup http://localhost:8080/ready --expect-status 204
 
 # With custom headers (authentication, etc.)
-wait-for https://api.example.com/private --header "Authorization:Bearer token123" --header "X-API-Key:secret"
+waitup https://api.example.com/private --header "Authorization:Bearer token123" --header "X-API-Key:secret"
 ```
 
 ### Command Execution
 
 ```bash
 # Run command after successful connection
-wait-for db:5432 -- npm start
+waitup db:5432 -- npm start
 
 # Multiple services before command
-wait-for db:5432 redis:6379 --all -- ./start-app.sh
+waitup db:5432 redis:6379 --all -- ./start-app.sh
 ```
 
 ### Progress and Verbose Output
 
 ```bash
 # Verbose mode with progress information
-wait-for db:5432 --verbose
+waitup db:5432 --verbose
 
 # Quiet mode (no output)
-wait-for db:5432 --quiet
+waitup db:5432 --quiet
 
 # JSON output for CI/CD integration
-wait-for db:5432 redis:6379 --json
+waitup db:5432 redis:6379 --json
 ```
 
 ### Exponential Backoff
 
 ```bash
 # Custom backoff configuration
-wait-for slow-service:8080 --interval 1s --max-interval 30s
+waitup slow-service:8080 --interval 1s --max-interval 30s
 ```
 
 ## Environment Variables
@@ -162,9 +162,9 @@ wait-for slow-service:8080 --interval 1s --max-interval 30s
 Configure defaults using environment variables:
 
 ```bash
-export WAIT_FOR_TIMEOUT=60s
-export WAIT_FOR_INTERVAL=2s
-wait-for db:5432  # Uses env defaults
+export WAITUP_TIMEOUT=60s
+export WAITUP_INTERVAL=2s
+waitup db:5432  # Uses env defaults
 ```
 
 ## Exit Codes
@@ -184,7 +184,7 @@ services:
     image: myapp
     depends_on:
       - db
-    command: ["wait-for", "db:5432", "--", "npm", "start"]
+    command: ["waitup", "db:5432", "--", "npm", "start"]
 
   db:
     image: postgres
@@ -194,23 +194,23 @@ services:
 
 ```yaml
 initContainers:
-  - name: wait-for-db
-    image: wait-for:latest
-    command: ["wait-for", "postgres:5432", "--timeout", "5m"]
+  - name: waitup-db
+    image: waitup:latest
+    command: ["waitup", "postgres:5432", "--timeout", "5m"]
 ```
 
 ### CI/CD Pipeline
 
 ```bash
 # Wait for test database before running tests
-wait-for localhost:5432 --timeout 30s -- npm test
+waitup localhost:5432 --timeout 30s -- npm test
 ```
 
 ### Microservices Health Check
 
 ```bash
 # Wait for multiple dependencies
-wait-for \
+waitup \
   auth-service:8001 \
   user-service:8002 \
   https://payment-api/health \
@@ -241,17 +241,17 @@ Supports human-readable durations:
 
 ```bash
 # Limit retry attempts
-wait-for flaky-service:8080 --retry-limit 5
+waitup flaky-service:8080 --retry-limit 5
 
 # Custom connection timeout per attempt
-wait-for slow-service:8080 --connection-timeout 30s
+waitup slow-service:8080 --connection-timeout 30s
 ```
 
 ### JSON Output for Automation
 
 ```bash
 # Perfect for CI/CD pipelines
-wait-for api:8080 db:5432 --json | jq '.success'
+waitup api:8080 db:5432 --json | jq '.success'
 
 # Example JSON output:
 {
@@ -276,17 +276,17 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wait-for = "1.0"
+waitup = "1.0"
 ```
 
 Use in your Rust code:
 
 ```rust
-use wait_for::{Target, WaitConfig, wait_for_connection};
+use waitup::{Target, WaitConfig, wait_for_connection};
 use std::time::Duration;
 
 #[tokio::main]
-async fn main() -> Result<(), wait_for::WaitForError> {
+async fn main() -> Result<(), waitup::WaitForError> {
     let targets = vec![
         Target::tcp("db", 5432)?,
         Target::parse("https://api.example.com/health", 200)?,
@@ -313,9 +313,9 @@ apiVersion: v1
 kind: Pod
 spec:
   initContainers:
-    - name: wait-for-deps
-      image: wait-for:alpine
-      command: ["wait-for"]
+    - name: waitup-deps
+      image: waitup:alpine
+      command: ["waitup"]
       args: ["postgres:5432", "redis:6379", "--timeout", "300s"]
   containers:
     - name: app
@@ -334,8 +334,8 @@ services:
         condition: service_completed_successfully
 
   db-ready:
-    image: wait-for:alpine
-    command: ["wait-for", "postgres:5432", "--timeout", "60s"]
+    image: waitup:alpine
+    command: ["waitup", "postgres:5432", "--timeout", "60s"]
     depends_on:
       - postgres
 
@@ -345,7 +345,7 @@ services:
 
 ## Comparison with Alternatives
 
-| Feature             | wait-for | wait-for-it | dockerize | wait-on |
+| Feature             | waitup | waitup-it | dockerize | wait-on |
 | ------------------- | -------- | ----------- | --------- | ------- |
 | Language            | Rust     | Bash        | Go        | Node.js |
 | HTTP Support        | ✅       | ❌          | ✅        | ✅      |
@@ -361,8 +361,8 @@ services:
 
 | Option                 | Environment Variable | Description                           |
 | ---------------------- | -------------------- | ------------------------------------- |
-| `--timeout`            | `WAIT_FOR_TIMEOUT`   | Total timeout (default: 30s)          |
-| `--interval`           | `WAIT_FOR_INTERVAL`  | Initial retry interval (default: 1s)  |
+| `--timeout`            | `WAITUP_TIMEOUT`   | Total timeout (default: 30s)          |
+| `--interval`           | `WAITUP_INTERVAL`  | Initial retry interval (default: 1s)  |
 | `--max-interval`       | -                    | Maximum retry interval (default: 30s) |
 | `--connection-timeout` | -                    | Per-attempt timeout (default: 10s)    |
 | `--retry-limit`        | -                    | Maximum retry attempts                |
@@ -371,25 +371,25 @@ services:
 ## FAQ
 
 **Q: Why not just use `nc` or `telnet`?**
-A: wait-for provides proper error handling, exponential backoff, multiple targets, HTTP health checks, and structured output that makes it ideal for production deployments.
+A: waitup provides proper error handling, exponential backoff, multiple targets, HTTP health checks, and structured output that makes it ideal for production deployments.
 
 **Q: Does it work with IPv6?**
-A: Yes! wait-for supports both IPv4 and IPv6 through Rust's standard networking stack.
+A: Yes! waitup supports both IPv4 and IPv6 through Rust's standard networking stack.
 
 **Q: Can I use it to wait for services that require authentication?**
 A: Yes, use custom headers: `--header "Authorization:Bearer token"`
 
 **Q: How does it compare to Kubernetes readiness probes?**
-A: wait-for is perfect for init containers and external dependency checking, while readiness probes are for the service itself.
+A: waitup is perfect for init containers and external dependency checking, while readiness probes are for the service itself.
 
 ## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
-- [Report bugs](https://github.com/grok-rs/wait-for/issues/new?template=bug_report.md)
-- [Request features](https://github.com/grok-rs/wait-for/issues/new?template=feature_request.md)
-- [Improve docs](https://github.com/grok-rs/wait-for/edit/main/README.md)
-- [Submit PRs](https://github.com/grok-rs/wait-for/pulls)
+- [Report bugs](https://github.com/grok-rs/waitup/issues/new?template=bug_report.md)
+- [Request features](https://github.com/grok-rs/waitup/issues/new?template=feature_request.md)
+- [Improve docs](https://github.com/grok-rs/waitup/edit/main/README.md)
+- [Submit PRs](https://github.com/grok-rs/waitup/pulls)
 
 ## Performance
 
@@ -400,7 +400,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 
 ## Security
 
-wait-for follows security best practices:
+waitup follows security best practices:
 
 - Runs as non-root user in containers
 - No sensitive data logging
@@ -415,6 +415,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
-- Inspired by [wait-for-it](https://github.com/vishnubob/wait-for-it) and [dockerize](https://github.com/jwilder/dockerize)
+- Inspired by [waitup-it](https://github.com/vishnubob/waitup-it) and [dockerize](https://github.com/jwilder/dockerize)
 - Built with [Rust](https://www.rust-lang.org/) and [Tokio](https://tokio.rs/)
-- Thanks to all [contributors](https://github.com/grok-rs/wait-for/graphs/contributors)!
+- Thanks to all [contributors](https://github.com/grok-rs/waitup/graphs/contributors)!

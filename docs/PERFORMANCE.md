@@ -1,6 +1,6 @@
 # Performance Guide
 
-This guide provides insights into wait-for's performance characteristics, optimization techniques, and best practices for high-performance deployments.
+This guide provides insights into waitup's performance characteristics, optimization techniques, and best practices for high-performance deployments.
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@ This guide provides insights into wait-for's performance characteristics, optimi
 
 ### Runtime Performance
 
-wait-for is designed for minimal overhead and fast execution:
+waitup is designed for minimal overhead and fast execution:
 
 | Metric | Value | Description |
 |--------|--------|-------------|
@@ -58,15 +58,15 @@ Tested on: Ubuntu 22.04, Intel i7-10710U, 16GB RAM
 
 ```bash
 # Single target
-wait-for localhost:8080 --timeout 5s
+waitup localhost:8080 --timeout 5s
 # Average: 2.3ms
 
 # Multiple targets (parallel)
-wait-for localhost:8080 localhost:8081 localhost:8082 --timeout 5s
+waitup localhost:8080 localhost:8081 localhost:8082 --timeout 5s
 # Average: 3.1ms (vs 6.9ms sequential)
 
 # With retry backoff
-wait-for localhost:9999 --timeout 5s --interval 100ms
+waitup localhost:9999 --timeout 5s --interval 100ms
 # First attempt: 2.1ms, subsequent: 100ms + connection time
 ```
 
@@ -74,15 +74,15 @@ wait-for localhost:9999 --timeout 5s --interval 100ms
 
 ```bash
 # Simple HTTP check
-wait-for http://localhost:8080 --timeout 5s
+waitup http://localhost:8080 --timeout 5s
 # Average: 12.8ms
 
 # HTTPS with TLS handshake
-wait-for https://localhost:8443 --timeout 5s
+waitup https://localhost:8443 --timeout 5s
 # Average: 28.4ms
 
 # With custom headers
-wait-for http://localhost:8080/health --header "Authorization:Bearer token"
+waitup http://localhost:8080/health --header "Authorization:Bearer token"
 # Average: 14.2ms
 ```
 
@@ -90,16 +90,16 @@ wait-for http://localhost:8080/health --header "Authorization:Bearer token"
 
 ```bash
 # Local network (< 1ms RTT)
-wait-for 192.168.1.100:8080  # ~3ms
+waitup 192.168.1.100:8080  # ~3ms
 
 # Same datacenter (~2ms RTT)
-wait-for server.internal:8080  # ~8ms
+waitup server.internal:8080  # ~8ms
 
 # Cross-region (~50ms RTT)
-wait-for server.remote:8080  # ~65ms
+waitup server.remote:8080  # ~65ms
 
 # Internet (~100ms RTT)
-wait-for api.example.com:443  # ~150ms
+waitup api.example.com:443  # ~150ms
 ```
 
 ### Memory Usage Benchmarks
@@ -136,38 +136,38 @@ Active retries:   ~0.05% CPU per target
 
 ```bash
 # Default timeout (may be too long for fast networks)
-wait-for localhost:8080  # 30s timeout, 10s connection timeout
+waitup localhost:8080  # 30s timeout, 10s connection timeout
 
 # Optimized for local network
-wait-for localhost:8080 --timeout 10s --connection-timeout 2s
+waitup localhost:8080 --timeout 10s --connection-timeout 2s
 
 # Optimized for fast checks
-wait-for localhost:8080 --timeout 5s --connection-timeout 1s --interval 200ms
+waitup localhost:8080 --timeout 5s --connection-timeout 1s --interval 200ms
 ```
 
 ### 2. Retry Interval Optimization
 
 ```bash
 # Default exponential backoff (1s → 2s → 4s → 8s → 16s → 30s)
-wait-for service:8080
+waitup service:8080
 
 # Faster checking for responsive services
-wait-for service:8080 --interval 100ms --max-interval 2s
+waitup service:8080 --interval 100ms --max-interval 2s
 
 # Slower checking for overloaded services
-wait-for service:8080 --interval 2s --max-interval 60s
+waitup service:8080 --interval 2s --max-interval 60s
 ```
 
 ### 3. Parallel vs Sequential Checking
 
 ```bash
 # Parallel (default) - fastest for independent services
-wait-for db:5432 cache:6379 api:8080
+waitup db:5432 cache:6379 api:8080
 
 # Sequential - for dependency chains
-wait-for db:5432 --timeout 30s && \
-wait-for cache:6379 --timeout 15s && \
-wait-for api:8080 --timeout 15s
+waitup db:5432 --timeout 30s && \
+waitup cache:6379 --timeout 15s && \
+waitup api:8080 --timeout 15s
 ```
 
 ### 4. HTTP Client Optimization
@@ -193,7 +193,7 @@ let client = reqwest::Client::builder()
 
 ```bash
 # Use IP addresses to skip DNS resolution
-wait-for 192.168.1.100:8080  # Faster than hostname:8080
+waitup 192.168.1.100:8080  # Faster than hostname:8080
 
 # DNS caching is handled by the OS resolver
 # Configure /etc/resolv.conf for better caching:
@@ -213,8 +213,8 @@ RUN cargo build --release --locked
 
 # Use distroless or alpine for minimal runtime
 FROM gcr.io/distroless/cc-debian12
-COPY --from=builder /app/target/release/wait-for /wait-for
-ENTRYPOINT ["/wait-for"]
+COPY --from=builder /app/target/release/waitup /waitup
+ENTRYPOINT ["/waitup"]
 ```
 
 **Benefits:**
@@ -280,7 +280,7 @@ Single HTTP check:  ~1KB/attempt
 ### Concurrent Connections
 
 ```rust
-// wait-for handles hundreds of concurrent connections efficiently
+// waitup handles hundreds of concurrent connections efficiently
 let targets: Vec<Target> = (1..=500)
     .map(|i| Target::tcp("service", 8000 + i))
     .collect::<Result<Vec<_>, _>>()?;
@@ -304,7 +304,7 @@ ulimit -n
 ulimit -n 8192
 
 # In Docker/Kubernetes
-docker run --ulimit nofile=8192:8192 wait-for ...
+docker run --ulimit nofile=8192:8192 waitup ...
 ```
 
 ### Network Stack Optimization
@@ -331,7 +331,7 @@ resources:
 
 ```bash
 # JSON output includes timing information
-wait-for db:5432 cache:6379 --json | jq '
+waitup db:5432 cache:6379 --json | jq '
 {
   total_time: .elapsed_ms,
   targets: [.targets[] | {
@@ -349,13 +349,13 @@ wait-for db:5432 cache:6379 --json | jq '
 # performance-monitor.sh
 
 targets=("db:5432" "cache:6379" "api:8080")
-results_file="/tmp/wait-for-metrics.json"
+results_file="/tmp/waitup-metrics.json"
 
 while true; do
   start_time=$(date +%s%3N)
 
   for target in "${targets[@]}"; do
-    result=$(wait-for "$target" --timeout 5s --json 2>/dev/null)
+    result=$(waitup "$target" --timeout 5s --json 2>/dev/null)
     success=$?
     end_time=$(date +%s%3N)
 
@@ -385,7 +385,7 @@ check_target() {
   local target="$2"
 
   start_time=$(date +%s%3N)
-  result=$(wait-for "$target" --timeout 10s --json 2>/dev/null)
+  result=$(waitup "$target" --timeout 10s --json 2>/dev/null)
   exit_code=$?
   end_time=$(date +%s%3N)
 
@@ -411,12 +411,12 @@ check_target "api" "api-service:8080"
 ### Performance Analysis
 
 ```bash
-# Profile wait-for performance
-perf record -g ./wait-for service:8080 --timeout 30s
+# Profile waitup performance
+perf record -g ./waitup service:8080 --timeout 30s
 perf report
 
 # Memory profiling with valgrind
-valgrind --tool=massif ./wait-for service:8080
+valgrind --tool=massif ./waitup service:8080
 ms_print massif.out.*
 
 # Async profiling with tokio-console (during development)
@@ -431,7 +431,7 @@ tokio-console
 #### Development (Local)
 ```bash
 # Fast feedback, detailed output
-wait-for localhost:8080 \
+waitup localhost:8080 \
   --timeout 10s \
   --interval 100ms \
   --max-interval 2s \
@@ -441,7 +441,7 @@ wait-for localhost:8080 \
 #### Testing (CI/CD)
 ```bash
 # Balance speed and reliability
-wait-for service:8080 \
+waitup service:8080 \
   --timeout 60s \
   --interval 500ms \
   --max-interval 10s \
@@ -451,7 +451,7 @@ wait-for service:8080 \
 #### Production (Kubernetes)
 ```bash
 # Conservative timeouts, retry limits
-wait-for postgres:5432 redis:6379 \
+waitup postgres:5432 redis:6379 \
   --timeout 300s \
   --interval 2s \
   --max-interval 30s \
@@ -462,7 +462,7 @@ wait-for postgres:5432 redis:6379 \
 #### High-Scale Deployments
 ```bash
 # Optimized for many targets
-wait-for $(echo {1..100} | tr ' ' '\n' | sed 's/^/service-/; s/$/8080/') \
+waitup $(echo {1..100} | tr ' ' '\n' | sed 's/^/service-/; s/$/8080/') \
   --timeout 120s \
   --interval 1s \
   --max-interval 10s \
@@ -491,4 +491,4 @@ resources:
     port: 8080
 ```
 
-By following these performance guidelines, you can optimize wait-for for your specific use case and ensure efficient resource utilization in production environments.
+By following these performance guidelines, you can optimize waitup for your specific use case and ensure efficient resource utilization in production environments.

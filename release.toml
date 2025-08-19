@@ -1,4 +1,4 @@
-# cargo-release configuration for wait-for
+# cargo-release configuration for waitup
 # Use with: cargo release [patch|minor|major]
 
 [workspace]
@@ -26,7 +26,7 @@ publish = true
 
 # Package-specific settings
 [[package]]
-name = "wait-for"
+name = "waitup"
 
 # Verify tests pass before release
 pre-release-hook = [
@@ -40,5 +40,5 @@ pre-release-hook = [
 post-release-hook = [
   "echo 'Release {{version}} completed successfully!'",
   "echo 'Published to: https://crates.io/crates/{{crate_name}}'",
-  "echo 'Create GitHub release: https://github.com/grok-rs/wait-for/releases/new?tag=v{{version}}&title=Release%20v{{version}}'",
+  "echo 'Create GitHub release: https://github.com/grok-rs/waitup/releases/new?tag=v{{version}}&title=Release%20v{{version}}'",
 ]

@@ -11,9 +11,9 @@
 //! Run with: cargo run --example `multiple_services`
 
 use std::time::Duration;
-use wait_for::{wait_for_connection, Target, WaitConfig};
+use waitup::{wait_for_connection, Target, WaitConfig};
 
-async fn wait_for_core_services() -> Result<(), wait_for::WaitForError> {
+async fn wait_for_core_services() -> Result<(), waitup::WaitForError> {
     println!("🏗️  Phase 1: Waiting for core infrastructure services...");
 
     let core_services = vec![
@@ -34,7 +34,7 @@ async fn wait_for_core_services() -> Result<(), wait_for::WaitForError> {
     Ok(())
 }
 
-async fn wait_for_application_services() -> Result<(), wait_for::WaitForError> {
+async fn wait_for_application_services() -> Result<(), waitup::WaitForError> {
     println!("🚀 Phase 2: Waiting for application services...");
 
     let app_services = vec![
@@ -56,7 +56,7 @@ async fn wait_for_application_services() -> Result<(), wait_for::WaitForError> {
     Ok(())
 }
 
-async fn wait_for_external_dependencies() -> Result<(), wait_for::WaitForError> {
+async fn wait_for_external_dependencies() -> Result<(), waitup::WaitForError> {
     println!("🌐 Phase 3: Checking external dependencies (any one available)...");
 
     // Multiple external APIs - we only need one to be available
@@ -78,7 +78,7 @@ async fn wait_for_external_dependencies() -> Result<(), wait_for::WaitForError> 
     Ok(())
 }
 
-async fn start_load_balancer() -> Result<(), wait_for::WaitForError> {
+async fn start_load_balancer() -> Result<(), waitup::WaitForError> {
     println!("⚖️  Phase 4: Starting load balancer...");
 
     // Check that our load balancer is ready
@@ -96,7 +96,7 @@ async fn start_load_balancer() -> Result<(), wait_for::WaitForError> {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), wait_for::WaitForError> {
+async fn main() -> Result<(), waitup::WaitForError> {
     println!("🎭 Complex Multi-Service Orchestration Example");
     println!("============================================");
 

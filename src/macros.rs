@@ -8,7 +8,7 @@
 /// # Examples
 ///
 /// ```rust
-/// use wait_for::tcp_targets;
+/// use waitup::tcp_targets;
 ///
 /// let targets = tcp_targets![
 ///     "localhost" => 8080,
@@ -16,7 +16,7 @@
 ///     "cache" => 6379,
 /// ]?;
 /// assert_eq!(targets.len(), 3);
-/// # Ok::<(), wait_for::WaitForError>(())
+/// # Ok::<(), waitup::WaitForError>(())
 /// ```
 #[macro_export]
 macro_rules! tcp_targets {
@@ -43,14 +43,14 @@ macro_rules! tcp_targets {
 /// # Examples
 ///
 /// ```rust
-/// use wait_for::http_targets;
+/// use waitup::http_targets;
 ///
 /// let targets = http_targets![
 ///     "https://api.example.com/health" => 200,
 ///     "http://localhost:8080/status" => 204,
 /// ]?;
 /// assert_eq!(targets.len(), 2);
-/// # Ok::<(), wait_for::WaitForError>(())
+/// # Ok::<(), waitup::WaitForError>(())
 /// ```
 #[macro_export]
 macro_rules! http_targets {
@@ -74,7 +74,7 @@ macro_rules! http_targets {
 /// # Examples
 ///
 /// ```rust
-/// use wait_for::wait_config;
+/// use waitup::wait_config;
 /// use std::time::Duration;
 ///
 /// let config = wait_config! {
@@ -111,7 +111,7 @@ macro_rules! wait_config {
 /// # Examples
 ///
 /// ```rust
-/// use wait_for::common_ports;
+/// use waitup::common_ports;
 ///
 /// let ports = common_ports![http, https, ssh, postgres];
 /// assert_eq!(ports.len(), 4);
@@ -134,11 +134,11 @@ macro_rules! common_ports {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use wait_for::{check_ready, Target, WaitConfig};
+/// use waitup::{check_ready, Target, WaitConfig};
 /// use std::time::Duration;
 ///
 /// # #[tokio::main]
-/// # async fn main() -> Result<(), wait_for::WaitForError> {
+/// # async fn main() -> Result<(), waitup::WaitForError> {
 /// let targets = vec![
 ///     Target::tcp("localhost", 8080)?,
 /// ];
@@ -147,7 +147,7 @@ macro_rules! common_ports {
 /// let config = WaitConfig::builder()
 ///     .timeout(Duration::from_secs(30))
 ///     .build();
-/// let result = wait_for::wait_for_connection(&targets, &config).await?;
+/// let result = waitup::wait_for_connection(&targets, &config).await?;
 /// println!("All targets ready in {:?}", result.elapsed);
 /// # Ok(())
 /// # }
@@ -179,11 +179,11 @@ macro_rules! check_ready {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use wait_for::{assert_ready, Target};
+/// use waitup::{assert_ready, Target};
 /// use std::time::Duration;
 ///
 /// # #[tokio::main]
-/// # async fn main() -> Result<(), wait_for::WaitForError> {
+/// # async fn main() -> Result<(), waitup::WaitForError> {
 /// let targets = vec![
 ///     Target::tcp("localhost", 8080)?,
 /// ];

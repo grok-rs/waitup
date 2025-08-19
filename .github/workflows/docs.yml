@@ -248,11 +248,11 @@ jobs:
           <html>
           <head>
               <meta charset="utf-8">
-              <title>wait-for documentation</title>
-              <meta http-equiv="refresh" content="0; url=wait_for/index.html">
+              <title>waitup documentation</title>
+              <meta http-equiv="refresh" content="0; url=waitup/index.html">
           </head>
           <body>
-              <p>Redirecting to <a href="wait_for/index.html">wait-for documentation</a>...</p>
+              <p>Redirecting to <a href="waitup/index.html">waitup documentation</a>...</p>
           </body>
           </html>
           EOF
@@ -282,7 +282,7 @@ jobs:
         run: |
           if [ "${{ steps.pages.outcome }}" == "success" ]; then
             echo "✅ GitHub Pages deployment successful"
-            echo "📖 Documentation available at: ${{ steps.deployment.outputs.page_url || 'https://grok-rs.github.io/wait-for' }}"
+            echo "📖 Documentation available at: ${{ steps.deployment.outputs.page_url || 'https://grok-rs.github.io/waitup' }}"
           else
             echo "ℹ️  GitHub Pages not enabled or setup failed"
             echo "💡 To enable documentation hosting:"

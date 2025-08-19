@@ -1,10 +1,10 @@
 # Architecture Documentation
 
-This document provides an overview of wait-for's internal architecture, design decisions, and module organization.
+This document provides an overview of waitup's internal architecture, design decisions, and module organization.
 
 ## Overview
 
-wait-for is a Rust CLI tool and library designed for high-performance network availability checking. The architecture follows a modular design with clear separation of concerns, emphasizing type safety, async performance, and zero-cost abstractions.
+waitup is a Rust CLI tool and library designed for high-performance network availability checking. The architecture follows a modular design with clear separation of concerns, emphasizing type safety, async performance, and zero-cost abstractions.
 
 ## Design Principles
 
@@ -31,7 +31,7 @@ wait-for is a Rust CLI tool and library designed for high-performance network av
 ## Module Architecture
 
 ```
-wait-for/
+waitup/
 ├── src/
 │   ├── lib.rs              # Public API and re-exports
 │   ├── main.rs             # CLI entry point
@@ -252,4 +252,4 @@ The codebase uses multiple testing strategies:
 - **Deprecation Policy**: Gradual migration for breaking changes
 - **Migration Guides**: Documentation for version upgrades
 
-This architecture enables wait-for to be both simple for basic use cases and powerful for complex scenarios, while maintaining high performance and type safety throughout.
+This architecture enables waitup to be both simple for basic use cases and powerful for complex scenarios, while maintaining high performance and type safety throughout.

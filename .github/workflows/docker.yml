@@ -15,7 +15,7 @@ on:
 
 env:
   REGISTRY_GHCR: ghcr.io
-  IMAGE_NAME: ghcr.io/grok-rs/wait-for
+  IMAGE_NAME: ghcr.io/grok-rs/waitup
 
 permissions:
   contents: read
@@ -60,14 +60,14 @@ jobs:
           context: .
           file: ${{ matrix.variant == 'alpine' && 'Dockerfile.alpine' || 'Dockerfile' }}
           platforms: linux/amd64
-          outputs: type=docker,dest=/tmp/wait-for-${{ matrix.variant }}.tar
+          outputs: type=docker,dest=/tmp/waitup-${{ matrix.variant }}.tar
           tags: test-image:latest
           cache-from: type=gha,scope=${{ matrix.variant }}
           cache-to: type=gha,mode=max,scope=${{ matrix.variant }}
 
       - name: Load and test image
         run: |
-          docker load --input /tmp/wait-for-${{ matrix.variant }}.tar
+          docker load --input /tmp/waitup-${{ matrix.variant }}.tar
 
           echo "🔍 Testing Docker image functionality..."
 
@@ -89,7 +89,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: docker-image-${{ matrix.variant }}
-          path: /tmp/wait-for-${{ matrix.variant }}.tar
+          path: /tmp/waitup-${{ matrix.variant }}.tar
           retention-days: 1
 
   # Security scan
@@ -108,7 +108,7 @@ jobs:
           path: /tmp
 
       - name: Load Docker image
-        run: docker load --input /tmp/wait-for-${{ matrix.variant }}.tar
+        run: docker load --input /tmp/waitup-${{ matrix.variant }}.tar
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -227,7 +227,7 @@ jobs:
           path: /tmp
 
       - name: Load Docker image
-        run: docker load --input /tmp/wait-for-${{ matrix.variant }}.tar
+        run: docker load --input /tmp/waitup-${{ matrix.variant }}.tar
 
       - name: Test image size
         run: |

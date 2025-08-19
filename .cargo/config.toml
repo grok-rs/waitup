@@ -1,4 +1,4 @@
-# Cargo configuration for wait-for project
+# Cargo configuration for waitup project
 # This file configures cargo behavior and sets up strict linting by default
 
 [alias]

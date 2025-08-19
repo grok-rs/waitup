@@ -1,6 +1,6 @@
 # Linting Configuration Guide
 
-This document explains the different linting levels available for the wait-for project and how to use them.
+This document explains the different linting levels available for the waitup project and how to use them.
 
 ## Overview
 

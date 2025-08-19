@@ -1,6 +1,6 @@
-# Contributing to wait-for
+# Contributing to waitup
 
-Thank you for your interest in contributing to wait-for! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to waitup! This document provides guidelines and information for contributors.
 
 ## Code of Conduct
 
@@ -15,7 +15,7 @@ Before creating bug reports, please check the existing issues to avoid duplicate
 - **Clear title and description**
 - **Steps to reproduce** the issue
 - **Expected vs actual behavior**
-- **Environment information** (OS, Rust version, wait-for version)
+- **Environment information** (OS, Rust version, waitup version)
 - **Minimal test case** if possible
 
 ### Suggesting Features
@@ -32,8 +32,8 @@ Feature suggestions are welcome! Please:
 1. **Fork and clone** the repository:
 
    ```bash
-   git clone https://github.com/grok-rs/wait-for.git
-   cd wait-for
+   git clone https://github.com/grok-rs/waitup.git
+   cd waitup
    ```
 
 2. **Install Rust** (if not already installed):
@@ -150,7 +150,7 @@ Test against real services:
 # Start a local server for testing
 python3 -m http.server 8000 &
 
-# Test wait-for
+# Test waitup
 cargo run -- localhost:8000 --timeout 10s
 ```
 
@@ -180,7 +180,7 @@ Test with real-world scenarios:
 
 ## Thank You
 
-Your contributions make wait-for better for everyone. Thank you for taking the time to contribute!
+Your contributions make waitup better for everyone. Thank you for taking the time to contribute!
 
 ## Questions?
 

@@ -23,8 +23,8 @@ RUN case ${TARGETARCH} in \
 RUN rustup target add $(cat /tmp/target)
 
 # Create a new empty shell project
-RUN USER=root cargo new --bin wait-for
-WORKDIR /wait-for
+RUN USER=root cargo new --bin waitup
+WORKDIR /waitup
 
 # Copy manifests
 COPY ./Cargo.lock ./Cargo.lock
@@ -38,9 +38,9 @@ COPY ./src ./src
 
 # Build for release with static linking
 ENV RUSTFLAGS="-C target-feature=+crt-static"
-RUN rm ./target/release/deps/wait_for*
+RUN rm ./target/release/deps/waitup*
 RUN TARGET=$(cat /tmp/target) && cargo build --release --target $TARGET
-RUN TARGET=$(cat /tmp/target) && cp /wait-for/target/$TARGET/release/wait-for /wait-for-binary
+RUN TARGET=$(cat /tmp/target) && cp /waitup/target/$TARGET/release/waitup /waitup-binary
 
 # Runtime stage - minimal scratch image
 FROM scratch
@@ -49,20 +49,20 @@ FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 # Copy the binary from the build stage
-COPY --from=builder /wait-for-binary /wait-for
+COPY --from=builder /waitup-binary /waitup
 
 # Set the binary as the entrypoint
-ENTRYPOINT ["/wait-for"]
+ENTRYPOINT ["/waitup"]
 
 # Default command
 CMD ["--help"]
 
 # Metadata
-LABEL org.opencontainers.image.title="wait-for"
+LABEL org.opencontainers.image.title="waitup"
 LABEL org.opencontainers.image.description="A robust CLI tool for waiting until TCP ports, HTTP endpoints, and services become available (Alpine/Minimal)"
 LABEL org.opencontainers.image.version="1.0.0"
 LABEL org.opencontainers.image.authors="Serhii Kaliuzhnyi <kalyuzhni.sergei@gmail.com>"
-LABEL org.opencontainers.image.url="https://github.com/grok-rs/wait-for"
-LABEL org.opencontainers.image.source="https://github.com/grok-rs/wait-for"
-LABEL org.opencontainers.image.vendor="wait-for"
+LABEL org.opencontainers.image.url="https://github.com/grok-rs/waitup"
+LABEL org.opencontainers.image.source="https://github.com/grok-rs/waitup"
+LABEL org.opencontainers.image.vendor="waitup"
 LABEL org.opencontainers.image.licenses="MIT"

@@ -308,7 +308,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! wait-for = "1.0"
+//! waitup = "1.0"
 //! tokio = { version = "1.0", features = ["full"] }
 //! ```
 //!
@@ -317,11 +317,11 @@
 //! ## Basic TCP Connection Check
 //!
 //! ```rust,no_run
-//! use wait_for::{Target, WaitConfig, wait_for_connection};
+//! use waitup::{Target, WaitConfig, wait_for_connection};
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), wait_for::WaitForError> {
+//! async fn main() -> Result<(), waitup::WaitForError> {
 //!     let target = Target::tcp("localhost", 8080)?;
 //!     let config = WaitConfig::builder()
 //!         .timeout(Duration::from_secs(30))
@@ -337,22 +337,22 @@
 //! ## HTTP Health Check with Custom Headers
 //!
 //! ```rust,no_run
-//! use wait_for::Target;
+//! use waitup::Target;
 //! use url::Url;
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), wait_for::WaitForError> {
+//! async fn main() -> Result<(), waitup::WaitForError> {
 //!     let target = Target::http_builder(Url::parse("https://api.example.com/health")?)
 //!         .status(200)
 //!         .auth_bearer("your-api-token")
 //!         .content_type("application/json")
 //!         .build()?;
 //!
-//!     let config = wait_for::WaitConfig::builder()
+//!     let config = waitup::WaitConfig::builder()
 //!         .timeout(std::time::Duration::from_secs(60))
 //!         .build();
 //!
-//!     wait_for::wait_for_connection(&[target], &config).await?;
+//!     waitup::wait_for_connection(&[target], &config).await?;
 //!     println!("API is healthy!");
 //!     Ok(())
 //! }
@@ -361,11 +361,11 @@
 //! ## Multiple Services with Different Strategies
 //!
 //! ```rust,no_run
-//! use wait_for::{Target, WaitConfig, wait_for_connection};
+//! use waitup::{Target, WaitConfig, wait_for_connection};
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), wait_for::WaitForError> {
+//! async fn main() -> Result<(), waitup::WaitForError> {
 //!     let targets = vec![
 //!         Target::tcp("database", 5432)?,
 //!         Target::tcp("cache", 6379)?,
@@ -388,12 +388,12 @@
 //! ## Advanced Configuration with Cancellation
 //!
 //! ```rust,no_run
-//! use wait_for::{Target, WaitConfig, wait_for_connection};
+//! use waitup::{Target, WaitConfig, wait_for_connection};
 //! use std::time::Duration;
 //! use tokio::time::sleep;
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), wait_for::WaitForError> {
+//! async fn main() -> Result<(), waitup::WaitForError> {
 //!     let target = Target::tcp("slow-service", 8080)?;
 //!
 //!     let (builder, cancel_token) = WaitConfig::builder()
@@ -414,7 +414,7 @@
 //!
 //!     match wait_for_connection(&[target], &config).await {
 //!         Ok(_) => println!("Service is ready!"),
-//!         Err(wait_for::WaitForError::Cancelled) => println!("Operation was cancelled"),
+//!         Err(waitup::WaitForError::Cancelled) => println!("Operation was cancelled"),
 //!         Err(e) => println!("Error: {}", e),
 //!     }
 //!
@@ -426,12 +426,12 @@
 //! ## Docker Compose Integration
 //!
 //! ```rust,no_run
-//! use wait_for::{Target, WaitConfig, wait_for_connection};
+//! use waitup::{Target, WaitConfig, wait_for_connection};
 //! use std::time::Duration;
 //!
 //! /// Wait for services defined in docker-compose.yml
 //! #[tokio::main]
-//! async fn main() -> Result<(), wait_for::WaitForError> {
+//! async fn main() -> Result<(), waitup::WaitForError> {
 //!     let services = vec![
 //!         Target::tcp("postgres", 5432)?,     // Database
 //!         Target::tcp("redis", 6379)?,        // Cache
