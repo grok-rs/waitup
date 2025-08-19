@@ -2,7 +2,7 @@
 # Produces a minimal container with just the waitup binary
 
 # Build stage
-FROM rust:1.83-slim AS builder
+FROM rust:1.89-slim AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
