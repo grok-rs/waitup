@@ -178,9 +178,15 @@ jobs:
 
       - name: Check documentation coverage
         run: |
-          cargo doc --no-deps --all-features
-        env:
-          RUSTDOCFLAGS: "-Z unstable-options --show-coverage"
+          echo "🔍 Checking documentation coverage..."
+          # Check if rustdoc supports --show-coverage on this nightly
+          if cargo +nightly doc --help | grep -q "\-\-show-coverage"; then
+            echo "Using --show-coverage flag directly"
+            cargo +nightly doc --no-deps --all-features --show-coverage -Z unstable-options
+          else
+            echo "Using RUSTDOCFLAGS for --show-coverage"
+            RUSTDOCFLAGS="-Z unstable-options --show-coverage" cargo +nightly doc --no-deps --all-features
+          fi
 
       - name: Generate documentation coverage report
         run: |
@@ -190,7 +196,11 @@ jobs:
           echo "" >> docs-coverage.md
 
           # Run with coverage and capture output
-          cargo doc --no-deps --all-features 2>&1 | tee coverage-output.txt || true
+          if cargo +nightly doc --help | grep -q "\-\-show-coverage"; then
+            cargo +nightly doc --no-deps --all-features --show-coverage -Z unstable-options 2>&1 | tee coverage-output.txt || true
+          else
+            RUSTDOCFLAGS="-Z unstable-options --show-coverage" cargo +nightly doc --no-deps --all-features 2>&1 | tee coverage-output.txt || true
+          fi
 
           echo "## Coverage Details" >> docs-coverage.md
           echo '```' >> docs-coverage.md
