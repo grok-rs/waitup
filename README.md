@@ -1,87 +1,266 @@
-# waitup
+# waitup - Wait for TCP Ports & HTTP Services | Docker/Kubernetes Ready
 
-[![Crates.io](https://img.shields.io/crates/v/waitup.svg)](https://github.com/grok-rs/waitup)
-[![Documentation](https://docs.rs/waitup/badge.svg)](https://docs.rs/waitup)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI](https://github.com/grok-rs/waitup/workflows/CI/badge.svg)](https://github.com/grok-rs/waitup/actions)
-[![GitHub Container Registry](https://img.shields.io/badge/GHCR-Available-blue)](https://ghcr.io/grok-rs/waitup)
+*The Modern Port Checker and Service Health Monitor for DevOps*
 
-> A modern, feature-rich CLI tool for waiting until TCP ports, HTTP endpoints, and services become available. Perfect for Docker, Kubernetes, CI/CD pipelines, and microservices orchestration.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT "MIT License")
+[![CI Status](https://github.com/grok-rs/waitup/workflows/CI/badge.svg?style=flat-square)](https://github.com/grok-rs/waitup/actions "Continuous Integration")
+[![Rust](https://img.shields.io/badge/language-Rust-orange.svg?style=flat-square)](https://www.rust-lang.org/ "Built with Rust")
+[![Docker Ready](https://img.shields.io/badge/docker-ready-blue.svg?style=flat-square)](https://github.com/grok-rs/waitup#installation "Docker Compatible")
 
-**Why choose waitup?**
+**waitup** is a powerful **TCP port checker** and **service health monitor** that waits for services to become available. Essential for **Docker**, **Kubernetes**, **CI/CD pipelines**, and **microservices orchestration**. Replace `wait-for-it`, `dockerize`, and other dependency management tools with a single, fast, reliable solution.
 
-- **DNS Resolution**: Supports both hostnames and IP addresses
-- **Multiple Targets**: Wait for multiple services with flexible strategies
-- **HTTP Health Checks**: Full HTTP/HTTPS support with custom headers and status codes
-- **Rich Output**: JSON output, progress indicators, and verbose logging
-- **Container Ready**: Minimal Docker images and Kubernetes examples
-- **High Performance**: Written in Rust for speed and reliability
-- **Library Support**: Use as a Rust library in your applications
+---
 
-## Features
+## 📖 Table of Contents
+- [🚀 Why waitup?](#-why-waitup-the-best-port-checker-for-modern-devops)
+- [📊 vs Other Tools](#-waitup-vs-other-tools)
+- [🎯 Common Use Cases](#-common-use-cases---when-to-use-waitup)
+- [⚙️ Installation](#installation)
+- [📘 Usage Examples](#usage)
+- [❓ FAQ](#-frequently-asked-questions)
+- [🔧 Quick Solutions](#-quick-solutions-for-common-problems)
+- [📚 Resources](#-related-tools-and-resources)
 
-- **DNS Resolution**: Supports both hostnames and IP addresses
-- **Multiple Targets**: Wait for multiple services with `--any` or `--all` strategies
-- **Command Execution**: Run commands after successful connections
-- **Progress Indicators**: Verbose mode with progress bars and attempt counters
-- **HTTP Health Checks**: Support for HTTP/HTTPS endpoints with status code validation
-- **Exponential Backoff**: Smart retry strategy with configurable intervals
-- **Type Safety**: Built with Rust for reliability and performance
-- **Environment Variables**: Configure defaults via environment
-- **Optimized**: Small binary size with release optimizations
+---
+
+## 🚀 Why waitup? The Best Port Checker for Modern DevOps
+
+Perfect for developers who need to:
+- **Wait for database startup** in Docker containers
+- **Check if port is open** before starting services
+- **Monitor service health** in Kubernetes clusters
+- **Ensure service dependencies** are ready in CI/CD
+- **Test HTTP endpoints** with custom headers and status codes
+
+### ⚡ Key Advantages Over Alternatives
+
+- ✅ **TCP & HTTP Support**: Check ports and HTTP endpoints with custom headers
+- ✅ **Multiple Service Monitoring**: Wait for any or all services simultaneously
+- ✅ **Smart Retry Logic**: Exponential backoff with configurable intervals
+- ✅ **Rich Output Options**: JSON, verbose, and quiet modes for any workflow
+- ✅ **Container Optimized**: Alpine Docker images under 10MB
+- ✅ **Production Ready**: Built with Rust for speed, safety, and reliability
+
+## 📊 waitup vs Other Tools
+
+Choose the best port checker and service health monitor:
+
+| Feature             | **waitup** | dockerize | wait-on | wait-for-it |
+| ------------------- | ---------- | --------- | ------- | ----------- |
+| **Language**        | Rust 🦀    | Go        | Node.js | Bash        |
+| **HTTP Support**    | ✅ Full    | ✅ Basic  | ✅ Basic| ❌ None     |
+| **Custom Headers**  | ✅ Yes     | ❌ No     | ❌ No   | ❌ No       |
+| **JSON Output**     | ✅ Yes     | ❌ No     | ❌ No   | ❌ No       |
+| **Multiple Targets**| ✅ Any/All | ❌ No     | ✅ Basic| ❌ No       |
+| **DNS Resolution**  | ✅ Yes     | ✅ Yes    | ✅ Yes  | ✅ Yes      |
+| **Binary Size**     | ~6MB       | ~8MB      | N/A     | N/A         |
+| **Shell Completions** | ✅ Yes   | ❌ No     | ❌ No   | ❌ No       |
+| **Library Support** | ✅ Rust    | ❌ No     | ❌ No   | ❌ No       |
+| **Docker Ready**    | ✅ Alpine  | ✅ Yes    | ✅ Yes  | ✅ Yes      |
+
+## 🎯 Common Use Cases - When to Use waitup
+
+### Database Startup in Docker
+```bash
+# Wait for PostgreSQL before running migrations
+waitup postgres:5432 --timeout 60s -- npm run migrate
+
+# Wait for multiple databases
+waitup mysql:3306 redis:6379 postgres:5432 --all -- npm start
+```
+
+### Kubernetes Init Containers
+```bash
+# Wait for external services before pod starts
+waitup external-api:443 database:5432 --timeout 300s
+```
+
+### CI/CD Pipeline Dependencies
+```bash
+# Ensure test services are ready
+waitup localhost:5432 localhost:6379 --timeout 30s -- npm test
+```
+
+### Microservices Health Checks
+```bash
+# Wait for API dependencies with custom headers
+waitup https://auth-service/health --header "X-Health-Check:true" --expect-status 200
+```
+
+### Docker Compose Service Dependencies
+```yaml
+services:
+  app:
+    depends_on:
+      - db-ready
+    command: ["./app"]
+
+  db-ready:
+    image: waitup:alpine
+    command: ["waitup", "postgres:5432", "--timeout", "60s"]
+```
 
 ## Installation
 
-### From Crates.io (Recommended)
+### Prerequisites
+
+- **Rust toolchain** (1.70.0 or later)
+- **Git** for cloning the repository
+- **Docker** (optional, for containerized usage)
+
+### Quick Start
+
+The fastest way to get started with waitup:
 
 ```bash
-cargo install waitup
+# Clone and install in one step
+git clone https://github.com/grok-rs/waitup.git && cd waitup && cargo install --path .
+
+# Verify installation
+waitup --version
 ```
 
-### Docker
+### Installation Methods
+
+#### 📦 From Source (Recommended)
 
 ```bash
-# Pull from GitHub Container Registry (recommended)
-docker pull ghcr.io/grok-rs/waitup:latest
-docker run --rm ghcr.io/grok-rs/waitup:latest --help
-
-# Or use the Alpine build (smaller)
-docker pull ghcr.io/grok-rs/waitup:alpine
-docker run --rm ghcr.io/grok-rs/waitup:alpine --help
-
-# Build from source using Docker
-docker build -t waitup .
-docker run --rm waitup --help
-
-# Or build the Alpine variant from source
-docker build -f Dockerfile.alpine -t waitup:alpine .
-```
-
-### Pre-built Binaries
-
-Download from [GitHub Releases](https://github.com/grok-rs/waitup/releases)
-
-### From Source
-
-```bash
-git clone https://github.com/grok-rs/waitup
+# 1. Clone the repository
+git clone https://github.com/grok-rs/waitup.git
 cd waitup
+
+# 2. Build and install
 cargo install --path .
+
+# 3. Verify installation
+waitup --help
 ```
 
-### Shell Completions
+#### 🐳 Docker
 
-Generate completion scripts for your shell:
+**Option 1: Use pre-built image from source**
+```bash
+# Build the standard image
+docker build -t waitup .
+
+# Test it works
+docker run --rm waitup --version
+```
+
+**Option 2: Use Alpine variant (smaller size)**
+```bash
+# Build Alpine image (recommended for production)
+docker build -f Dockerfile.alpine -t waitup:alpine .
+
+# Test it works
+docker run --rm waitup:alpine --version
+```
+
+**Option 3: Use in your Dockerfile**
+```dockerfile
+# Multi-stage build example
+FROM rust:1.70 as builder
+WORKDIR /app
+COPY . .
+RUN cargo build --release
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /app/target/release/waitup /usr/local/bin/waitup
+ENTRYPOINT ["waitup"]
+```
+
+#### 🔧 Development Setup
+
+For contributing or development:
 
 ```bash
-# Bash
-waitup --generate-completion bash > /etc/bash_completion.d/waitup
+# Clone with full history
+git clone https://github.com/grok-rs/waitup.git
+cd waitup
+
+# Install development dependencies
+cargo build
+
+# Run tests
+cargo test
+
+# Install for development
+cargo install --path . --force
+```
+
+### Post-Installation Setup
+
+#### Shell Completions
+
+Enhance your command-line experience with auto-completions:
+
+```bash
+# Bash (system-wide)
+sudo waitup --generate-completion bash > /usr/share/bash-completion/completions/waitup
+
+# Bash (user-specific)
+waitup --generate-completion bash > ~/.local/share/bash-completion/completions/waitup
 
 # Zsh
-waitup --generate-completion zsh > ~/.local/share/zsh/completions/_waitup
+waitup --generate-completion zsh > ~/.local/share/zsh/site-functions/_waitup
 
 # Fish
 waitup --generate-completion fish > ~/.config/fish/completions/waitup.fish
+
+# PowerShell (Windows)
+waitup --generate-completion powershell > waitup.ps1
+```
+
+#### Environment Configuration
+
+Set default values to avoid repetitive flags:
+
+```bash
+# Add to your shell profile (.bashrc, .zshrc, etc.)
+export WAITUP_TIMEOUT=60s
+export WAITUP_INTERVAL=2s
+
+# Now you can use shorter commands
+waitup db:5432  # Uses your defaults
+```
+
+### Verification
+
+Confirm everything is working:
+
+```bash
+# Check version
+waitup --version
+
+# Test basic functionality
+waitup google.com:80 --timeout 5s
+
+# Verify completions (if installed)
+waitup <TAB><TAB>  # Should show available options
+```
+
+### Troubleshooting
+
+**Command not found after installation:**
+```bash
+# Ensure Cargo's bin directory is in your PATH
+echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**Permission denied for shell completions:**
+```bash
+# Use user-specific directories instead of system-wide
+mkdir -p ~/.local/share/bash-completion/completions
+waitup --generate-completion bash > ~/.local/share/bash-completion/completions/waitup
+```
+
+**Docker build fails:**
+```bash
+# Ensure you have the latest base images
+docker pull rust:1.70
+docker pull debian:bookworm-slim
 ```
 
 ## Usage
@@ -272,37 +451,7 @@ waitup api:8080 db:5432 --json | jq '.success'
 
 ## Library Usage
 
-Add to your `Cargo.toml`:
-
-```toml
-[dependencies]
-waitup = "1.0"
-```
-
-Use in your Rust code:
-
-```rust
-use waitup::{Target, WaitConfig, wait_for_connection};
-use std::time::Duration;
-
-#[tokio::main]
-async fn main() -> Result<(), waitup::WaitForError> {
-    let targets = vec![
-        Target::tcp("db", 5432)?,
-        Target::parse("https://api.example.com/health", 200)?,
-    ];
-
-    let config = WaitConfig::builder()
-        .timeout(Duration::from_secs(60))
-        .interval(Duration::from_secs(2))
-        .wait_for_any(false)
-        .build();
-
-    wait_for_connection(&targets, &config).await?;
-    println!("All services ready!");
-    Ok(())
-}
-```
+You can use waitup as a Rust library in your applications. Check the source code and documentation in the repository for API details.
 
 ## Docker Usage
 
@@ -343,19 +492,6 @@ services:
     image: postgres:15
 ```
 
-## Comparison with Alternatives
-
-| Feature             | waitup | waitup-it | dockerize | wait-on |
-| ------------------- | -------- | ----------- | --------- | ------- |
-| Language            | Rust     | Bash        | Go        | Node.js |
-| HTTP Support        | ✅       | ❌          | ✅        | ✅      |
-| Custom Headers      | ✅       | ❌          | ❌        | ❌      |
-| JSON Output         | ✅       | ❌          | ❌        | ❌      |
-| Multiple Strategies | ✅       | ❌          | ❌        | ✅      |
-| DNS Resolution      | ✅       | ✅          | ✅        | ✅      |
-| Binary Size         | ~6MB     | N/A         | ~8MB      | N/A     |
-| Shell Completions   | ✅       | ❌          | ❌        | ❌      |
-| Library Support     | ✅       | ❌          | ❌        | ❌      |
 
 ## Configuration Options
 
@@ -368,19 +504,146 @@ services:
 | `--retry-limit`        | -                    | Maximum retry attempts                |
 | `--expect-status`      | -                    | Expected HTTP status (default: 200)   |
 
-## FAQ
+## ❓ Frequently Asked Questions
 
-**Q: Why not just use `nc` or `telnet`?**
-A: waitup provides proper error handling, exponential backoff, multiple targets, HTTP health checks, and structured output that makes it ideal for production deployments.
+### How do I wait for a database to start in Docker?
+Use `waitup database:5432 --timeout 60s -- your-app-command` to wait for PostgreSQL, MySQL, or any database before starting your application.
 
-**Q: Does it work with IPv6?**
-A: Yes! waitup supports both IPv4 and IPv6 through Rust's standard networking stack.
+### What's the best way to check if a port is open?
+```bash
+waitup hostname:port --timeout 10s
+```
+Returns exit code 0 if successful, 1 if timeout, 2 for invalid arguments.
 
-**Q: Can I use it to wait for services that require authentication?**
-A: Yes, use custom headers: `--header "Authorization:Bearer token"`
+### How do I wait for multiple services before starting my app?
+```bash
+# Wait for ALL services (default)
+waitup db:5432 redis:6379 api:8080 -- npm start
 
-**Q: How does it compare to Kubernetes readiness probes?**
-A: waitup is perfect for init containers and external dependency checking, while readiness probes are for the service itself.
+# Wait for ANY service to be ready
+waitup primary-db:5432 backup-db:5432 --any -- npm start
+```
+
+### Can waitup replace wait-for-it in Docker containers?
+**Yes!** waitup is a modern replacement with better features:
+- ✅ HTTP health checks (wait-for-it only does TCP)
+- ✅ JSON output for automation
+- ✅ Multiple target strategies
+- ✅ Custom headers for authenticated endpoints
+- ✅ Smaller binary size (~6MB vs bash dependency)
+
+### How do I wait for HTTP services with authentication?
+```bash
+waitup https://api.example.com/health \
+  --header "Authorization:Bearer $TOKEN" \
+  --header "X-API-Key:$API_KEY" \
+  --expect-status 200
+```
+
+### Does waitup work with IPv6 addresses?
+**Yes!** waitup supports both IPv4 and IPv6 through Rust's standard networking stack. Use IPv6 addresses normally: `waitup [::1]:8080`
+
+### What's the difference between waitup and dockerize?
+| Feature | waitup | dockerize |
+|---------|--------|-----------|
+| HTTP Headers | ✅ Yes | ❌ No |
+| JSON Output | ✅ Yes | ❌ No |
+| Multiple Strategies | ✅ Any/All | ❌ Sequential |
+| Language | Rust | Go |
+| Binary Size | ~6MB | ~8MB |
+
+### How do I troubleshoot "connection refused" errors?
+1. **Check the service is running**: `docker ps` or `kubectl get pods`
+2. **Verify the port**: Use `--verbose` flag to see connection attempts
+3. **Increase timeout**: Services might take longer to start
+4. **Check networking**: Ensure containers can reach each other
+
+### Can I use waitup in Kubernetes init containers?
+**Absolutely!** Perfect for waiting for external dependencies:
+```yaml
+initContainers:
+  - name: wait-for-db
+    image: waitup:alpine
+    command: ["waitup", "postgres:5432", "--timeout", "300s"]
+```
+
+### How do I wait for a service to be completely ready, not just accepting connections?
+Use HTTP health checks instead of TCP:
+```bash
+# Instead of: waitup api:8080
+# Use health endpoint:
+waitup https://api:8080/health --expect-status 200
+```
+
+## 🔧 Quick Solutions for Common Problems
+
+### "Connection Refused" Error
+```bash
+# Problem: Service not accepting connections yet
+# Solution: Increase timeout and add verbose logging
+waitup database:5432 --timeout 120s --verbose
+
+# For Docker: Ensure containers are on same network
+docker network ls
+```
+
+### Service Takes Too Long to Start
+```bash
+# Problem: Default timeout too short
+# Solution: Increase timeout and interval
+waitup slow-service:8080 --timeout 5m --interval 10s --max-interval 30s
+```
+
+### Docker Compose Dependencies Not Working
+```yaml
+# Problem: App starts before database ready
+# Solution: Use waitup in entrypoint
+services:
+  app:
+    entrypoint: ["waitup", "postgres:5432", "--", "npm", "start"]
+    depends_on:
+      - postgres
+```
+
+### Kubernetes Pod Won't Start
+```yaml
+# Problem: External dependencies not ready
+# Solution: Add waitup init container
+initContainers:
+  - name: wait-deps
+    image: waitup:alpine
+    command: ["waitup", "external-api:443", "database:5432"]
+```
+
+### HTTP Health Check Failing
+```bash
+# Problem: API returns 503 during startup
+# Solution: Wait for specific status or use different endpoint
+waitup https://api/ready --expect-status 204
+# OR
+waitup https://api/health --header "Accept:application/json"
+```
+
+### CI/CD Pipeline Timeouts
+```bash
+# Problem: Tests failing because services not ready
+# Solution: Add explicit wait with JSON output
+waitup localhost:5432 localhost:6379 --json --timeout 60s
+if [ $? -eq 0 ]; then npm test; fi
+```
+
+## 📚 Related Tools and Resources
+
+- **[Docker Compose Wait Strategies](https://docs.docker.com/compose/startup-order/)** - Official Docker guidance
+- **[Kubernetes Init Containers](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/)** - Pod initialization patterns
+- **[Health Check Patterns](https://microservices.io/patterns/observability/health-check-api.html)** - Microservices health monitoring
+- **[12-Factor App Dependencies](https://12factor.net/dependencies)** - Dependency management best practices
+
+### Migration Guides
+- **From wait-for-it**: Replace `./wait-for-it.sh host:port` with `waitup host:port`
+- **From dockerize**: Replace `dockerize -wait tcp://host:port` with `waitup host:port`
+- **From wait-on**: Replace `wait-on tcp:host:port` with `waitup host:port`
+- **[Request Migration Guide](https://github.com/grok-rs/waitup/issues/new?template=feature_request.md)** - Need help migrating?
 
 ## Contributing
 
@@ -393,10 +656,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 
 ## Performance
 
-- **Startup time**: ~5ms
-- **Memory usage**: ~2MB RSS
-- **Binary size**: 6MB (standard), 10MB (Alpine)
-- **Concurrent connections**: Efficiently handles 100+ targets
+Built with Rust for high performance, low memory usage, and fast startup times.
 
 ## Security
 
@@ -415,6 +675,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
-- Inspired by [waitup-it](https://github.com/vishnubob/waitup-it) and [dockerize](https://github.com/jwilder/dockerize)
+- Inspired by [dockerize](https://github.com/jwilder/dockerize)
 - Built with [Rust](https://www.rust-lang.org/) and [Tokio](https://tokio.rs/)
 - Thanks to all [contributors](https://github.com/grok-rs/waitup/graphs/contributors)!

@@ -54,12 +54,8 @@ version-resolver:
       - "fix"
       - "bugfix"
       - "bug"
-      - "chore"
-      - "dependencies"
-      - "documentation"
-      - "ci"
       - "security"
-  default: patch
+  default: none
 
 template: |
   ## Changes
@@ -68,18 +64,21 @@ template: |
 
   ## Installation
 
-  ### Cargo
+  ### From Source
   ```bash
-  cargo install waitup
+  git clone https://github.com/grok-rs/waitup.git
+  cd waitup
+  cargo install --path .
   ```
 
   ### Docker
   ```bash
-  # Standard image
-  docker pull ghcr.io/grok-rs/waitup:v$RESOLVED_VERSION
+  # Build from source
+  docker build -t waitup:v$RESOLVED_VERSION .
+  docker run --rm waitup:v$RESOLVED_VERSION --help
 
-  # Alpine image (smaller)
-  docker pull ghcr.io/grok-rs/waitup:v$RESOLVED_VERSION-alpine
+  # Or build Alpine variant
+  docker build -f Dockerfile.alpine -t waitup:v$RESOLVED_VERSION-alpine .
   ```
 
   ### Binary Downloads
@@ -111,9 +110,10 @@ template: |
 
   ## What's Next?
 
-  - 📖 Check the [documentation](https://docs.rs/waitup)
+  - 📖 Check the [repository documentation](https://github.com/grok-rs/waitup/tree/main/docs)
   - 🐛 Report issues on [GitHub](https://github.com/grok-rs/waitup/issues)
   - 💬 Join the discussion in [Discussions](https://github.com/grok-rs/waitup/discussions)
+  - 🤝 Contribute via [Pull Requests](https://github.com/grok-rs/waitup/pulls)
 
 exclude-labels:
   - "skip-changelog"
@@ -121,6 +121,10 @@ exclude-labels:
   - "duplicate"
   - "question"
   - "wontfix"
+  - "chore"
+  - "dependencies"
+  - "documentation"
+  - "ci"
 
 autolabeler:
   - label: "documentation"

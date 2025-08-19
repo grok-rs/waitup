@@ -5,7 +5,7 @@ This document outlines best practices for creating effective GitHub issues for t
 ## 🎯 Before Creating an Issue
 
 1. **Search existing issues** - Check if your issue has already been reported
-2. **Read the documentation** - Review the README and [API docs](https://docs.rs/waitup)
+2. **Read the documentation** - Review the README and [API docs](https://github.com/grok-rs/waitup/tree/main/docs)
 3. **Try the latest version** - Ensure you're using the most recent release
 4. **Use the right template** - Choose the appropriate issue template for your needs
 
@@ -171,7 +171,7 @@ If you're willing to help implement a feature or fix a bug:
 - **General questions**: Use GitHub Discussions
 - **Bug reports**: Use the bug report template
 - **Security issues**: Use our private security reporting
-- **Documentation**: Check docs.rs/waitup first
+- **Documentation**: Check the GitHub repository docs first
 
 ## Examples of Great Issues
 
