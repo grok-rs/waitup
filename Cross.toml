@@ -1,0 +1,19 @@
+[build]
+# Cross-compilation configuration for wait-for
+# This file ensures proper cross-compilation setup for all target platforms
+
+[target.aarch64-unknown-linux-gnu]
+# Use pre-built cross docker image for ARM64 Linux
+image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main"
+
+[target.x86_64-unknown-linux-musl]
+# Use pre-built cross docker image for musl Linux
+image = "ghcr.io/cross-rs/x86_64-unknown-linux-musl:main"
+
+[target.x86_64-pc-windows-gnu]
+# Use pre-built cross docker image for Windows GNU
+image = "ghcr.io/cross-rs/x86_64-pc-windows-gnu:main"
+
+[target.x86_64-apple-darwin]
+# Use pre-built cross docker image for macOS (requires macOS SDK)
+image = "ghcr.io/cross-rs/x86_64-apple-darwin:main"
