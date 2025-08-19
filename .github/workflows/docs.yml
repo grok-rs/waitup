@@ -261,16 +261,36 @@ jobs:
           touch target/doc/.nojekyll
 
       - name: Setup Pages
+        id: pages
         uses: actions/configure-pages@v4
+        with:
+          enablement: true
+        continue-on-error: true
 
       - name: Upload to GitHub Pages
+        if: steps.pages.outcome == 'success'
         uses: actions/upload-pages-artifact@v3
         with:
           path: target/doc
 
       - name: Deploy to GitHub Pages
+        if: steps.pages.outcome == 'success'
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Pages deployment status
+        run: |
+          if [ "${{ steps.pages.outcome }}" == "success" ]; then
+            echo "✅ GitHub Pages deployment successful"
+            echo "📖 Documentation available at: ${{ steps.deployment.outputs.page_url || 'https://grok-rs.github.io/wait-for' }}"
+          else
+            echo "ℹ️  GitHub Pages not enabled or setup failed"
+            echo "💡 To enable documentation hosting:"
+            echo "   1. Go to repository Settings → Pages"
+            echo "   2. Set Source to 'GitHub Actions'"
+            echo "   3. Re-run this workflow"
+            echo "📝 Documentation artifacts are still available for download"
+          fi
 
   # Comprehensive documentation check
   docs-comprehensive:
@@ -394,6 +414,7 @@ jobs:
         spell-check,
         docs-coverage,
         docs-comprehensive,
+        docs-deploy,
       ]
     if: always()
     steps:
@@ -409,16 +430,24 @@ jobs:
           echo "| Spell Check | ${{ needs.spell-check.result == 'success' && '✅ Pass' || '❌ Fail' }} |"
           echo "| Coverage | ${{ needs.docs-coverage.result == 'success' && '✅ Pass' || '❌ Fail' }} |"
           echo "| Comprehensive | ${{ needs.docs-comprehensive.result == 'success' && '✅ Pass' || '❌ Fail' }} |"
+          echo "| Pages Deploy | ${{ needs.docs-deploy.result == 'success' && '✅ Pass' || (needs.docs-deploy.result == 'skipped' && '⏭️ Skipped' || '⚠️ Failed (non-critical)') }} |"
           echo ""
 
+          # Check critical documentation jobs (Pages deployment is optional)
           if [ "${{ needs.docs-build.result }}" != "success" ] || \
              [ "${{ needs.markdown-check.result }}" != "success" ] || \
              [ "${{ needs.examples-check.result }}" != "success" ] || \
              [ "${{ needs.spell-check.result }}" != "success" ] || \
              [ "${{ needs.docs-coverage.result }}" != "success" ] || \
              [ "${{ needs.docs-comprehensive.result }}" != "success" ]; then
-            echo "❌ One or more documentation checks failed"
+            echo "❌ One or more critical documentation checks failed"
             exit 1
           else
-            echo "✅ All documentation checks passed successfully!"
+            echo "✅ All critical documentation checks passed successfully!"
+
+            # Note about Pages deployment
+            if [ "${{ needs.docs-deploy.result }}" != "success" ]; then
+              echo "ℹ️  Pages deployment failed but this is non-critical"
+              echo "💡 Enable GitHub Pages in repository settings to host documentation"
+            fi
           fi
