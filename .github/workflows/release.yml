@@ -197,7 +197,24 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Publish to crates.io
-        run: cargo publish
+        run: |
+          echo "📦 Attempting to publish to crates.io..."
+          if cargo publish; then
+            echo "✅ Successfully published to crates.io"
+          else
+            exit_code=$?
+            echo "⚠️ Publish failed with exit code: $exit_code"
+
+            # Check if it's because the version already exists
+            if cargo publish 2>&1 | grep -q "is already uploaded"; then
+              echo "ℹ️  Version already exists on crates.io - this is expected for re-runs"
+              echo "✅ Skipping publish as version already exists"
+            else
+              echo "❌ Publish failed for a different reason"
+              cargo publish  # Re-run to show the actual error
+              exit $exit_code
+            fi
+          fi
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 

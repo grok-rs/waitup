@@ -4,7 +4,7 @@
 [![Documentation](https://docs.rs/wait-for/badge.svg)](https://docs.rs/wait-for)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/grok-rs/wait-for/workflows/CI/badge.svg)](https://github.com/grok-rs/wait-for/actions)
-[![GitHub Container Registry](https://img.shields.io/badge/GHCR-Available-blue)](https://github.com/grok-rs/wait-for/pkgs/container/wait-for)
+[![GitHub Container Registry](https://img.shields.io/badge/GHCR-Available-blue)](https://ghcr.io/grok-rs/wait-for)
 
 > A modern, feature-rich CLI tool for waiting until TCP ports, HTTP endpoints, and services become available. Perfect for Docker, Kubernetes, CI/CD pipelines, and microservices orchestration.
 

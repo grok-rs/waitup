@@ -19,10 +19,17 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   audit:
     name: Security Audit
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -174,6 +181,7 @@ jobs:
           sarif_file: security-audit.sarif
           category: cargo-audit
         if: always()
+        continue-on-error: true
 
       - name: Final vulnerability check
         run: |
