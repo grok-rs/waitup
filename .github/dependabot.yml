@@ -37,12 +37,6 @@ updates:
       # Example: ignore alpha/beta versions
       - dependency-name: "*"
         versions: ["< 1.0.0"]
-    # Auto-merge configuration for patch updates
-    auto-merge:
-      enable: true
-      # Only auto-merge patch updates for direct dependencies
-      dependency-types:
-        - "direct:patch"
 
   # GitHub Actions dependencies
   - package-ecosystem: "github-actions"
