@@ -39,19 +39,40 @@ jobs:
       - name: Run comprehensive cargo audit
         run: |
           echo "🔍 Running comprehensive security audit..."
-          # Run audit with full verbosity and JSON output for processing
-          cargo audit --json --output audit-results.json
 
-          # Also run with deny warnings for strict checking
+          # First, run basic audit and capture results
+          echo "Running cargo audit with JSON output..."
+          if cargo audit --json > audit-results.json 2>&1; then
+            echo "✅ Basic audit completed successfully"
+          else
+            echo "⚠️ Basic audit had issues, but continuing..."
+          fi
+
+          # Verify JSON file was created
+          if [ -f "audit-results.json" ]; then
+            echo "✅ audit-results.json created successfully"
+            echo "File size: $(wc -c < audit-results.json) bytes"
+          else
+            echo "⚠️ audit-results.json not found, creating minimal structure..."
+            echo '{"database":{"advisory-count":0},"lockfile":{"dependency-count":0},"vulnerabilities":{"found":false,"count":0,"list":[]},"warnings":{}}' > audit-results.json
+          fi
+
+          # Run strict audit check (but don't fail the workflow if it fails)
           echo "🔍 Running strict audit check..."
-          cargo audit --deny warnings
-        continue-on-error: true
+          if cargo audit --deny warnings; then
+            echo "✅ Strict audit check passed"
+          else
+            audit_exit_code=$?
+            echo "⚠️ Strict audit check failed with exit code: $audit_exit_code"
+            echo "This will be handled in the final check step"
+          fi
 
       - name: Generate SARIF from audit
         run: |
           cat > convert-audit.py << 'EOF'
           import json
           import sys
+          import os
 
           def convert_to_sarif(audit_data):
               sarif = {
@@ -69,14 +90,20 @@ jobs:
                   }]
               }
 
-              if "vulnerabilities" in audit_data and audit_data["vulnerabilities"]["found"] and audit_data["vulnerabilities"]["list"]:
+              # Check if vulnerabilities exist and are found
+              if ("vulnerabilities" in audit_data and
+                  audit_data["vulnerabilities"].get("found", False) and
+                  audit_data["vulnerabilities"].get("list", [])):
+
                   for vuln in audit_data["vulnerabilities"]["list"]:
-                      advisory = vuln["advisory"]
+                      advisory = vuln.get("advisory", {})
+                      package = vuln.get("package", {})
+
                       result = {
-                          "ruleId": advisory["id"],
+                          "ruleId": advisory.get("id", "unknown"),
                           "level": "warning" if advisory.get("severity") == "low" else "error",
                           "message": {
-                              "text": advisory["title"]
+                              "text": advisory.get("title", "Security vulnerability detected")
                           },
                           "locations": [{
                               "physicalLocation": {
@@ -86,8 +113,8 @@ jobs:
                               }
                           }],
                           "properties": {
-                              "package": vuln["package"]["name"],
-                              "version": vuln["package"]["version"],
+                              "package": package.get("name", "unknown"),
+                              "version": package.get("version", "unknown"),
                               "advisory_url": advisory.get("url", ""),
                               "severity": advisory.get("severity", "unknown")
                           }
@@ -98,18 +125,45 @@ jobs:
 
           if __name__ == "__main__":
               try:
-                  with open("audit-results.json", "r") as f:
-                      audit_data = json.load(f)
+                  # Check if audit results file exists
+                  if not os.path.exists("audit-results.json"):
+                      print("audit-results.json not found, creating empty SARIF file")
+                      audit_data = {"vulnerabilities": {"found": False, "list": []}}
+                  else:
+                      with open("audit-results.json", "r") as f:
+                          audit_data = json.load(f)
 
                   sarif_data = convert_to_sarif(audit_data)
 
                   with open("security-audit.sarif", "w") as f:
                       json.dump(sarif_data, f, indent=2)
 
-                  print("SARIF file generated successfully")
+                  vuln_count = len(sarif_data["runs"][0]["results"])
+                  if vuln_count > 0:
+                      print(f"SARIF file generated successfully with {vuln_count} vulnerabilities")
+                  else:
+                      print("SARIF file generated successfully - no vulnerabilities found")
+
               except Exception as e:
                   print(f"Error converting audit results: {e}")
-                  sys.exit(1)
+                  # Create empty SARIF file as fallback
+                  empty_sarif = {
+                      "version": "2.1.0",
+                      "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+                      "runs": [{
+                          "tool": {
+                              "driver": {
+                                  "name": "cargo-audit",
+                                  "version": "0.18.0",
+                                  "informationUri": "https://github.com/RustSec/rustsec"
+                              }
+                          },
+                          "results": []
+                      }]
+                  }
+                  with open("security-audit.sarif", "w") as f:
+                      json.dump(empty_sarif, f, indent=2)
+                  print("Created empty SARIF file due to error")
           EOF
 
           python3 convert-audit.py
@@ -124,13 +178,54 @@ jobs:
       - name: Final vulnerability check
         run: |
           echo "🔐 Final security vulnerability assessment..."
-          if ! cargo audit --deny warnings --quiet; then
-            echo "❌ Security vulnerabilities detected!"
+
+          # Check if we have SARIF results to analyze
+          if [ -f "security-audit.sarif" ]; then
+            vuln_count=$(python3 -c "
+            import json
+            with open('security-audit.sarif', 'r') as f:
+                sarif = json.load(f)
+            print(len(sarif['runs'][0]['results']))
+            ")
+            echo "SARIF file contains $vuln_count vulnerabilities"
+          fi
+
+          # Run final audit check
+          echo "Running final cargo audit check..."
+          if cargo audit --quiet; then
+            echo "✅ Basic vulnerability scan passed"
+          else
+            basic_exit_code=$?
+            echo "❌ Basic vulnerability scan failed (exit code: $basic_exit_code)"
+          fi
+
+          # Run strict check
+          if cargo audit --deny warnings --quiet; then
+            echo "✅ Strict vulnerability check passed - all dependencies are secure"
+          else
+            strict_exit_code=$?
+            echo "⚠️ Strict audit check failed (exit code: $strict_exit_code)"
+
+            # Show detailed results for analysis
+            echo ""
+            echo "=== Detailed audit results ==="
+            cargo audit || true
+            echo ""
+            echo "=== Checking for specific warning types ==="
+
+            # Check different warning categories
+            for warn_type in unmaintained unsound yanked; do
+              echo "Checking for $warn_type packages..."
+              if ! cargo audit --deny $warn_type --quiet 2>/dev/null; then
+                echo "⚠️ Found $warn_type packages"
+              fi
+            done
+
+            echo ""
+            echo "❌ Security audit detected issues!"
             echo "Please check the uploaded SARIF file and security tab for detailed information."
             echo "Run 'cargo audit' locally for immediate details."
             exit 1
-          else
-            echo "✅ No security vulnerabilities found - all dependencies are secure"
           fi
 
   license-check:
