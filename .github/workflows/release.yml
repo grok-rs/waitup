@@ -115,16 +115,27 @@ jobs:
       - name: Generate shell completions
         run: |
           mkdir -p completions
-          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            BINARY="./target/${{ matrix.target }}/release/wait-for.exe"
-          else
-            BINARY="./target/${{ matrix.target }}/release/wait-for"
-          fi
 
-          $BINARY --generate-completion bash > completions/wait-for.bash
-          $BINARY --generate-completion zsh > completions/_wait-for
-          $BINARY --generate-completion fish > completions/wait-for.fish
-          $BINARY --generate-completion powershell > completions/wait-for.ps1
+          # Only generate completions for native targets that can run on the host
+          if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" || "${{ matrix.target }}" == "x86_64-pc-windows-msvc" || "${{ matrix.target }}" == "x86_64-apple-darwin" || "${{ matrix.target }}" == "aarch64-apple-darwin" ]]; then
+            if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+              BINARY="./target/${{ matrix.target }}/release/wait-for.exe"
+            else
+              BINARY="./target/${{ matrix.target }}/release/wait-for"
+            fi
+
+            $BINARY --generate-completion bash > completions/wait-for.bash
+            $BINARY --generate-completion zsh > completions/_wait-for
+            $BINARY --generate-completion fish > completions/wait-for.fish
+            $BINARY --generate-completion powershell > completions/wait-for.ps1
+          else
+            # For cross-compiled targets, create empty completion files
+            touch completions/wait-for.bash
+            touch completions/_wait-for
+            touch completions/wait-for.fish
+            touch completions/wait-for.ps1
+            echo "Skipping completion generation for cross-compiled target: ${{ matrix.target }}"
+          fi
         shell: bash
 
       - name: Create archive

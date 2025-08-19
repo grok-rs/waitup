@@ -17,6 +17,11 @@ env:
   REGISTRY_GHCR: ghcr.io
   IMAGE_NAME: ghcr.io/grok-rs/wait-for
 
+permissions:
+  contents: read
+  security-events: write
+  packages: write
+
 jobs:
   # Build and test Docker images
   docker-build:

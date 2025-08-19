@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2025-08-19
+
+### Fixed
+
+- **CI/CD Improvements**: Fixed Docker workflow security scan permissions
+- **Cross-compilation**: Fixed aarch64-linux binary build by skipping shell completion generation for cross-compiled targets
+- **Release Process**: Ensured all CI/CD workflows complete successfully
+
 ## [1.0.0] - 2025-08-17
 
 ### Added
