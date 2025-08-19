@@ -181,12 +181,7 @@ jobs:
 
           # Check if we have SARIF results to analyze
           if [ -f "security-audit.sarif" ]; then
-            vuln_count=$(python3 -c "
-            import json
-            with open('security-audit.sarif', 'r') as f:
-                sarif = json.load(f)
-            print(len(sarif['runs'][0]['results']))
-            ")
+            vuln_count=$(python3 -c "import json; sarif=json.load(open('security-audit.sarif')); print(len(sarif['runs'][0]['results']))")
             echo "SARIF file contains $vuln_count vulnerabilities"
           fi
 
