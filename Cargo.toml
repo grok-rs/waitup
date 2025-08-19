@@ -1,5 +1,5 @@
 [package]
-name = "wait-for"
+name = "wait-for-rs"
 version = "1.0.2"
 edition = "2021"
 rust-version = "1.70.0"
@@ -8,7 +8,7 @@ description = "Wait for TCP ports and HTTP endpoints to be available. Essential 
 license = "MIT"
 repository = "https://github.com/grok-rs/wait-for"
 homepage = "https://github.com/grok-rs/wait-for"
-documentation = "https://docs.rs/wait-for"
+documentation = "https://docs.rs/wait-for-rs"
 readme = "README.md"
 keywords = ["cli", "health-check", "docker", "tcp", "http"]
 categories = ["command-line-utilities", "network-programming", "development-tools", "web-programming"]
