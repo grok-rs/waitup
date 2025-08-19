@@ -4,7 +4,7 @@
 [![Documentation](https://docs.rs/wait-for/badge.svg)](https://docs.rs/wait-for)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/grok-rs/wait-for/workflows/CI/badge.svg)](https://github.com/grok-rs/wait-for/actions)
-[![Docker Hub](https://img.shields.io/badge/Docker-Available-blue)](https://github.com/grok-rs/wait-for)
+[![GitHub Container Registry](https://img.shields.io/badge/GHCR-Available-blue)](https://github.com/grok-rs/wait-for/pkgs/container/wait-for)
 
 > A modern, feature-rich CLI tool for waiting until TCP ports, HTTP endpoints, and services become available. Perfect for Docker, Kubernetes, CI/CD pipelines, and microservices orchestration.
 
@@ -41,11 +41,19 @@ cargo install wait-for
 ### Docker
 
 ```bash
+# Pull from GitHub Container Registry (recommended)
+docker pull ghcr.io/grok-rs/wait-for:latest
+docker run --rm ghcr.io/grok-rs/wait-for:latest --help
+
+# Or use the Alpine build (smaller)
+docker pull ghcr.io/grok-rs/wait-for:alpine
+docker run --rm ghcr.io/grok-rs/wait-for:alpine --help
+
 # Build from source using Docker
 docker build -t wait-for .
 docker run --rm wait-for --help
 
-# Or use the Alpine build
+# Or build the Alpine variant from source
 docker build -f Dockerfile.alpine -t wait-for:alpine .
 ```
 
