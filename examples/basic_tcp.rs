@@ -1,10 +1,16 @@
+#![allow(
+    clippy::print_stdout,
+    clippy::uninlined_format_args,
+    reason = "example code that demonstrates library usage"
+)]
+
 //! Basic TCP connection example using wait-for as a library.
 //!
 //! This example demonstrates waiting for a single TCP service to become available.
-//! Run with: cargo run --example basic_tcp
+//! Run with: cargo run --example `basic_tcp`
 
 use std::time::Duration;
-use wait_for::{Target, WaitConfig, wait_for_connection};
+use wait_for::{wait_for_connection, Target, WaitConfig};
 
 #[tokio::main]
 async fn main() -> Result<(), wait_for::WaitForError> {
@@ -24,16 +30,24 @@ async fn main() -> Result<(), wait_for::WaitForError> {
     let result = wait_for_connection(&[target], &config).await?;
 
     println!("✅ Service is ready!");
-    println!("📊 Connection successful in {:?} with {} attempts",
-             result.elapsed, result.attempts);
+    println!(
+        "📊 Connection successful in {:?} with {} attempts",
+        result.elapsed, result.attempts
+    );
 
     // Print details for each target
     for target_result in &result.target_results {
-        println!("  - {}: {} in {:?} ({} attempts)",
-                 target_result.target.display(),
-                 if target_result.success { "✅ Success" } else { "❌ Failed" },
-                 target_result.elapsed,
-                 target_result.attempts);
+        println!(
+            "  - {}: {} in {:?} ({} attempts)",
+            target_result.target.display(),
+            if target_result.success {
+                "✅ Success"
+            } else {
+                "❌ Failed"
+            },
+            target_result.elapsed,
+            target_result.attempts
+        );
     }
 
     Ok(())

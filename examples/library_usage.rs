@@ -1,11 +1,18 @@
+#![allow(
+    clippy::print_stdout,
+    clippy::uninlined_format_args,
+    clippy::cast_precision_loss,
+    reason = "example code that demonstrates library usage"
+)]
+
 //! Comprehensive library usage example.
 //!
 //! This example showcases all the features available when using wait-for
 //! as a library in your Rust applications.
-//! Run with: cargo run --example library_usage
+//! Run with: cargo run --example `library_usage`
 
 use std::time::Duration;
-use wait_for::{Target, WaitConfig, WaitResult, wait_for_connection, wait_for_single_target};
+use wait_for::{wait_for_connection, wait_for_single_target, Target, WaitConfig, WaitResult};
 
 /// Example of a custom service health checker
 struct ServiceHealthChecker {
@@ -63,14 +70,18 @@ impl ServiceHealthChecker {
         let result = wait_for_connection(&self.targets, &self.config).await?;
 
         if result.success {
-            println!("✅ Service '{}' is healthy! ({}ms, {} attempts)",
-                     self.name,
-                     result.elapsed.as_millis(),
-                     result.attempts);
+            println!(
+                "✅ Service '{}' is healthy! ({}ms, {} attempts)",
+                self.name,
+                result.elapsed.as_millis(),
+                result.attempts
+            );
         } else {
-            println!("❌ Service '{}' is unhealthy after {}ms",
-                     self.name,
-                     result.elapsed.as_millis());
+            println!(
+                "❌ Service '{}' is unhealthy after {}ms",
+                self.name,
+                result.elapsed.as_millis()
+            );
         }
 
         Ok(result)
@@ -122,12 +133,14 @@ async fn example_advanced_configuration() -> Result<(), wait_for::WaitForError> 
     println!("Total attempts: {}", result.attempts);
 
     for (i, target_result) in result.target_results.iter().enumerate() {
-        println!("Target {}: {} - {} in {:?} ({} attempts)",
-                 i + 1,
-                 target_result.target.display(),
-                 if target_result.success { "✅" } else { "❌" },
-                 target_result.elapsed,
-                 target_result.attempts);
+        println!(
+            "Target {}: {} - {} in {:?} ({} attempts)",
+            i + 1,
+            target_result.target.display(),
+            if target_result.success { "✅" } else { "❌" },
+            target_result.elapsed,
+            target_result.attempts
+        );
     }
 
     Ok(())
@@ -139,7 +152,7 @@ async fn example_custom_service_checker() -> Result<(), wait_for::WaitForError> 
 
     // Database service
     let db_checker = ServiceHealthChecker::new("Database")
-        .add_tcp_target("httpbin.org", 80)?  // Using httpbin as example
+        .add_tcp_target("httpbin.org", 80)? // Using httpbin as example
         .with_timeout(Duration::from_secs(30))
         .with_strategy(false); // All targets must be ready
 
@@ -155,8 +168,22 @@ async fn example_custom_service_checker() -> Result<(), wait_for::WaitForError> 
     let api_result = api_checker.check_health().await?;
 
     println!("\n📊 Summary:");
-    println!("Database health: {}", if db_result.success { "✅ Healthy" } else { "❌ Unhealthy" });
-    println!("API health: {}", if api_result.success { "✅ Healthy" } else { "❌ Unhealthy" });
+    println!(
+        "Database health: {}",
+        if db_result.success {
+            "✅ Healthy"
+        } else {
+            "❌ Unhealthy"
+        }
+    );
+    println!(
+        "API health: {}",
+        if api_result.success {
+            "✅ Healthy"
+        } else {
+            "❌ Unhealthy"
+        }
+    );
 
     Ok(())
 }
@@ -166,9 +193,7 @@ async fn example_error_handling() -> Result<(), wait_for::WaitForError> {
     println!("============================");
 
     // This will likely timeout/fail
-    let failing_target = vec![
-        Target::tcp("definitely-not-a-real-host.invalid", 12345)?,
-    ];
+    let failing_target = vec![Target::tcp("definitely-not-a-real-host.invalid", 12345)?];
 
     let config = WaitConfig::builder()
         .timeout(Duration::from_secs(5))
@@ -191,7 +216,7 @@ async fn example_performance_monitoring() -> Result<(), wait_for::WaitForError> 
     println!("===================================");
 
     let targets = vec![
-        Target::parse("https://httpbin.org/delay/1", 200)?,  // 1 second delay
+        Target::parse("https://httpbin.org/delay/1", 200)?, // 1 second delay
     ];
 
     let config = WaitConfig::builder()
@@ -208,8 +233,10 @@ async fn example_performance_monitoring() -> Result<(), wait_for::WaitForError> 
     println!("  - Actual wait time: {:?}", result.elapsed);
     println!("  - Total execution time: {:?}", total_time);
     println!("  - Attempts made: {}", result.attempts);
-    println!("  - Average time per attempt: {:?}",
-             result.elapsed.div_f32(result.attempts as f32));
+    println!(
+        "  - Average time per attempt: {:?}",
+        result.elapsed.div_f32(result.attempts as f32)
+    );
 
     Ok(())
 }

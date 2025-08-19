@@ -76,10 +76,10 @@ template: |
   ### Docker
   ```bash
   # Standard image
-  docker pull waitfor/wait-for:v$RESOLVED_VERSION
+  docker pull ghcr.io/grok-rs/wait-for:v$RESOLVED_VERSION
 
   # Alpine image (smaller)
-  docker pull waitfor/wait-for:v$RESOLVED_VERSION-alpine
+  docker pull ghcr.io/grok-rs/wait-for:v$RESOLVED_VERSION-alpine
   ```
 
   ### Binary Downloads

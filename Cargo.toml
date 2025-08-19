@@ -1,7 +1,7 @@
 [package]
 name = "wait-for"
 version = "1.0.0"
-edition = "2024"
+edition = "2021"
 authors = ["Serhii Kaliuzhnyi <kalyuzhni.sergei@gmail.com>"]
 description = "A modern, feature-rich CLI tool for waiting until TCP ports, HTTP endpoints, and services become available. Perfect for Docker, Kubernetes, CI/CD pipelines, and microservices orchestration."
 license = "MIT"
@@ -25,7 +25,7 @@ tokio-util = "0.7"
 thiserror = "2.0.15"
 humantime = "2.1"
 indicatif = "0.18"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
 url = "2.5"
 futures = "0.3"
 async-trait = "0.1"
@@ -44,10 +44,6 @@ panic = "abort"
 tokio-test = "0.4"
 proptest = "1.4"
 test-case = "3.3"
-
-[lib]
-name = "wait_for"
-path = "src/lib.rs"
 
 [[bin]]
 name = "wait-for"

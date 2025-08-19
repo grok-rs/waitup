@@ -1,11 +1,13 @@
 //! Common presets and configurations for typical use cases.
 
-use std::time::Duration;
-use crate::{WaitConfig, Target};
+use core::time::Duration;
+
+use crate::{Target, WaitConfig};
 
 /// Preset configurations for common scenarios
 impl WaitConfig {
     /// Fast configuration for local development (short timeouts, quick polling)
+    #[must_use]
     pub fn local_dev() -> Self {
         Self {
             timeout: Duration::from_secs(10),
@@ -21,6 +23,7 @@ impl WaitConfig {
     }
 
     /// Configuration for CI/CD environments (moderate timeouts)
+    #[must_use]
     pub fn ci_cd() -> Self {
         Self {
             timeout: Duration::from_secs(60),
@@ -36,6 +39,7 @@ impl WaitConfig {
     }
 
     /// Configuration for Docker container startup (longer timeouts)
+    #[must_use]
     pub fn docker() -> Self {
         Self {
             timeout: Duration::from_secs(300), // 5 minutes
@@ -51,6 +55,7 @@ impl WaitConfig {
     }
 
     /// Configuration for production health checks (conservative timeouts with security)
+    #[must_use]
     pub fn production() -> Self {
         Self {
             timeout: Duration::from_secs(120),
@@ -66,6 +71,7 @@ impl WaitConfig {
     }
 
     /// Configuration for microservices readiness checks
+    #[must_use]
     pub fn microservices() -> Self {
         Self {
             timeout: Duration::from_secs(90),
@@ -81,6 +87,7 @@ impl WaitConfig {
     }
 
     /// Configuration for external service dependency checks
+    #[must_use]
     pub fn external_services() -> Self {
         Self {
             timeout: Duration::from_secs(180), // 3 minutes
@@ -99,40 +106,56 @@ impl WaitConfig {
 /// Common target patterns
 impl Target {
     /// Common database targets
-    pub fn database_targets() -> crate::Result<Vec<Target>> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if target creation fails (invalid hostnames or ports)
+    pub fn database_targets() -> crate::types::TargetVecResult {
         Ok(vec![
-            Target::tcp("postgres", 5432)?,
-            Target::tcp("mysql", 3306)?,
-            Target::tcp("mongodb", 27017)?,
-            Target::tcp("redis", 6379)?,
+            Self::tcp("postgres", 5432)?,
+            Self::tcp("mysql", 3306)?,
+            Self::tcp("mongodb", 27017)?,
+            Self::tcp("redis", 6379)?,
         ])
     }
 
     /// Common web service targets
-    pub fn web_service_targets() -> crate::Result<Vec<Target>> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if target creation fails (invalid URLs or hostnames)
+    pub fn web_service_targets() -> crate::types::TargetVecResult {
         Ok(vec![
-            Target::tcp("web", 80)?,
-            Target::tcp("api", 8080)?,
-            Target::http_url("http://web/health", 200)?,
-            Target::http_url("http://api:8080/health", 200)?,
+            Self::tcp("web", 80)?,
+            Self::tcp("api", 8080)?,
+            Self::http_url("http://web/health", 200)?,
+            Self::http_url("http://api:8080/health", 200)?,
         ])
     }
 
     /// Elasticsearch cluster targets
-    pub fn elasticsearch_targets() -> crate::Result<Vec<Target>> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if target creation fails (invalid URLs or hostnames)
+    pub fn elasticsearch_targets() -> crate::types::TargetVecResult {
         Ok(vec![
-            Target::tcp("elasticsearch", 9200)?,
-            Target::tcp("kibana", 5601)?,
-            Target::http_url("http://elasticsearch:9200/_cluster/health", 200)?,
+            Self::tcp("elasticsearch", 9200)?,
+            Self::tcp("kibana", 5601)?,
+            Self::http_url("http://elasticsearch:9200/_cluster/health", 200)?,
         ])
     }
 
     /// Message queue targets
-    pub fn message_queue_targets() -> crate::Result<Vec<Target>> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if target creation fails (invalid hostnames or ports)
+    pub fn message_queue_targets() -> crate::types::TargetVecResult {
         Ok(vec![
-            Target::tcp("rabbitmq", 5672)?,
-            Target::tcp("kafka", 9092)?,
-            Target::tcp("nats", 4222)?,
+            Self::tcp("rabbitmq", 5672)?,
+            Self::tcp("kafka", 9092)?,
+            Self::tcp("nats", 4222)?,
         ])
     }
 }

@@ -1,3 +1,9 @@
+#![allow(
+    clippy::pub_with_shorthand,
+    clippy::pub_without_shorthand,
+    reason = "restriction lints have contradictory pub visibility rules"
+)]
+
 //! Error types and handling for wait-for operations.
 //!
 //! This module provides comprehensive error handling for the wait-for library,
@@ -77,17 +83,22 @@
 
 use std::borrow::Cow;
 use thiserror::Error;
+
 use crate::types::{ConnectionError, HttpError};
 
 /// Core error source types for proper error chaining without Box
 #[derive(Error, Debug)]
 pub enum ErrorSource {
+    /// Connection-related errors (TCP connection failures, DNS resolution, etc.)
     #[error("Connection error: {0}")]
     Connection(#[from] ConnectionError),
+    /// HTTP-related errors (request failures, unexpected status codes, etc.)
     #[error("HTTP error: {0}")]
     Http(#[from] HttpError),
+    /// URL parsing errors when target format is invalid
     #[error("URL parse error: {0}")]
     UrlParse(#[from] url::ParseError),
+    /// Low-level I/O errors from the operating system
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -95,32 +106,52 @@ pub enum ErrorSource {
 /// Error types that can occur during wait operations.
 #[derive(Error, Debug)]
 pub enum WaitForError {
+    /// Invalid target format provided (must be host:port or http(s)://host:port/path)
     #[error("Invalid target format '{0}': expected host:port or http(s)://host:port/path")]
     InvalidTarget(Cow<'static, str>),
+    /// Port number is out of valid range (1-65535)
     #[error("Invalid port: {0} (must be 1-65535)")]
     InvalidPort(u16),
+    /// Hostname format is invalid or contains illegal characters
     #[error("Invalid hostname: {0}")]
     InvalidHostname(Cow<'static, str>),
+    /// Timeout format is invalid (expected formats: 30s, 5m, 1h30m, etc.)
     #[error("Invalid timeout format '{0}': {1}")]
     InvalidTimeout(Cow<'static, str>, Cow<'static, str>),
+    /// Interval format is invalid (expected formats: 30s, 5m, 1h30m, etc.)
     #[error("Invalid interval format '{0}': {1}")]
     InvalidInterval(Cow<'static, str>, Cow<'static, str>),
+    /// Connection-related errors (TCP connection failures, DNS resolution, etc.)
     #[error("Connection error: {0}")]
     Connection(#[from] ConnectionError),
+    /// HTTP-related errors (request failures, unexpected status codes, etc.)
     #[error("HTTP error: {0}")]
     Http(#[from] HttpError),
+    /// Timeout occurred while waiting for targets to become available
     #[error("Timeout waiting for {targets}")]
-    Timeout { targets: Cow<'static, str> },
+    Timeout {
+        /// List of targets that were being waited for
+        targets: Cow<'static, str>,
+    },
+    /// URL parsing errors when target format is invalid
     #[error("URL parse error: {0}")]
     UrlParse(#[from] url::ParseError),
+    /// Maximum number of retry attempts has been exceeded
     #[error("Retry limit exceeded: {limit} attempts")]
-    RetryLimitExceeded { limit: u32 },
+    RetryLimitExceeded {
+        /// The retry limit that was exceeded
+        limit: u32,
+    },
+    /// Error with additional context information
     #[error("{message}: {source}")]
     WithContext {
+        /// Contextual message describing the operation that failed
         message: Cow<'static, str>,
         #[source]
+        /// The underlying error that occurred
         source: ErrorSource,
     },
+    /// Operation was cancelled (typically by user interrupt)
     #[error("Operation was cancelled")]
     Cancelled,
 }
@@ -131,24 +162,32 @@ pub type Result<T> = std::result::Result<T, WaitForError>;
 // Convenient From implementations for error types
 impl From<&'static str> for WaitForError {
     fn from(msg: &'static str) -> Self {
-        WaitForError::InvalidTarget(Cow::Borrowed(msg))
+        Self::InvalidTarget(Cow::Borrowed(msg))
     }
 }
 
 impl From<String> for WaitForError {
     fn from(msg: String) -> Self {
-        WaitForError::InvalidTarget(Cow::Owned(msg))
+        Self::InvalidTarget(Cow::Owned(msg))
     }
 }
 
 /// Extension trait for adding context to Results
 pub trait ResultExt<T> {
     /// Add context to an error
+    ///
+    /// # Errors
+    ///
+    /// Returns the original error with additional context information
     fn with_context<F>(self, f: F) -> Result<T>
     where
         F: FnOnce() -> String;
 
     /// Add static context to an error
+    ///
+    /// # Errors
+    ///
+    /// Returns the original error with additional static context information
     fn context(self, msg: &'static str) -> Result<T>;
 }
 
@@ -160,28 +199,24 @@ where
     where
         F: FnOnce() -> String,
     {
-        self.map_err(|e| {
-            WaitForError::WithContext {
-                message: Cow::Owned(f()),
-                source: e.into(),
-            }
+        self.map_err(|e| WaitForError::WithContext {
+            message: Cow::Owned(f()),
+            source: e.into(),
         })
     }
 
     fn context(self, msg: &'static str) -> Result<T> {
-        self.map_err(|e| {
-            WaitForError::WithContext {
-                message: Cow::Borrowed(msg),
-                source: e.into(),
-            }
+        self.map_err(|e| WaitForError::WithContext {
+            message: Cow::Borrowed(msg),
+            source: e.into(),
         })
     }
 }
 
-/// Special ResultExt implementation for errors that are already WaitForError
-/// This handles the case where we want to add context to a WaitForError
+/// Special `ResultExt` implementation for errors that are already `WaitForError`
+/// This handles the case where we want to add context to a `WaitForError`
 impl<T> ResultExt<T> for std::result::Result<T, WaitForError> {
-    fn with_context<F>(self, f: F) -> Result<T>
+    fn with_context<F>(self, f: F) -> Self
     where
         F: FnOnce() -> String,
     {
@@ -205,11 +240,11 @@ impl<T> ResultExt<T> for std::result::Result<T, WaitForError> {
                 other => {
                     let context_msg = f();
                     match other {
-                        WaitForError::InvalidTarget(msg) => WaitForError::InvalidTarget(
-                            Cow::Owned(format!("{}: {}", context_msg, msg))
-                        ),
+                        WaitForError::InvalidTarget(msg) => {
+                            WaitForError::InvalidTarget(Cow::Owned(format!("{context_msg}: {msg}")))
+                        }
                         WaitForError::InvalidHostname(msg) => WaitForError::InvalidHostname(
-                            Cow::Owned(format!("{}: {}", context_msg, msg))
+                            Cow::Owned(format!("{context_msg}: {msg}")),
                         ),
                         _ => other, // For complex cases, return as-is
                     }
@@ -218,7 +253,7 @@ impl<T> ResultExt<T> for std::result::Result<T, WaitForError> {
         })
     }
 
-    fn context(self, msg: &'static str) -> Result<T> {
+    fn context(self, msg: &'static str) -> Self {
         self.map_err(|e| {
             // Convert WaitForError to ErrorSource where possible
             match e {
@@ -237,12 +272,12 @@ impl<T> ResultExt<T> for std::result::Result<T, WaitForError> {
                 // For other error types, prepend the context message
                 other => {
                     match other {
-                        WaitForError::InvalidTarget(orig_msg) => WaitForError::InvalidTarget(
-                            Cow::Owned(format!("{}: {}", msg, orig_msg))
-                        ),
-                        WaitForError::InvalidHostname(orig_msg) => WaitForError::InvalidHostname(
-                            Cow::Owned(format!("{}: {}", msg, orig_msg))
-                        ),
+                        WaitForError::InvalidTarget(orig_msg) => {
+                            WaitForError::InvalidTarget(Cow::Owned(format!("{msg}: {orig_msg}")))
+                        }
+                        WaitForError::InvalidHostname(orig_msg) => {
+                            WaitForError::InvalidHostname(Cow::Owned(format!("{msg}: {orig_msg}")))
+                        }
                         _ => other, // For complex cases, return as-is
                     }
                 }
@@ -258,7 +293,8 @@ pub(crate) mod error_messages {
     pub const HOSTNAME_INVALID_HYPHEN: &str = "Hostname cannot start or end with hyphen";
     pub const HOSTNAME_EMPTY_LABEL: &str = "Hostname labels cannot be empty";
     pub const HOSTNAME_LABEL_TOO_LONG: &str = "Hostname labels cannot exceed 63 characters";
-    pub const HOSTNAME_LABEL_INVALID_HYPHEN: &str = "Hostname labels cannot start or end with hyphen";
+    pub const HOSTNAME_LABEL_INVALID_HYPHEN: &str =
+        "Hostname labels cannot start or end with hyphen";
     pub const HOSTNAME_INVALID_CHARS: &str = "Hostname contains invalid characters";
     pub const INVALID_IPV4_FORMAT: &str = "Invalid IPv4 format";
     pub const INVALID_IPV4_OCTET: &str = "Invalid IPv4 octet";

@@ -1,9 +1,9 @@
-use clap::{Parser, CommandFactory};
+use clap::{CommandFactory, Parser};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::borrow::Cow;
 use std::process::Command;
 use std::time::Duration;
-use wait_for::{Target, WaitConfig, WaitForError, WaitResult, wait_for_connection};
+use wait_for::{wait_for_connection, Target, WaitConfig, WaitForError, WaitResult};
 
 /// Extended error type for CLI-specific errors
 #[derive(thiserror::Error, Debug)]
@@ -26,9 +26,13 @@ type Result<T> = std::result::Result<T, CliError>;
 #[command(name = "wait-for")]
 #[command(about = "Block until host:port is reachable; exit non-zero on timeout")]
 #[command(version)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "CLI arg structures naturally have many boolean flags"
+)]
 struct Args {
     /// Targets to wait for (host:port or http(s)://host/path)
-    #[arg(value_name = "TARGET", required = true)]
+    #[arg(value_name = "TARGET")]
     targets: Vec<String>,
 
     /// Connection timeout (e.g., "30s", "2m", "1h")
@@ -100,6 +104,25 @@ struct CliConfig {
 
 impl CliConfig {
     fn from_args(args: Args) -> Result<Self> {
+        // When generating completions, we don't need to validate targets
+        if args.generate_completion.is_some() {
+            return Ok(Self {
+                targets: Vec::new(),
+                wait_config: WaitConfig::default(),
+                quiet: true,
+                verbose: false,
+                json: false,
+                command: Vec::new(),
+            });
+        }
+
+        // Validate that targets are provided when not generating completions
+        if args.targets.is_empty() {
+            return Err(CliError::WaitError(WaitForError::InvalidTarget(
+                Cow::Borrowed("At least one target must be specified"),
+            )));
+        }
+
         let mut targets = Vec::new();
 
         let mut headers = Vec::new();
@@ -107,7 +130,9 @@ impl CliConfig {
             let parts: Vec<&str> = header_str.splitn(2, ':').collect();
             if parts.len() != 2 {
                 return Err(CliError::WaitError(WaitForError::InvalidTarget(
-                    Cow::Owned(format!("Invalid header format '{}': expected 'key:value'", header_str))
+                    Cow::Owned(format!(
+                        "Invalid header format '{header_str}': expected 'key:value'"
+                    )),
                 )));
             }
             headers.push((parts[0].trim().to_string(), parts[1].trim().to_string()));
@@ -115,32 +140,45 @@ impl CliConfig {
 
         for target_str in &args.targets {
             if target_str.starts_with("http://") || target_str.starts_with("https://") {
-                let url = url::Url::parse(target_str)
-                    .map_err(|_| CliError::WaitError(WaitForError::InvalidTarget(Cow::Owned(target_str.clone()))))?;
+                let url = url::Url::parse(target_str).map_err(|_| {
+                    CliError::WaitError(WaitForError::InvalidTarget(Cow::Owned(target_str.clone())))
+                })?;
 
                 if headers.is_empty() {
                     targets.push(Target::http(url, args.expect_status)?);
                 } else {
-                    targets.push(Target::http_with_headers(url, args.expect_status, headers.clone())?);
+                    targets.push(Target::http_with_headers(
+                        url,
+                        args.expect_status,
+                        headers.clone(),
+                    )?);
                 }
             } else {
                 targets.push(Target::parse(target_str, args.expect_status)?);
             }
         }
 
-        let timeout = args.timeout.parse::<humantime::Duration>()
+        let timeout = args
+            .timeout
+            .parse::<humantime::Duration>()
             .map_err(|e| CliError::InvalidTimeout(args.timeout, e.to_string()))?
             .into();
 
-        let initial_interval = args.interval.parse::<humantime::Duration>()
+        let initial_interval = args
+            .interval
+            .parse::<humantime::Duration>()
             .map_err(|e| CliError::InvalidInterval(args.interval, e.to_string()))?
             .into();
 
-        let max_interval = args.max_interval.parse::<humantime::Duration>()
+        let max_interval = args
+            .max_interval
+            .parse::<humantime::Duration>()
             .map_err(|e| CliError::InvalidInterval(args.max_interval, e.to_string()))?
             .into();
 
-        let connection_timeout = args.connection_timeout.parse::<humantime::Duration>()
+        let connection_timeout = args
+            .connection_timeout
+            .parse::<humantime::Duration>()
             .map_err(|e| CliError::InvalidInterval(args.connection_timeout, e.to_string()))?
             .into();
 
@@ -155,7 +193,7 @@ impl CliConfig {
             .connection_timeout(connection_timeout)
             .build();
 
-        Ok(CliConfig {
+        Ok(Self {
             targets,
             wait_config,
             quiet: args.quiet,
@@ -168,7 +206,7 @@ impl CliConfig {
 
 /// Output formatter for wait results
 mod output {
-    use super::*;
+    use super::{CliConfig, Result, WaitResult};
     use serde::Serialize;
 
     #[derive(Serialize)]
@@ -188,21 +226,35 @@ mod output {
         pub error: Option<String>,
     }
 
+    #[allow(
+        clippy::print_stdout,
+        clippy::print_stderr,
+        reason = "CLI output to stdout/stderr is required"
+    )]
     pub fn format_result(result: &WaitResult, config: &CliConfig) -> Result<()> {
         if config.json {
             let json_output = JsonOutput {
                 success: result.success,
-                elapsed_ms: result.elapsed.as_millis() as u64,
+                elapsed_ms: u64::try_from(result.elapsed.as_millis().min(u128::from(u64::MAX)))
+                    .unwrap_or(u64::MAX),
                 total_attempts: result.attempts,
-                targets: result.target_results.iter().map(|tr| JsonTargetResult {
-                    target: tr.target.display(),
-                    success: tr.success,
-                    elapsed_ms: tr.elapsed.as_millis() as u64,
-                    attempts: tr.attempts,
-                    error: tr.error.clone(),
-                }).collect(),
+                targets: result
+                    .target_results
+                    .iter()
+                    .map(|tr| JsonTargetResult {
+                        target: tr.target.display(),
+                        success: tr.success,
+                        elapsed_ms: u64::try_from(tr.elapsed.as_millis().min(u128::from(u64::MAX)))
+                            .unwrap_or(u64::MAX),
+                        attempts: tr.attempts,
+                        error: tr.error.clone(),
+                    })
+                    .collect(),
             };
-            println!("{}", serde_json::to_string_pretty(&json_output)?);
+            println!(
+                "{json_output}",
+                json_output = serde_json::to_string_pretty(&json_output)?
+            );
         } else if !config.quiet {
             if result.success {
                 if config.wait_config.wait_for_any {
@@ -221,29 +273,45 @@ mod output {
 async fn wait_with_progress(config: &CliConfig) -> Result<WaitResult> {
     if config.verbose && !config.quiet && !config.json {
         let multi_progress = indicatif::MultiProgress::new();
-        let progress_bars: Vec<_> = config.targets.iter().map(|target| {
-            let pb = multi_progress.add(ProgressBar::new_spinner());
-            pb.set_style(
-                ProgressStyle::default_spinner()
-                    .template("{spinner:.green} {msg}")
-                    .unwrap()
-            );
-            pb.set_message(format!("Waiting for {}", target.display()));
-            pb.enable_steady_tick(Duration::from_millis(100));
-            pb
-        }).collect();
+        let progress_bars: Result<Vec<_>> = config
+            .targets
+            .iter()
+            .map(|target| -> Result<ProgressBar> {
+                let pb = multi_progress.add(ProgressBar::new_spinner());
+                pb.set_style(
+                    ProgressStyle::default_spinner()
+                        .template("{spinner:.green} {msg}")
+                        .map_err(|_| {
+                            CliError::WaitError(WaitForError::InvalidTimeout(
+                                std::borrow::Cow::Borrowed("progress"),
+                                std::borrow::Cow::Borrowed("Invalid progress template"),
+                            ))
+                        })?,
+                );
+                pb.set_message(format!("Waiting for {target}", target = target.display()));
+                pb.enable_steady_tick(Duration::from_millis(100));
+                Ok(pb)
+            })
+            .collect();
 
-        let result = wait_for_connection(&config.targets, &config.wait_config).await
+        let progress_bars = progress_bars?;
+
+        let result = wait_for_connection(&config.targets, &config.wait_config)
+            .await
             .map_err(CliError::WaitError)?;
 
         for (i, target_result) in result.target_results.iter().enumerate() {
             if let Some(pb) = progress_bars.get(i) {
                 if target_result.success {
-                    pb.finish_with_message(format!("✓ {}", target_result.target.display()));
+                    pb.finish_with_message(format!(
+                        "✓ {target}",
+                        target = target_result.target.display()
+                    ));
                 } else {
-                    pb.finish_with_message(format!("✗ {} ({})",
-                        target_result.target.display(),
-                        target_result.error.as_deref().unwrap_or("failed")
+                    pb.finish_with_message(format!(
+                        "✗ {target} ({error})",
+                        target = target_result.target.display(),
+                        error = target_result.error.as_deref().unwrap_or("failed")
                     ));
                 }
             }
@@ -251,12 +319,13 @@ async fn wait_with_progress(config: &CliConfig) -> Result<WaitResult> {
 
         Ok(result)
     } else {
-        wait_for_connection(&config.targets, &config.wait_config).await
+        wait_for_connection(&config.targets, &config.wait_config)
+            .await
             .map_err(CliError::WaitError)
     }
 }
 
-async fn execute_command(command: Vec<String>) -> Result<()> {
+fn execute_command(command: &[String]) -> Result<()> {
     if command.is_empty() {
         return Ok(());
     }
@@ -266,7 +335,8 @@ async fn execute_command(command: Vec<String>) -> Result<()> {
         cmd.args(&command[1..]);
     }
 
-    let output = cmd.output()
+    let output = cmd
+        .output()
         .map_err(|e| CliError::CommandExecution(e.to_string()))?;
 
     if !output.status.success() {
@@ -280,6 +350,12 @@ async fn execute_command(command: Vec<String>) -> Result<()> {
 }
 
 /// Main CLI entry point
+#[allow(
+    clippy::print_stdout,
+    clippy::print_stderr,
+    clippy::if_not_else,
+    reason = "CLI functions require stdout/stderr output and complex conditional logic"
+)]
 pub async fn run() -> i32 {
     let args = Args::parse();
 
@@ -293,7 +369,7 @@ pub async fn run() -> i32 {
     let config = match CliConfig::from_args(args) {
         Ok(config) => config,
         Err(e) => {
-            eprintln!("Error: {}", e);
+            eprintln!("Error: {e}");
             return 2;
         }
     };
@@ -302,20 +378,20 @@ pub async fn run() -> i32 {
         Ok(result) => result,
         Err(e) => {
             if !config.json {
-                eprintln!("Error: {}", e);
+                eprintln!("Error: {e}");
             } else {
                 let json_error = serde_json::json!({
                     "success": false,
                     "error": e.to_string()
                 });
-                println!("{}", json_error);
+                println!("{json_error}");
             }
             return 1;
         }
     };
 
     if let Err(e) = output::format_result(&result, &config) {
-        eprintln!("Output error: {}", e);
+        eprintln!("Output error: {e}");
         return 1;
     }
 
@@ -323,15 +399,15 @@ pub async fn run() -> i32 {
         return 1;
     }
 
-    if let Err(e) = execute_command(config.command).await {
+    if let Err(e) = execute_command(&config.command) {
         if !config.json {
-            eprintln!("Command execution error: {}", e);
+            eprintln!("Command execution error: {e}");
         } else {
             let json_error = serde_json::json!({
                 "success": false,
-                "error": format!("Command execution failed: {}", e)
+                "error": format!("Command execution failed: {e}")
             });
-            println!("{}", json_error);
+            println!("{json_error}");
         }
         return 3;
     }

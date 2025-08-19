@@ -2,7 +2,7 @@
 # This creates a very minimal container (~10MB)
 
 # Build stage
-FROM rust:1.75-alpine as builder
+FROM rust:1.83-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
@@ -10,6 +10,17 @@ RUN apk add --no-cache \
     pkgconfig \
     openssl-dev \
     openssl-libs-static
+
+# Set up architecture-specific variables
+ARG TARGETARCH
+RUN case ${TARGETARCH} in \
+    "amd64") echo "x86_64-unknown-linux-musl" > /tmp/target ;; \
+    "arm64") echo "aarch64-unknown-linux-musl" > /tmp/target ;; \
+    *) echo "x86_64-unknown-linux-musl" > /tmp/target ;; \
+    esac
+
+# Install rust target for the architecture
+RUN rustup target add $(cat /tmp/target)
 
 # Create a new empty shell project
 RUN USER=root cargo new --bin wait-for
@@ -28,7 +39,8 @@ COPY ./src ./src
 # Build for release with static linking
 ENV RUSTFLAGS="-C target-feature=+crt-static"
 RUN rm ./target/release/deps/wait_for*
-RUN cargo build --release --target x86_64-unknown-linux-musl
+RUN TARGET=$(cat /tmp/target) && cargo build --release --target $TARGET
+RUN TARGET=$(cat /tmp/target) && cp /wait-for/target/$TARGET/release/wait-for /wait-for-binary
 
 # Runtime stage - minimal scratch image
 FROM scratch
@@ -37,7 +49,7 @@ FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 # Copy the binary from the build stage
-COPY --from=builder /wait-for/target/x86_64-unknown-linux-musl/release/wait-for /wait-for
+COPY --from=builder /wait-for-binary /wait-for
 
 # Set the binary as the entrypoint
 ENTRYPOINT ["/wait-for"]

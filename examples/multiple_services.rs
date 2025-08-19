@@ -1,25 +1,31 @@
+#![allow(
+    clippy::print_stdout,
+    clippy::uninlined_format_args,
+    reason = "example code that demonstrates library usage"
+)]
+
 //! Multiple services orchestration example.
 //!
 //! This example demonstrates complex service orchestration with different
 //! wait strategies for different groups of services.
-//! Run with: cargo run --example multiple_services
+//! Run with: cargo run --example `multiple_services`
 
 use std::time::Duration;
-use wait_for::{Target, WaitConfig, wait_for_connection};
+use wait_for::{wait_for_connection, Target, WaitConfig};
 
 async fn wait_for_core_services() -> Result<(), wait_for::WaitForError> {
     println!("🏗️  Phase 1: Waiting for core infrastructure services...");
 
     let core_services = vec![
-        Target::tcp("postgres", 5432)?,     // Primary database
-        Target::tcp("redis", 6379)?,        // Cache
+        Target::tcp("postgres", 5432)?,      // Primary database
+        Target::tcp("redis", 6379)?,         // Cache
         Target::tcp("elasticsearch", 9200)?, // Search engine
     ];
 
     let config = WaitConfig::builder()
-        .timeout(Duration::from_secs(180))  // 3 minutes for core services
+        .timeout(Duration::from_secs(180)) // 3 minutes for core services
         .interval(Duration::from_secs(2))
-        .wait_for_any(false)  // ALL core services must be ready
+        .wait_for_any(false) // ALL core services must be ready
         .build();
 
     let result = wait_for_connection(&core_services, &config).await?;
@@ -39,7 +45,7 @@ async fn wait_for_application_services() -> Result<(), wait_for::WaitForError> {
     ];
 
     let config = WaitConfig::builder()
-        .timeout(Duration::from_secs(120))  // 2 minutes for app services
+        .timeout(Duration::from_secs(120)) // 2 minutes for app services
         .interval(Duration::from_secs(3))
         .wait_for_any(false)
         .build();
@@ -55,15 +61,15 @@ async fn wait_for_external_dependencies() -> Result<(), wait_for::WaitForError> 
 
     // Multiple external APIs - we only need one to be available
     let external_apis = vec![
-        Target::parse("https://api.stripe.com/v1", 401)?,  // Expected auth error
+        Target::parse("https://api.stripe.com/v1", 401)?, // Expected auth error
         Target::parse("https://api.sendgrid.com/v3", 401)?, // Expected auth error
         Target::parse("https://hooks.slack.com/services", 404)?, // Expected not found
     ];
 
     let config = WaitConfig::builder()
-        .timeout(Duration::from_secs(60))   // 1 minute for external APIs
+        .timeout(Duration::from_secs(60)) // 1 minute for external APIs
         .interval(Duration::from_secs(5))
-        .wait_for_any(true)  // ANY external API working is fine
+        .wait_for_any(true) // ANY external API working is fine
         .build();
 
     let result = wait_for_connection(&external_apis, &config).await?;
@@ -76,9 +82,7 @@ async fn start_load_balancer() -> Result<(), wait_for::WaitForError> {
     println!("⚖️  Phase 4: Starting load balancer...");
 
     // Check that our load balancer is ready
-    let lb_target = vec![
-        Target::parse("http://load-balancer:80/health", 200)?,
-    ];
+    let lb_target = vec![Target::parse("http://load-balancer:80/health", 200)?];
 
     let config = WaitConfig::builder()
         .timeout(Duration::from_secs(30))

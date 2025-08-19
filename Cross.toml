@@ -1,0 +1,21 @@
+[build]
+# Cross-compilation configuration for wait-for
+# This file ensures proper cross-compilation setup for all target platforms
+
+[target.aarch64-unknown-linux-gnu]
+# Use pre-built cross docker image for ARM64 Linux
+image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:edge"
+
+[target.x86_64-unknown-linux-musl]
+# Use pre-built cross docker image for musl Linux
+image = "ghcr.io/cross-rs/x86_64-unknown-linux-musl:edge"
+
+# Windows and macOS cross-compilation targets removed from CI
+# These platforms are tested using native runners in test-binaries job
+# and built using appropriate runners in release workflow
+#
+# [target.x86_64-pc-windows-gnu]
+# image = "ghcr.io/cross-rs/x86_64-pc-windows-gnu:edge"
+#
+# [target.x86_64-apple-darwin]
+# image = "ghcr.io/cross-rs/x86_64-apple-darwin:edge"

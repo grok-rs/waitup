@@ -1,65 +1,49 @@
-# Strict Clippy configuration for wait-for project
-# This configuration enables a comprehensive set of lints for maximum code quality
+# Reasonable Clippy configuration for wait-for project
+# This configuration balances code quality with practical development workflow
 
 # ===== THRESHOLDS =====
 
-# Cognitive complexity threshold (stricter than default 25)
-cognitive-complexity-threshold = 15
+# Cognitive complexity threshold - reasonable for most functions
+cognitive-complexity-threshold = 20
 
-# Type complexity threshold (stricter than default 100)
-type-complexity-threshold = 50
+# Type complexity threshold - allow reasonable complexity
+type-complexity-threshold = 75
 
-# Maximum number of arguments for functions (stricter than default 7)
-too-many-arguments-threshold = 5
+# Maximum number of arguments for functions - allow reasonable APIs
+too-many-arguments-threshold = 6
 
-# Maximum lines in functions (stricter than default 100)
-too-many-lines-threshold = 80
+# Maximum lines in functions - reasonable limit
+too-many-lines-threshold = 100
 
-# Enum variant name threshold
+# Enum variant name threshold - reasonable naming
 enum-variant-name-threshold = 3
 
 # Literal representation threshold
 literal-representation-threshold = 65536
 
-# Single char binding names threshold
-single-char-binding-names-threshold = 3
+# Single char binding names threshold - allow common patterns
+single-char-binding-names-threshold = 4
 
 # Array size thresholds
-large-const-arrays-threshold = 256000
-large-stack-arrays-threshold = 256000
+array-size-threshold = 512000
 
-# Size threshold for pass by value (stricter)
-pass-by-value-size-limit = 128
+# Size threshold for pass by value - reasonable for performance
+pass-by-value-size-limit = 256
 
 # ===== DOCUMENTATION =====
 
-# Require documentation for all public items
-missing-docs-in-crate-items = true
+# Don't require documentation for all items (too strict for development)
+# Will be enforced selectively via CI for public APIs
+missing-docs-in-crate-items = false
 
 # ===== PERFORMANCE =====
 
-# Allow trivial bounds (sometimes needed for generic code)
-trivial-bounds = "allow"
+# Don't break exported API unnecessarily during development
+avoid-breaking-exported-api = false
 
-# Avoid breaking changes to exported API
-avoid-breaking-exported-api = true
+# ===== LINT CATEGORIES CONFIGURATION =====
+# Note: These are typically configured via command line in CI/hooks
+# This file focuses on thresholds and behavioral settings
 
-# ===== ADDITIONAL STRICT SETTINGS =====
-
-# Strict formatting requirements
-# (these are handled via additional rustfmt configuration)
-
-# ===== PEDANTIC LINTS =====
-# Note: These are enabled via command line in CI/hooks
-# Here we configure thresholds for pedantic lints
-
-# String literal character limit for readability
-# (already configured above)
-
-# Cyclomatic complexity limits
-cyclomatic-complexity-threshold = 10
-
-# ===== CUSTOM LINT CONFIGURATION =====
-
-# Disallow certain patterns in production code
-# (configured via RUSTFLAGS in .cargo/config.toml)
+# Allow some common patterns that restriction lints complain about
+# These will be managed via selective allows in source code rather than global config

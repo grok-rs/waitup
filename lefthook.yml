@@ -1,0 +1,154 @@
+# Lefthook configuration - Fast pre-commit hooks for development
+# This configuration focuses on practical checks that should pass quickly
+
+# Common settings
+colors: true
+no_tty: false
+skip_output:
+  - meta
+  - empty_summary
+
+# Pre-commit hooks - fast checks for immediate feedback
+pre-commit:
+  parallel: true
+  commands:
+    # Essential formatting check
+    format-check:
+      tags: format rust
+      run: cargo fmt --all -- --check
+      fail_text: "❌ Code is not formatted. Run: cargo fmt --all"
+
+    # Quick compile check
+    check-build:
+      tags: build rust
+      run: cargo check --all-targets --all-features
+      fail_text: "❌ Code doesn't compile. Fix build errors first."
+
+    # Reasonable clippy linting (avoid restriction lints in pre-commit)
+    clippy-reasonable:
+      tags: lint rust
+      run: |
+        cargo clippy --all-targets --all-features -- \
+          -D warnings \
+          -D clippy::correctness \
+          -D clippy::suspicious \
+          -D clippy::complexity \
+          -D clippy::perf \
+          -D clippy::style \
+          -W clippy::pedantic \
+          -W clippy::nursery \
+          -A clippy::missing_errors_doc \
+          -A clippy::missing_panics_doc \
+          -A clippy::module_name_repetitions \
+          -A clippy::similar_names \
+          -A clippy::too_many_lines \
+          -A clippy::cast_precision_loss \
+          -A clippy::cast_possible_truncation \
+          -A clippy::cast_sign_loss \
+          -A clippy::must_use_candidate
+      fail_text: "❌ Clippy found issues. Fix them before committing."
+
+    # Quick test to catch obvious breakages
+    quick-test:
+      tags: test rust
+      run: cargo test --lib --quiet
+      fail_text: "❌ Unit tests failed. Fix before committing."
+
+# Pre-push hooks - more comprehensive checks before pushing
+pre-push:
+  parallel: true
+  commands:
+    # More comprehensive clippy including some restrictions
+    clippy-comprehensive:
+      tags: lint rust
+      run: |
+        cargo clippy --all-targets --all-features -- \
+          -D warnings \
+          -D clippy::correctness \
+          -D clippy::suspicious \
+          -D clippy::complexity \
+          -D clippy::perf \
+          -D clippy::style \
+          -D clippy::pedantic \
+          -D clippy::nursery \
+          -D clippy::unwrap_used \
+          -D clippy::expect_used \
+          -D clippy::panic \
+          -W clippy::todo \
+          -W clippy::unimplemented \
+          -W clippy::dbg_macro \
+          -A clippy::missing_errors_doc \
+          -A clippy::missing_panics_doc \
+          -A clippy::module_name_repetitions \
+          -A clippy::similar_names
+      fail_text: "❌ Comprehensive clippy check failed."
+
+    # Security audit
+    security-audit:
+      tags: security audit
+      run: |
+        if ! command -v cargo-audit &> /dev/null; then
+          echo "⚠️  cargo-audit not installed. Skipping security audit."
+          exit 0
+        fi
+        cargo audit --deny warnings
+      fail_text: "❌ Security vulnerabilities found. Run: cargo audit"
+
+    # License check
+    license-check:
+      tags: security license
+      run: |
+        if ! command -v cargo-deny &> /dev/null; then
+          echo "⚠️  cargo-deny not installed. Skipping license check."
+          exit 0
+        fi
+        cargo deny check licenses
+      fail_text: "❌ License policy violations found."
+
+    # Full test suite
+    test-comprehensive:
+      tags: test
+      run: cargo test --all-features
+      fail_text: "❌ Tests failed."
+
+    # Documentation check
+    doc-check:
+      tags: docs
+      run: cargo doc --no-deps --all-features --quiet
+      fail_text: "❌ Documentation build failed."
+
+    # Examples compile check
+    examples-check:
+      tags: examples
+      run: cargo check --examples
+      fail_text: "❌ Examples don't compile."
+
+# Commit message validation
+commit-msg:
+  commands:
+    conventional-commit:
+      tags: commit-msg
+      run: |
+        # Basic conventional commit validation
+        if ! grep -qE "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+" "$1"; then
+          echo "❌ Commit message doesn't follow conventional commit format"
+          echo "Examples:"
+          echo "  feat: add new feature"
+          echo "  fix: resolve bug in parser"
+          echo "  docs(readme): update installation guide"
+          exit 1
+        fi
+
+# Skip hooks for certain scenarios
+skip_on:
+  - merge
+  - rebase
+
+# Output configuration
+output:
+  - summary
+  - success
+  - failure
+
+# Execution settings
+follow_symlinks: false

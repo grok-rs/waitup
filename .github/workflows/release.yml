@@ -240,7 +240,7 @@ jobs:
 
           ### Docker
           ```bash
-          docker pull waitfor/wait-for:v${{ needs.pre-release.outputs.version }}
+          docker pull ghcr.io/grok-rs/wait-for:v${{ needs.pre-release.outputs.version }}
           ```
 
           ### Binary Downloads

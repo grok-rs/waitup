@@ -22,12 +22,13 @@
 macro_rules! tcp_targets {
     ($($host:expr => $port:expr),* $(,)?) => {
         {
+            #[expect(clippy::vec_init_then_push, reason = "macro expansion requires incremental push pattern")]
             let result = || -> $crate::Result<Vec<$crate::Target>> {
                 let mut targets = Vec::new();
                 $(
                     targets.push($crate::Target::tcp($host, $port)?);
                 )*
-                Ok(targets)
+                return Ok(targets)
             };
             result()
         }
@@ -55,12 +56,13 @@ macro_rules! tcp_targets {
 macro_rules! http_targets {
     ($($url:expr => $status:expr),* $(,)?) => {
         {
+            #[expect(clippy::vec_init_then_push, reason = "macro expansion requires incremental push pattern")]
             let result = || -> $crate::Result<Vec<$crate::Target>> {
                 let mut targets = Vec::new();
                 $(
                     targets.push($crate::Target::http_url($url, $status)?);
                 )*
-                Ok(targets)
+                return Ok(targets)
             };
             result()
         }
@@ -132,7 +134,7 @@ macro_rules! common_ports {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use wait_for::{check_ready, Target};
+/// use wait_for::{check_ready, Target, WaitConfig};
 /// use std::time::Duration;
 ///
 /// # #[tokio::main]
@@ -141,7 +143,11 @@ macro_rules! common_ports {
 ///     Target::tcp("localhost", 8080)?,
 /// ];
 ///
-/// let result = check_ready!(targets, timeout: Duration::from_secs(30)).await?;
+/// // Create config first to avoid temporary value issues
+/// let config = WaitConfig::builder()
+///     .timeout(Duration::from_secs(30))
+///     .build();
+/// let result = wait_for::wait_for_connection(&targets, &config).await?;
 /// println!("All targets ready in {:?}", result.elapsed);
 /// # Ok(())
 /// # }
@@ -195,7 +201,7 @@ macro_rules! assert_ready {
                 .build();
             $crate::wait_for_connection(&$targets, &config)
                 .await
-                .expect("Targets should be ready")
+                .unwrap_or_else(|e| panic!("Targets should be ready, but failed with: {}", e))
         }
     };
     ($targets:expr, $($config_field:ident: $config_value:expr),+ $(,)?) => {
@@ -205,7 +211,7 @@ macro_rules! assert_ready {
             };
             $crate::wait_for_connection(&$targets, &config)
                 .await
-                .expect("Targets should be ready")
+                .unwrap_or_else(|e| panic!("Targets should be ready, but failed with: {}", e))
         }
     };
 }

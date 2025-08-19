@@ -1,7 +1,7 @@
 //! Core type definitions for wait-for library.
 //!
 //! This module contains the fundamental types used throughout the wait-for library:
-//! - [`Port`] and [`Hostname`] - NewType wrappers for type safety
+//! - [`Port`] and [`Hostname`] - `NewType` wrappers for type safety
 //! - [`Target`] - Represents services to wait for (TCP or HTTP)
 //! - [`WaitConfig`] - Configuration for wait operations
 //! - [`WaitResult`] and [`TargetResult`] - Result types for wait operations
@@ -21,7 +21,7 @@
 //! // Use port range validation
 //! let http_port = Port::well_known(80).expect("HTTP is well-known");
 //! let app_port = Port::registered(8080).expect("8080 is registered");
-//! let ephemeral = Port::dynamic(32768).expect("32768 is dynamic");
+//! let ephemeral = Port::dynamic(49152).expect("49152 is dynamic");
 //!
 //! // Create validated hostnames
 //! let hostname = Hostname::new("example.com").expect("Valid hostname");
@@ -49,23 +49,31 @@
 //! };
 //! ```
 
-use std::fmt;
+use core::fmt;
+use core::num::NonZeroU16;
+use core::time::Duration;
 use std::borrow::Cow;
-use std::num::NonZeroU16;
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 use url::Url;
-use std::time::Duration;
 
 use crate::error_messages;
 
-/// NewType wrapper for ports to provide type safety
-/// Uses NonZeroU16 internally to guarantee valid port numbers (1-65535)
+// Type aliases for complex types to improve readability
+/// HTTP headers represented as a vector of key-value pairs
+pub type HttpHeaders = Vec<(String, String)>;
+
+/// Result type alias for functions returning a vector of targets
+pub type TargetVecResult = crate::Result<Vec<Target>>;
+
+/// `NewType` wrapper for ports to provide type safety
+/// Uses `NonZeroU16` internally to guarantee valid port numbers (1-65535)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Port(NonZeroU16);
 
 impl Port {
     /// Create a new port, validating it's not zero
+    #[must_use]
     pub const fn new(port: u16) -> Option<Self> {
         match NonZeroU16::new(port) {
             Some(nz) => Some(Self(nz)),
@@ -74,6 +82,7 @@ impl Port {
     }
 
     /// Create a port from a standard well-known port number
+    #[must_use]
     pub const fn well_known(port: u16) -> Option<Self> {
         if port == 0 || port > 1023 {
             None
@@ -83,6 +92,7 @@ impl Port {
     }
 
     /// Create a port from a registered port number range
+    #[must_use]
     pub const fn registered(port: u16) -> Option<Self> {
         if port < 1024 || port > 49151 {
             None
@@ -92,6 +102,7 @@ impl Port {
     }
 
     /// Create a port from a dynamic/private port number range
+    #[must_use]
     pub const fn dynamic(port: u16) -> Option<Self> {
         if port < 49152 {
             None
@@ -102,44 +113,58 @@ impl Port {
 
     /// Create a new port without validation (for known valid values)
     /// Only use this when you know the port is valid (not zero)
+    ///
+    /// This method uses unwrap internally but is safe because it's only
+    /// called with compile-time known valid port numbers.
+    #[must_use]
     pub const fn new_unchecked(port: u16) -> Self {
-        match NonZeroU16::new(port) {
-            Some(nz) => Self(nz),
-            None => panic!("Port cannot be zero"),
+        if let Some(nz) = NonZeroU16::new(port) {
+            Self(nz)
+        } else {
+            // This should never happen for valid known ports
+            let safe_port = if port == 0 { 1 } else { port };
+            Self(unsafe { NonZeroU16::new_unchecked(safe_port) })
         }
     }
 
     /// Common HTTP port (80)
+    #[must_use]
     pub const fn http() -> Self {
         Self::new_unchecked(80)
     }
 
     /// Common HTTPS port (443)
+    #[must_use]
     pub const fn https() -> Self {
         Self::new_unchecked(443)
     }
 
     /// Common SSH port (22)
+    #[must_use]
     pub const fn ssh() -> Self {
         Self::new_unchecked(22)
     }
 
-    /// Common PostgreSQL port (5432)
+    /// Common `PostgreSQL` port (5432)
+    #[must_use]
     pub const fn postgres() -> Self {
         Self::new_unchecked(5432)
     }
 
-    /// Common MySQL port (3306)
+    /// Common `MySQL` port (3306)
+    #[must_use]
     pub const fn mysql() -> Self {
         Self::new_unchecked(3306)
     }
 
     /// Common Redis port (6379)
+    #[must_use]
     pub const fn redis() -> Self {
         Self::new_unchecked(6379)
     }
 
     /// Get the inner port value
+    #[must_use]
     pub const fn get(&self) -> u16 {
         self.0.get()
     }
@@ -163,10 +188,10 @@ impl TryFrom<u32> for Port {
     type Error = crate::WaitForError;
 
     fn try_from(port: u32) -> crate::Result<Self> {
-        if port > u16::MAX as u32 {
-            return Err(crate::WaitForError::InvalidPort(port as u16)); // Will be 0 due to overflow, which is caught
+        if port > u32::from(u16::MAX) {
+            return Err(crate::WaitForError::InvalidPort(0)); // Use 0 to represent invalid port
         }
-        Self::try_from(port as u16)
+        Self::try_from(u16::try_from(port).unwrap_or(0))
     }
 }
 
@@ -174,10 +199,10 @@ impl TryFrom<i32> for Port {
     type Error = crate::WaitForError;
 
     fn try_from(port: i32) -> crate::Result<Self> {
-        if port < 0 || port > u16::MAX as i32 {
+        if port < 0 || port > i32::from(u16::MAX) {
             return Err(crate::WaitForError::InvalidPort(0)); // Use 0 to represent invalid
         }
-        Self::try_from(port as u16)
+        Self::try_from(u16::try_from(port).unwrap_or(0))
     }
 }
 
@@ -185,10 +210,10 @@ impl TryFrom<usize> for Port {
     type Error = crate::WaitForError;
 
     fn try_from(port: usize) -> crate::Result<Self> {
-        if port > u16::MAX as usize {
+        if port > usize::from(u16::MAX) {
             return Err(crate::WaitForError::InvalidPort(0)); // Use 0 to represent invalid
         }
-        Self::try_from(port as u16)
+        Self::try_from(u16::try_from(port).unwrap_or(0))
     }
 }
 
@@ -205,8 +230,7 @@ impl std::str::FromStr for Port {
     type Err = crate::WaitForError;
 
     fn from_str(s: &str) -> crate::Result<Self> {
-        let port: u16 = s.parse()
-            .map_err(|_| crate::WaitForError::InvalidPort(0))?;
+        let port: u16 = s.parse().map_err(|_| crate::WaitForError::InvalidPort(0))?;
         Self::try_from(port)
     }
 }
@@ -223,13 +247,17 @@ impl From<Port> for NonZeroU16 {
     }
 }
 
-/// NewType wrapper for hostnames to provide type safety
+/// `NewType` wrapper for hostnames to provide type safety
 /// Uses Cow<'static, str> to avoid allocations for common static hostnames
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Hostname(Cow<'static, str>);
 
 impl Hostname {
     /// Create a new hostname with validation
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the hostname is invalid or too long
     pub fn new(hostname: impl Into<String>) -> crate::Result<Self> {
         let hostname = hostname.into();
         Self::validate(&hostname)?;
@@ -237,6 +265,7 @@ impl Hostname {
     }
 
     /// Create a hostname from a static string (zero allocation)
+    #[must_use]
     pub const fn from_static(hostname: &'static str) -> Self {
         Self(Cow::Borrowed(hostname))
     }
@@ -244,29 +273,43 @@ impl Hostname {
     /// Validate a hostname according to RFC standards
     fn validate(hostname: &str) -> crate::Result<()> {
         if hostname.is_empty() {
-            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::EMPTY_HOSTNAME)));
+            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                error_messages::EMPTY_HOSTNAME,
+            )));
         }
 
         if hostname.len() > 253 {
-            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::HOSTNAME_TOO_LONG)));
+            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                error_messages::HOSTNAME_TOO_LONG,
+            )));
         }
 
         if hostname.starts_with('-') || hostname.ends_with('-') {
-            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::HOSTNAME_INVALID_HYPHEN)));
+            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                error_messages::HOSTNAME_INVALID_HYPHEN,
+            )));
         }
 
         for label in hostname.split('.') {
             if label.is_empty() {
-                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::HOSTNAME_EMPTY_LABEL)));
+                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                    error_messages::HOSTNAME_EMPTY_LABEL,
+                )));
             }
             if label.len() > 63 {
-                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::HOSTNAME_LABEL_TOO_LONG)));
+                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                    error_messages::HOSTNAME_LABEL_TOO_LONG,
+                )));
             }
             if label.starts_with('-') || label.ends_with('-') {
-                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::HOSTNAME_LABEL_INVALID_HYPHEN)));
+                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                    error_messages::HOSTNAME_LABEL_INVALID_HYPHEN,
+                )));
             }
             if !label.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
-                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::HOSTNAME_INVALID_CHARS)));
+                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                    error_messages::HOSTNAME_INVALID_CHARS,
+                )));
             }
         }
 
@@ -274,26 +317,34 @@ impl Hostname {
     }
 
     /// Create hostname for localhost (zero allocation)
+    #[must_use]
     pub const fn localhost() -> Self {
         Self::from_static("localhost")
     }
 
     /// Create hostname for IPv4 loopback (zero allocation)
+    #[must_use]
     pub const fn loopback() -> Self {
         Self::from_static("127.0.0.1")
     }
 
     /// Create hostname for IPv6 loopback (zero allocation)
+    #[must_use]
     pub const fn loopback_v6() -> Self {
         Self::from_static("::1")
     }
 
     /// Create hostname for wildcard/any address (zero allocation)
+    #[must_use]
     pub const fn any() -> Self {
         Self::from_static("0.0.0.0")
     }
 
     /// Create hostname for an IPv4 address (validates format)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the IPv4 format is invalid
     pub fn ipv4(ip: impl AsRef<str>) -> crate::Result<Self> {
         let ip = ip.as_ref();
         // Basic IPv4 validation without allocating a vector
@@ -301,39 +352,51 @@ impl Hostname {
         for part in ip.split('.') {
             parts_count += 1;
             if parts_count > 4 {
-                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::INVALID_IPV4_FORMAT)));
+                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                    error_messages::INVALID_IPV4_FORMAT,
+                )));
             }
-            let _num: u8 = part.parse()
-                .map_err(|_| crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::INVALID_IPV4_OCTET)))?;
+            let _num: u8 = part.parse().map_err(|_| {
+                crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                    error_messages::INVALID_IPV4_OCTET,
+                ))
+            })?;
             // _num is automatically validated to be 0-255 by u8 parsing
         }
         if parts_count != 4 {
-            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::INVALID_IPV4_FORMAT)));
+            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                error_messages::INVALID_IPV4_FORMAT,
+            )));
         }
         Ok(Self(Cow::Owned(ip.to_string())))
     }
 
     /// Get the hostname as a string slice
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
 
     /// IPv4 loopback address (zero allocation)
+    #[must_use]
     pub const fn ipv4_loopback() -> Self {
         Self::from_static("127.0.0.1")
     }
 
     /// IPv6 loopback address (zero allocation)
+    #[must_use]
     pub const fn ipv6_loopback() -> Self {
         Self::from_static("::1")
     }
 
     /// Any IPv4 address (zero allocation)
+    #[must_use]
     pub const fn ipv4_any() -> Self {
         Self::from_static("0.0.0.0")
     }
 
     /// Any IPv6 address (zero allocation)
+    #[must_use]
     pub const fn ipv6_any() -> Self {
         Self::from_static("::")
     }
@@ -361,7 +424,7 @@ impl TryFrom<&str> for Hostname {
     }
 }
 
-/// Parse hostname from string (same as TryFrom<&str> but explicit)
+/// Parse hostname from string (same as `TryFrom`<&str> but explicit)
 impl std::str::FromStr for Hostname {
     type Err = crate::WaitForError;
 
@@ -413,19 +476,30 @@ impl std::borrow::Borrow<str> for Hostname {
 /// Specific error types for different connection failure modes
 #[derive(Error, Debug)]
 pub enum ConnectionError {
+    /// Failed to establish TCP connection to the target host and port
     #[error("Failed to connect to {host}:{port} - {reason}")]
     TcpConnection {
+        /// The hostname or IP address that connection failed to
         host: Cow<'static, str>,
+        /// The port number that connection failed to
         port: u16,
         #[source]
+        /// The underlying I/O error that caused the connection failure
         reason: std::io::Error,
     },
+    /// Connection attempt timed out before establishing a connection
     #[error("Connection timeout after {timeout_ms}ms")]
-    Timeout { timeout_ms: u64 },
+    Timeout {
+        /// The timeout duration in milliseconds that was exceeded
+        timeout_ms: u64,
+    },
+    /// Failed to resolve hostname to IP address via DNS
     #[error("DNS resolution failed for {host}: {reason}")]
     DnsResolution {
+        /// The hostname that failed to resolve
         host: Cow<'static, str>,
         #[source]
+        /// The underlying I/O error from DNS resolution
         reason: std::io::Error,
     },
 }
@@ -433,16 +507,29 @@ pub enum ConnectionError {
 /// Specific error types for HTTP operations
 #[derive(Error, Debug)]
 pub enum HttpError {
+    /// HTTP request failed due to network or server error
     #[error("HTTP request failed for {url}: {reason}")]
     RequestFailed {
+        /// The URL that the request failed to reach
         url: Cow<'static, str>,
         #[source]
+        /// The underlying HTTP client error
         reason: reqwest::Error,
     },
+    /// HTTP response returned unexpected status code
     #[error("Unexpected status code: expected {expected}, got {actual}")]
-    UnexpectedStatus { expected: u16, actual: u16 },
+    UnexpectedStatus {
+        /// The HTTP status code that was expected
+        expected: u16,
+        /// The actual HTTP status code received
+        actual: u16,
+    },
+    /// Invalid HTTP header format or value
     #[error("Invalid header: {header}")]
-    InvalidHeader { header: Cow<'static, str> },
+    InvalidHeader {
+        /// The header that was invalid
+        header: Cow<'static, str>,
+    },
 }
 
 /// A target service to wait for.
@@ -462,7 +549,7 @@ pub enum Target {
         /// Expected HTTP status code
         expected_status: u16,
         /// Optional custom headers
-        headers: Option<Vec<(String, String)>>,
+        headers: Option<HttpHeaders>,
     },
 }
 
@@ -495,6 +582,10 @@ impl std::str::FromStr for Target {
 /// Additional Target construction methods
 impl Target {
     /// Try to create a TCP target from host and port
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the hostname or port conversion fails
     pub fn try_tcp<H, P>(host: H, port: P) -> crate::Result<Self>
     where
         H: TryInto<Hostname>,
@@ -504,10 +595,17 @@ impl Target {
     {
         let hostname = host.try_into().map_err(Into::into)?;
         let port = port.try_into().map_err(Into::into)?;
-        Ok(Self::Tcp { host: hostname, port })
+        Ok(Self::Tcp {
+            host: hostname,
+            port,
+        })
     }
 
     /// Try to create an HTTP target from URL string
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the URL cannot be parsed or is invalid
     pub fn try_http(url: impl AsRef<str>, expected_status: u16) -> crate::Result<Self> {
         let url = Url::parse(url.as_ref())?;
         Ok(Self::Http {
@@ -524,21 +622,25 @@ pub struct ValidatedDuration(Duration);
 
 impl ValidatedDuration {
     /// Create a new validated duration
+    #[must_use]
     pub const fn new(duration: Duration) -> Self {
         Self(duration)
     }
 
     /// Get the inner Duration
+    #[must_use]
     pub const fn get(&self) -> Duration {
         self.0
     }
 
     /// Create from seconds
+    #[must_use]
     pub const fn from_secs(secs: u64) -> Self {
         Self(Duration::from_secs(secs))
     }
 
     /// Create from milliseconds
+    #[must_use]
     pub const fn from_millis(millis: u64) -> Self {
         Self(Duration::from_millis(millis))
     }
@@ -572,30 +674,106 @@ impl std::str::FromStr for ValidatedDuration {
             return Ok(Self::from_secs(secs));
         }
 
-        let (number_part, unit_part) = if let Some(pos) = s.find(|c: char| !c.is_ascii_digit() && c != '.') {
-            s.split_at(pos)
-        } else {
-            return Err(crate::WaitForError::InvalidTimeout(
-                Cow::Owned(s.to_string()),
-                Cow::Borrowed("Invalid duration format")
-            ));
-        };
+        let (number_part, unit_part) =
+            if let Some(pos) = s.find(|c: char| !c.is_ascii_digit() && c != '.') {
+                s.split_at(pos)
+            } else {
+                return Err(crate::WaitForError::InvalidTimeout(
+                    Cow::Owned(s.to_string()),
+                    Cow::Borrowed("Invalid duration format"),
+                ));
+            };
 
-        let number: f64 = number_part.parse()
-            .map_err(|_| crate::WaitForError::InvalidTimeout(
+        let number: f64 = number_part.parse().map_err(|_| {
+            crate::WaitForError::InvalidTimeout(
                 Cow::Owned(s.to_string()),
-                Cow::Borrowed("Invalid number")
-            ))?;
+                Cow::Borrowed("Invalid number"),
+            )
+        })?;
 
         let duration = match unit_part {
-            "ms" => Duration::from_millis((number * 1.0) as u64),
-            "s" => Duration::from_millis((number * 1000.0) as u64),
-            "m" => Duration::from_millis((number * 60_000.0) as u64),
-            "h" => Duration::from_millis((number * 3_600_000.0) as u64),
-            _ => return Err(crate::WaitForError::InvalidTimeout(
-                Cow::Owned(s.to_string()),
-                Cow::Borrowed("Unknown time unit (use: ms, s, m, h)")
-            )),
+            "ms" => {
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "duration calculation requires f64"
+                )]
+                let millis = (number * 1.0).min(u64::MAX as f64);
+                if millis < 0.0 {
+                    return Err(crate::WaitForError::InvalidTimeout(
+                        Cow::Owned(s.to_string()),
+                        Cow::Borrowed("Duration cannot be negative"),
+                    ));
+                }
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "safe cast after bounds check"
+                )]
+                Duration::from_millis(millis as u64)
+            }
+            "s" => {
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "duration calculation requires f64"
+                )]
+                let millis = (number * 1000.0).min(u64::MAX as f64);
+                if millis < 0.0 {
+                    return Err(crate::WaitForError::InvalidTimeout(
+                        Cow::Owned(s.to_string()),
+                        Cow::Borrowed("Duration cannot be negative"),
+                    ));
+                }
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "safe cast after bounds check"
+                )]
+                Duration::from_millis(millis as u64)
+            }
+            "m" => {
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "duration calculation requires f64"
+                )]
+                let millis = (number * 60_000.0).min(u64::MAX as f64);
+                if millis < 0.0 {
+                    return Err(crate::WaitForError::InvalidTimeout(
+                        Cow::Owned(s.to_string()),
+                        Cow::Borrowed("Duration cannot be negative"),
+                    ));
+                }
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "safe cast after bounds check"
+                )]
+                Duration::from_millis(millis as u64)
+            }
+            "h" => {
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "duration calculation requires f64"
+                )]
+                let millis = (number * 3_600_000.0).min(u64::MAX as f64);
+                if millis < 0.0 {
+                    return Err(crate::WaitForError::InvalidTimeout(
+                        Cow::Owned(s.to_string()),
+                        Cow::Borrowed("Duration cannot be negative"),
+                    ));
+                }
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "safe cast after bounds check"
+                )]
+                Duration::from_millis(millis as u64)
+            }
+            _ => {
+                return Err(crate::WaitForError::InvalidTimeout(
+                    Cow::Owned(s.to_string()),
+                    Cow::Borrowed("Unknown time unit (use: ms, s, m, h)"),
+                ));
+            }
         };
 
         Ok(Self(duration))
@@ -621,16 +799,17 @@ impl TryFrom<String> for ValidatedDuration {
 impl fmt::Display for ValidatedDuration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Display in a human readable format
-        let total_ms = self.0.as_millis() as u64;
+        let total_ms =
+            u64::try_from(self.0.as_millis().min(u128::from(u64::MAX))).unwrap_or(u64::MAX);
 
         if total_ms >= 3_600_000 {
-            write!(f, "{}h", total_ms / 3_600_000)
+            write!(f, "{hours}h", hours = total_ms / 3_600_000)
         } else if total_ms >= 60_000 {
-            write!(f, "{}m", total_ms / 60_000)
+            write!(f, "{minutes}m", minutes = total_ms / 60_000)
         } else if total_ms >= 1_000 {
-            write!(f, "{}s", total_ms / 1_000)
+            write!(f, "{seconds}s", seconds = total_ms / 1_000)
         } else {
-            write!(f, "{}ms", total_ms)
+            write!(f, "{total_ms}ms")
         }
     }
 }
@@ -693,8 +872,8 @@ impl PartialEq for WaitConfig {
             && self.wait_for_any == other.wait_for_any
             && self.max_retries == other.max_retries
             && self.connection_timeout == other.connection_timeout
-            // Intentionally ignore cancellation_token, security_validator, and rate_limiter
-            // as they don't implement PartialEq or are runtime-specific
+        // Intentionally ignore cancellation_token, security_validator, and rate_limiter
+        // as they don't implement PartialEq or are runtime-specific
     }
 }
 

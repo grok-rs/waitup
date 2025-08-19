@@ -5,6 +5,9 @@
 
 use crate::types::{Target, TargetResult, WaitResult};
 
+/// Type alias for `HashMap` of targets grouped by hostname to simplify complex type usage.
+type TargetsByHostname = std::collections::HashMap<String, Vec<Target>>;
+
 /// Extension trait for working with iterators of targets
 pub trait TargetIterExt: Iterator<Item = Target> {
     /// Collect TCP targets from a mixed iterator
@@ -24,7 +27,7 @@ pub trait TargetIterExt: Iterator<Item = Target> {
     }
 
     /// Group targets by hostname
-    fn group_by_hostname(self) -> std::collections::HashMap<String, Vec<Target>>
+    fn group_by_hostname(self) -> TargetsByHostname
     where
         Self: Sized,
     {
@@ -84,7 +87,7 @@ pub trait TargetResultIterExt: Iterator<Item = TargetResult> {
 
 impl<I> TargetResultIterExt for I where I: Iterator<Item = TargetResult> {}
 
-/// Extension trait for slices/Vecs of TargetResult to provide summary functionality
+/// Extension trait for slices/Vecs of `TargetResult` to provide summary functionality
 pub trait TargetResultSliceExt {
     /// Get summary statistics
     fn summary(&self) -> ResultSummary;
@@ -101,13 +104,9 @@ impl TargetResultSliceExt for [TargetResult] {
         let total_attempts = self.iter().map(|r| r.attempts).sum();
         let total_elapsed: std::time::Duration = self.iter().map(|r| r.elapsed).sum();
 
-        let fastest = self.iter()
-            .map(|r| r.elapsed)
-            .min();
+        let fastest = self.iter().map(|r| r.elapsed).min();
 
-        let slowest = self.iter()
-            .map(|r| r.elapsed)
-            .max();
+        let slowest = self.iter().map(|r| r.elapsed).max();
 
         ResultSummary {
             total_targets: self.len(),
@@ -155,18 +154,21 @@ impl WaitResult {
     }
 
     /// Get summary statistics
+    #[must_use]
     pub fn summary(&self) -> ResultSummary {
         let successful_count = self.successful_results().count();
         let failed_count = self.failed_results().count();
         let total_attempts = self.target_results.iter().map(|r| r.attempts).sum();
 
-        let fastest = self.target_results
+        let fastest = self
+            .target_results
             .iter()
             .filter(|r| r.success)
             .min_by_key(|r| r.elapsed)
             .map(|r| r.elapsed);
 
-        let slowest = self.target_results
+        let slowest = self
+            .target_results
             .iter()
             .max_by_key(|r| r.elapsed)
             .map(|r| r.elapsed);
@@ -186,40 +188,55 @@ impl WaitResult {
 /// Summary statistics for wait results
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResultSummary {
+    /// Total number of targets checked
     pub total_targets: usize,
+    /// Number of targets that succeeded
     pub successful_count: usize,
+    /// Number of targets that failed
     pub failed_count: usize,
+    /// Total number of connection attempts across all targets
     pub total_attempts: u32,
+    /// Total time elapsed for all operations
     pub total_elapsed: std::time::Duration,
+    /// Fastest response time recorded
     pub fastest_response: Option<std::time::Duration>,
+    /// Slowest response time recorded
     pub slowest_response: Option<std::time::Duration>,
 }
 
 impl std::fmt::Display for ResultSummary {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,
+        write!(
+            f,
             "Targets: {}/{} successful, {} attempts, elapsed: {:?}",
-            self.successful_count,
-            self.total_targets,
-            self.total_attempts,
-            self.total_elapsed
+            self.successful_count, self.total_targets, self.total_attempts, self.total_elapsed
         )
     }
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code where panics are acceptable")]
 mod tests {
     use super::*;
     use crate::types::{Target, TargetResult, WaitResult};
     use std::time::Duration;
 
-    fn create_test_target_result(target: Target, success: bool, elapsed: Duration, attempts: u32) -> TargetResult {
+    fn create_test_target_result(
+        target: Target,
+        success: bool,
+        elapsed: Duration,
+        attempts: u32,
+    ) -> TargetResult {
         TargetResult {
             target,
             success,
             elapsed,
             attempts,
-            error: if success { None } else { Some("Test error".to_string()) },
+            error: if success {
+                None
+            } else {
+                Some("Test error".to_string())
+            },
         }
     }
 
@@ -323,12 +340,15 @@ mod tests {
     #[test]
     fn test_result_summary_display() {
         let target = Target::tcp("localhost", 8080).unwrap();
-        let results = vec![
-            create_test_target_result(target, true, Duration::from_millis(100), 2),
-        ];
+        let results = vec![create_test_target_result(
+            target,
+            true,
+            Duration::from_millis(100),
+            2,
+        )];
 
         let summary = results.summary();
-        let display = format!("{}", summary);
+        let display = format!("{summary}");
         assert!(display.contains("1/1 successful"));
         assert!(display.contains("2 attempts"));
         assert!(display.contains("100ms"));

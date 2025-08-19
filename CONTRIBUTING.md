@@ -4,7 +4,7 @@ Thank you for your interest in contributing to wait-for! This document provides 
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+This project and everyone participating in it is governed by our Code of Conduct. By participating, you are expected to uphold professional and respectful behavior.
 
 ## How to Contribute
 

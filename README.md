@@ -1,10 +1,10 @@
 # wait-for
 
-[![Crates.io](https://img.shields.io/crates/v/wait-for.svg)](https://crates.io/crates/wait-for)
+[![Crates.io](https://img.shields.io/crates/v/wait-for.svg)](https://github.com/grok-rs/wait-for)
 [![Documentation](https://docs.rs/wait-for/badge.svg)](https://docs.rs/wait-for)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/grok-rs/wait-for/workflows/CI/badge.svg)](https://github.com/grok-rs/wait-for/actions)
-[![Docker Pulls](https://img.shields.io/docker/pulls/waitfor/wait-for)](https://hub.docker.com/r/waitfor/wait-for)
+[![GitHub Container Registry](https://img.shields.io/badge/GHCR-Available-blue)](https://github.com/grok-rs/wait-for/pkgs/container/wait-for)
 
 > A modern, feature-rich CLI tool for waiting until TCP ports, HTTP endpoints, and services become available. Perfect for Docker, Kubernetes, CI/CD pipelines, and microservices orchestration.
 
@@ -41,12 +41,20 @@ cargo install wait-for
 ### Docker
 
 ```bash
-# Minimal Alpine image (~10MB)
-docker pull waitfor/wait-for:alpine
-docker run --rm waitfor/wait-for:alpine --help
+# Pull from GitHub Container Registry (recommended)
+docker pull ghcr.io/grok-rs/wait-for:latest
+docker run --rm ghcr.io/grok-rs/wait-for:latest --help
 
-# Standard Debian image
-docker pull waitfor/wait-for:latest
+# Or use the Alpine build (smaller)
+docker pull ghcr.io/grok-rs/wait-for:alpine
+docker run --rm ghcr.io/grok-rs/wait-for:alpine --help
+
+# Build from source using Docker
+docker build -t wait-for .
+docker run --rm wait-for --help
+
+# Or build the Alpine variant from source
+docker build -f Dockerfile.alpine -t wait-for:alpine .
 ```
 
 ### Pre-built Binaries
@@ -220,7 +228,7 @@ Supports human-readable durations:
 - `1h30m` - 1 hour 30 minutes
 - `500ms` - 500 milliseconds
 
-## Contributing
+## Development
 
 1. Fork the repository
 2. Create a feature branch
@@ -306,7 +314,7 @@ kind: Pod
 spec:
   initContainers:
     - name: wait-for-deps
-      image: waitfor/wait-for:alpine
+      image: wait-for:alpine
       command: ["wait-for"]
       args: ["postgres:5432", "redis:6379", "--timeout", "300s"]
   containers:
@@ -326,8 +334,8 @@ services:
         condition: service_completed_successfully
 
   db-ready:
-    image: waitfor/wait-for:alpine
-    command: ["postgres:5432", "--timeout", "60s"]
+    image: wait-for:alpine
+    command: ["wait-for", "postgres:5432", "--timeout", "60s"]
     depends_on:
       - postgres
 
