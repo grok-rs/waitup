@@ -255,16 +255,8 @@ mod output {
                 "{json_output}",
                 json_output = serde_json::to_string_pretty(&json_output)?
             );
-        } else if !config.quiet {
-            if result.success {
-                if config.wait_config.wait_for_any {
-                    println!("At least one target is ready!");
-                } else {
-                    println!("All targets are ready!");
-                }
-            } else {
-                eprintln!("Failed to connect to targets");
-            }
+        } else if !config.quiet && !result.success {
+            eprintln!("Failed to connect to targets");
         }
         Ok(())
     }
@@ -335,14 +327,14 @@ fn execute_command(command: &[String]) -> Result<()> {
         cmd.args(&command[1..]);
     }
 
-    let output = cmd
-        .output()
+    let status = cmd
+        .status()
         .map_err(|e| CliError::CommandExecution(e.to_string()))?;
 
-    if !output.status.success() {
+    if !status.success() {
         return Err(CliError::CommandExecution(format!(
             "Command exited with code: {:?}",
-            output.status.code()
+            status.code()
         )));
     }
 
