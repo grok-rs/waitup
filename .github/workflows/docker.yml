@@ -209,7 +209,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.variant }}
 
       - name: Generate image attestation
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-name: ${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.build.outputs.digest }}
