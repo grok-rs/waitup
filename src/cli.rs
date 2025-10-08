@@ -264,6 +264,10 @@ mod output {
 
 async fn wait_with_progress(config: &CliConfig) -> Result<WaitResult> {
     if config.verbose && !config.quiet && !config.json {
+        use futures::stream::FuturesUnordered;
+        use futures::StreamExt;
+        use waitup::wait_for_single_target;
+
         let multi_progress = indicatif::MultiProgress::new();
         let progress_bars: Result<Vec<_>> = config
             .targets
@@ -288,28 +292,94 @@ async fn wait_with_progress(config: &CliConfig) -> Result<WaitResult> {
 
         let progress_bars = progress_bars?;
 
-        let result = wait_for_connection(&config.targets, &config.wait_config)
-            .await
-            .map_err(CliError::WaitError)?;
+        // Spawn per-target futures and update progress bars as each completes.
+        let mut futures: FuturesUnordered<_> = FuturesUnordered::new();
+        for (target_index, target) in config.targets.iter().enumerate() {
+            futures.push(async move {
+                (
+                    target_index,
+                    wait_for_single_target(target, &config.wait_config).await,
+                )
+            });
+        }
 
-        for (i, target_result) in result.target_results.iter().enumerate() {
-            if let Some(pb) = progress_bars.get(i) {
-                if target_result.success {
-                    pb.finish_with_message(format!(
-                        "✓ {target}",
-                        target = target_result.target.display()
-                    ));
-                } else {
-                    pb.finish_with_message(format!(
-                        "✗ {target} ({error})",
-                        target = target_result.target.display(),
-                        error = target_result.error.as_deref().unwrap_or("failed")
-                    ));
+        let mut target_results = vec![None; config.targets.len()];
+
+        while let Some((target_index, res)) = futures.next().await {
+            match res {
+                Ok(target_result) => {
+                    if let Some(pb) = progress_bars.get(target_index) {
+                        if target_result.success {
+                            pb.finish_with_message(format!(
+                                "✓ {target}",
+                                target = target_result.target.display()
+                            ));
+                        } else {
+                            pb.finish_with_message(format!(
+                                "✗ {target} ({error})",
+                                target = target_result.target.display(),
+                                error = target_result.error.as_deref().unwrap_or("failed")
+                            ));
+                        }
+                    }
+                    target_results[target_index] = Some(target_result);
+                }
+                Err(wferror) => {
+                    // If a per-target check errors out (e.g., cancelled), record as failed
+                    if let Some(pb) = progress_bars.get(target_index) {
+                        pb.finish_with_message(format!(
+                            "✗ {target} ({error})",
+                            target = config.targets[target_index].display(),
+                            error = wferror
+                        ));
+                    }
+                    target_results[target_index] = Some(waitup::TargetResult {
+                        target: config.targets[target_index].clone(),
+                        success: false,
+                        elapsed: std::time::Duration::from_secs(0),
+                        attempts: 0,
+                        error: Some(wferror.to_string()),
+                    });
                 }
             }
         }
 
-        Ok(result)
+        // Collect final results
+        let mut all_successful = true;
+        let mut total_attempts: u32 = 0;
+        let final_results = target_results
+            .into_iter()
+            .flatten()
+            .inspect(|tr| {
+                if !tr.success {
+                    all_successful = false;
+                };
+                total_attempts += tr.attempts;
+            })
+            .collect::<Vec<_>>();
+
+        let total_elapsed = final_results
+            .iter()
+            .map(|tr| tr.elapsed)
+            .max()
+            .unwrap_or_else(|| Duration::from_millis(0));
+        if !all_successful {
+            let failed_targets: Vec<_> = final_results
+                .iter()
+                .filter(|r| !r.success)
+                .map(|r| r.target.display())
+                .collect();
+            return Err(CliError::WaitError(WaitForError::Timeout {
+                targets: std::borrow::Cow::Owned(failed_targets.join(", ")),
+            }));
+        }
+
+        Ok(WaitResult {
+            success: all_successful,
+            elapsed: total_elapsed,
+            attempts: total_attempts,
+            target_results: final_results,
+        })
     } else {
         wait_for_connection(&config.targets, &config.wait_config)
             .await
@@ -405,4 +475,110 @@ pub async fn run() -> i32 {
     }
 
     0
+}
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code where panics are acceptable")]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+    use tokio::net::TcpListener;
+
+    #[tokio::test]
+    async fn verbose_streaming_internal_returns_timeout_with_failed_target() {
+        // Start one server that will accept a single connection
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        tokio::spawn(async move {
+            let (_stream, _addr) = listener.accept().await.unwrap();
+        });
+
+        let targets = vec![
+            Target::loopback(addr.port()).unwrap(),
+            Target::loopback(65534).unwrap(), // likely unreachable
+        ];
+
+        let wait_cfg = WaitConfig::builder()
+            .timeout(Duration::from_secs(1))
+            .build();
+
+        let cli_cfg = CliConfig {
+            targets,
+            wait_config: wait_cfg,
+            quiet: false,
+            verbose: true,
+            json: false,
+            command: Vec::new(),
+        };
+
+        let res = wait_with_progress(&cli_cfg).await;
+
+        match res {
+            Ok(_) => panic!("expected timeout error when one target is unreachable"),
+            Err(CliError::WaitError(wf)) => match wf {
+                WaitForError::Timeout { targets } => {
+                    assert!(
+                        targets.contains("127.0.0.1:65534"),
+                        "timeout targets did not contain unreachable target: {}",
+                        targets
+                    );
+                }
+                other => panic!("unexpected WaitForError: {:?}", other),
+            },
+            Err(e) => panic!("unexpected CLI error: {e}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn verbose_streaming_internal_all_success_returns_expected_waitresult() {
+        let timeout = Duration::from_secs(1);
+        // Start two servers that will accept a single connection each
+        let listener1 = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr1 = listener1.local_addr().unwrap();
+
+        let listener2 = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr2 = listener2.local_addr().unwrap();
+
+        // Spawn accept tasks so the servers will accept the client's connections
+        tokio::spawn(async move {
+            let (_stream, _addr) = listener1.accept().await.unwrap();
+        });
+        tokio::spawn(async move {
+            let (_stream, _addr) = listener2.accept().await.unwrap();
+        });
+
+        let targets = vec![
+            Target::loopback(addr1.port()).unwrap(),
+            Target::loopback(addr2.port()).unwrap(),
+        ];
+
+        let wait_cfg = WaitConfig::builder().timeout(timeout).build();
+
+        let cli_cfg = CliConfig {
+            targets: targets.clone(),
+            wait_config: wait_cfg,
+            quiet: false,
+            verbose: true,
+            json: false,
+            command: Vec::new(),
+        };
+
+        let result = wait_with_progress(&cli_cfg)
+            .await
+            .expect("expected success WaitResult, got error");
+
+        // All targets must be successful
+        assert!(result.success);
+        assert_eq!(result.target_results.len(), 2);
+        for tr in &result.target_results {
+            assert!(tr.success, "target {:?} should be successful", tr.target);
+        }
+
+        // requests should succeed once per target
+        assert_eq!(result.attempts, 2);
+
+        // elapsed must be under timeout
+        assert!(result.elapsed < timeout);
+    }
 }

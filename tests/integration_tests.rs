@@ -108,6 +108,46 @@ mod tests {
         assert!(output.status.success());
     }
 
+    #[tokio::test]
+    async fn verbose_streaming_updates_per_target() {
+        // Start one test server that will accept a single connection
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        tokio::spawn(async move {
+            let (_stream, _addr) = listener.accept().await.unwrap();
+        });
+
+        // Run waitup against one reachable and one unreachable target with --verbose
+        let output = Command::new("./target/debug/waitup")
+            .args([
+                &format!("127.0.0.1:{}", addr.port()),
+                "127.0.0.1:65534", // likely unreachable
+                "--timeout",
+                "1s",
+                "--verbose",
+            ])
+            .output()
+            .expect("Failed to execute waitup");
+
+        // Combine stdout and stderr since progress bars may write to stderr
+        let combined = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        // On non-tty environments progress symbols may be stripped; ensure the
+        // invocation with --verbose doesn't crash and reports the unreachable target.
+        assert!(!output.status.success());
+        assert_eq!(output.status.code(), Some(1));
+        assert!(
+            combined.contains("127.0.0.1:65534"),
+            "expected unreachable target in output: {}",
+            combined
+        );
+    }
+
     #[test]
     fn invalid_target_format() {
         let output = Command::new("./target/debug/waitup")
