@@ -26,12 +26,12 @@ rustdoc-args = ["--cfg", "docsrs"]
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-clap = { version = "4.0", features = ["derive", "env"] }
-clap_complete = "4.0"
+clap = { version = "4.5", features = ["derive", "env"] }
+clap_complete = "4.5"
 tokio = { version = "1.0", features = ["net", "rt-multi-thread", "time", "macros", "sync"] }
 tokio-util = "0.7"
-thiserror = "2.0.16"
-humantime = "2.1"
+thiserror = "2.0.17"
+humantime = "2.3"
 indicatif = "0.18"
 reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
 url = "2.5"
@@ -50,7 +50,7 @@ panic = "abort"
 
 [dev-dependencies]
 tokio-test = "0.4"
-proptest = "1.4"
+proptest = "1.8"
 test-case = "3.3"
 
 [[bin]]
