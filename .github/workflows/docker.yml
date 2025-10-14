@@ -122,7 +122,7 @@ jobs:
           output: trivy-results-${{ matrix.variant }}.sarif
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-results-${{ matrix.variant }}.sarif
           category: trivy-${{ matrix.variant }}
@@ -142,7 +142,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Grype scan results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: grype-results-${{ matrix.variant }}.sarif
           category: grype-${{ matrix.variant }}
