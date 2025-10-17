@@ -973,7 +973,7 @@ mod tests {
         assert_eq!(category, cloned);
 
         // Test Debug
-        let debug_str = format!("{:?}", category);
+        let debug_str = format!("{category:?}");
         assert!(debug_str.contains("System"));
 
         // Test Hash (compile-time check)
@@ -1046,7 +1046,7 @@ mod tests {
                 expected_status,
                 ..
             } => {
-                format!("HTTP target: {} (expecting {})", url, expected_status)
+                format!("HTTP target: {url} (expecting {expected_status})")
             }
             #[allow(unreachable_patterns)]
             _ => String::from("Unknown target type"),
@@ -1064,9 +1064,9 @@ mod tests {
         let invalid_port_error = WaitForError::InvalidPort(0);
 
         let message = match invalid_port_error {
-            WaitForError::InvalidPort(port) => format!("Invalid port: {}", port),
-            WaitForError::InvalidTarget(msg) => format!("Invalid target: {}", msg),
-            WaitForError::Timeout { targets } => format!("Timeout: {}", targets),
+            WaitForError::InvalidPort(port) => format!("Invalid port: {port}"),
+            WaitForError::InvalidTarget(msg) => format!("Invalid target: {msg}"),
+            WaitForError::Timeout { targets } => format!("Timeout: {targets}"),
             WaitForError::Cancelled => String::from("Cancelled"),
             #[allow(unreachable_patterns)]
             _ => String::from("Other error"),
@@ -1084,18 +1084,15 @@ mod tests {
             let port = Port::new(port_num).unwrap();
             assert!(
                 port.is_system_port(),
-                "Port {} should be a system port",
-                port_num
+                "Port {port_num} should be a system port"
             );
             assert!(
                 !port.is_user_port(),
-                "Port {} should not be a user port",
-                port_num
+                "Port {port_num} should not be a user port"
             );
             assert!(
                 !port.is_dynamic_port(),
-                "Port {} should not be a dynamic port",
-                port_num
+                "Port {port_num} should not be a dynamic port"
             );
         }
 
@@ -1105,18 +1102,12 @@ mod tests {
             let port = Port::new(port_num).unwrap();
             assert!(
                 !port.is_system_port(),
-                "Port {} should not be a system port",
-                port_num
+                "Port {port_num} should not be a system port"
             );
-            assert!(
-                port.is_user_port(),
-                "Port {} should be a user port",
-                port_num
-            );
+            assert!(port.is_user_port(), "Port {port_num} should be a user port");
             assert!(
                 !port.is_dynamic_port(),
-                "Port {} should not be a dynamic port",
-                port_num
+                "Port {port_num} should not be a dynamic port"
             );
         }
 
@@ -1126,18 +1117,15 @@ mod tests {
             let port = Port::new(port_num).unwrap();
             assert!(
                 !port.is_system_port(),
-                "Port {} should not be a system port",
-                port_num
+                "Port {port_num} should not be a system port"
             );
             assert!(
                 !port.is_user_port(),
-                "Port {} should not be a user port",
-                port_num
+                "Port {port_num} should not be a user port"
             );
             assert!(
                 port.is_dynamic_port(),
-                "Port {} should be a dynamic port",
-                port_num
+                "Port {port_num} should be a dynamic port"
             );
         }
     }
@@ -1173,8 +1161,7 @@ mod tests {
             // Verify port falls within category range
             let (min, max) = category.range();
             assert!(port_num >= min && port_num <= max,
-                "Port {} should be within range {}..={} for category {}",
-                port_num, min, max, category);
+                "Port {port_num} should be within range {min}..={max} for category {category}");
         }
 
         #[test]
@@ -1186,8 +1173,7 @@ mod tests {
             // Verify as_str returns expected values
             assert!(
                 category_str == "system" || category_str == "user" || category_str == "dynamic",
-                "Category string should be one of system/user/dynamic, got: {}",
-                category_str
+                "Category string should be one of system/user/dynamic, got: {category_str}"
             );
 
             // Verify Display matches as_str
