@@ -100,6 +100,7 @@ use crate::{Result, ResultExt, WaitForError};
 type HttpHeaders = Option<Vec<(String, String)>>;
 
 /// Resolve a hostname and port to socket addresses.
+#[inline]
 pub(crate) async fn resolve_host(host: &str, port: u16) -> Result<Vec<SocketAddr>> {
     let mut host_port_builder = crate::zero_cost::StringBuilder::<64>::new();
     host_port_builder.push_str(host).map_err(|_| {
@@ -151,6 +152,7 @@ pub(crate) async fn resolve_host(host: &str, port: u16) -> Result<Vec<SocketAddr
 }
 
 /// Try to make an HTTP request and check the response.
+#[inline]
 pub(crate) async fn try_http_connect(
     url: &Url,
     expected_status: u16,
@@ -210,6 +212,7 @@ pub(crate) async fn try_http_connect(
 }
 
 /// Try to connect to a target with security validation.
+#[inline]
 pub(crate) async fn try_connect_target(target: &Target, config: &WaitConfig) -> Result<()> {
     if let Some(validator) = &config.security_validator {
         validator.validate_target(target)?;
@@ -273,6 +276,7 @@ pub(crate) async fn try_connect_target(target: &Target, config: &WaitConfig) -> 
 }
 
 /// Calculate the next retry interval using exponential backoff.
+#[inline]
 pub(crate) fn calculate_next_interval(current: Duration, max: Duration) -> Duration {
     // Handle multiplication carefully to avoid precision loss and overflow
     let current_millis = current.as_millis().min(u128::MAX / 2);
@@ -285,8 +289,9 @@ pub(crate) fn calculate_next_interval(current: Duration, max: Duration) -> Durat
     )]
     let multiplied = (current_millis_u64 as f64 * 1.5).min(u64::MAX as f64);
 
-    if multiplied < 0.0 || !multiplied.is_finite() {
-        return Duration::from_millis(0);
+    // Early return for invalid values
+    if !multiplied.is_finite() || multiplied < 0.0 {
+        return Duration::ZERO;
     }
 
     #[expect(
@@ -295,7 +300,8 @@ pub(crate) fn calculate_next_interval(current: Duration, max: Duration) -> Durat
         reason = "safe cast after bounds check"
     )]
     let next = Duration::from_millis(multiplied as u64);
-    if next > max { max } else { next }
+    // Use min for cleaner code
+    next.min(max)
 }
 
 /// Wait for a single target to become available.

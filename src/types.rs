@@ -74,6 +74,7 @@ pub struct Port(NonZeroU16);
 impl Port {
     /// Create a new port, validating it's not zero
     #[must_use]
+    #[inline]
     pub const fn new(port: u16) -> Option<Self> {
         match NonZeroU16::new(port) {
             Some(nz) => Some(Self(nz)),
@@ -81,8 +82,11 @@ impl Port {
         }
     }
 
-    /// Create a port from a standard well-known port number
+    /// Create a port from a standard well-known port number (1-1023)
+    ///
+    /// These ports are reserved for system services and require elevated privileges.
     #[must_use]
+    #[inline]
     pub const fn well_known(port: u16) -> Option<Self> {
         if port == 0 || port > 1023 {
             None
@@ -91,8 +95,11 @@ impl Port {
         }
     }
 
-    /// Create a port from a registered port number range
+    /// Create a port from a registered port number range (1024-49151)
+    ///
+    /// These ports are assigned by IANA for user applications.
     #[must_use]
+    #[inline]
     pub const fn registered(port: u16) -> Option<Self> {
         if port < 1024 || port > 49151 {
             None
@@ -101,8 +108,11 @@ impl Port {
         }
     }
 
-    /// Create a port from a dynamic/private port number range
+    /// Create a port from a dynamic/private port number range (49152-65535)
+    ///
+    /// These ports are used for temporary or private connections.
     #[must_use]
+    #[inline]
     pub const fn dynamic(port: u16) -> Option<Self> {
         if port < 49152 { None } else { Self::new(port) }
     }
@@ -110,16 +120,21 @@ impl Port {
     /// Create a new port without validation (for known valid values)
     /// Only use this when you know the port is valid (not zero)
     ///
-    /// This method uses unwrap internally but is safe because it's only
-    /// called with compile-time known valid port numbers.
+    /// This method is safe because it panics at compile-time if called
+    /// with an invalid port number (like 0), preventing runtime errors.
+    /// It's optimized for known valid port constants.
     #[must_use]
+    #[inline]
     pub const fn new_unchecked(port: u16) -> Self {
-        if let Some(nz) = NonZeroU16::new(port) {
-            Self(nz)
-        } else {
-            // This should never happen for valid known ports
-            let safe_port = if port == 0 { 1 } else { port };
-            Self(unsafe { NonZeroU16::new_unchecked(safe_port) })
+        // SAFETY: This function is intended for compile-time known valid ports.
+        // If called with 0, it will panic at compile time in const contexts,
+        // or unwrap at runtime with a clear error message for debugging.
+        match NonZeroU16::new(port) {
+            Some(nz) => Self(nz),
+            None => {
+                // This will cause a compile-time error if used in const context with port = 0
+                panic!("Port::new_unchecked called with invalid port 0");
+            }
         }
     }
 
@@ -161,6 +176,7 @@ impl Port {
 
     /// Get the inner port value
     #[must_use]
+    #[inline(always)]
     pub const fn get(&self) -> u16 {
         self.0.get()
     }
@@ -232,12 +248,14 @@ impl std::str::FromStr for Port {
 }
 
 impl From<Port> for u16 {
+    #[inline(always)]
     fn from(port: Port) -> Self {
         port.0.get()
     }
 }
 
 impl From<Port> for NonZeroU16 {
+    #[inline(always)]
     fn from(port: Port) -> Self {
         port.0
     }
@@ -369,6 +387,7 @@ impl Hostname {
 
     /// Get the hostname as a string slice
     #[must_use]
+    #[inline(always)]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -458,12 +477,14 @@ impl TryFrom<std::net::Ipv6Addr> for Hostname {
 }
 
 impl AsRef<str> for Hostname {
+    #[inline(always)]
     fn as_ref(&self) -> &str {
         &self.0
     }
 }
 
 impl std::borrow::Borrow<str> for Hostname {
+    #[inline(always)]
     fn borrow(&self) -> &str {
         &self.0
     }
