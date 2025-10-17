@@ -5,7 +5,7 @@
 FROM debian:bookworm-slim AS builder
 
 # Install build dependencies including Rust
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     curl \
     build-essential \
     pkg-config \
@@ -38,7 +38,7 @@ RUN cargo build --release
 FROM debian:bookworm-slim
 
 # Install CA certificates and basic utilities
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
