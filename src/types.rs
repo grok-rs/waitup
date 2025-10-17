@@ -97,8 +97,8 @@
 //! use waitup::Port;
 //!
 //! // Validation happens at construction
-//! let port = Port::new(70000);
-//! assert!(port.is_none());  // ✓ Caught immediately!
+//! let port = Port::new(0);
+//! assert!(port.is_none());  // ✓ Caught immediately (port 0 invalid)!
 //!
 //! // Constants are compile-time validated
 //! let http = Port::http();  // ✓ Always valid!
@@ -182,6 +182,27 @@
 //! assert!(created.is_success());
 //! ```
 //!
+//! ## Port categories with pattern matching
+//!
+//! ```rust
+//! use waitup::{Port, PortCategory};
+//!
+//! fn check_port_requirements(port: Port) -> &'static str {
+//!     match port.category() {
+//!         PortCategory::System => "Requires root/admin privileges to bind",
+//!         PortCategory::User => "Can be bound by regular users",
+//!         PortCategory::Dynamic => "Ephemeral port for client connections",
+//!         _ => "Future category (non-exhaustive)",  // Required for external crates
+//!     }
+//! }
+//!
+//! let http = Port::http();
+//! assert_eq!(check_port_requirements(http), "Requires root/admin privileges to bind");
+//!
+//! let app_port = Port::new(8080).unwrap();
+//! assert_eq!(check_port_requirements(app_port), "Can be bound by regular users");
+//! ```
+//!
 //! ## Managing retry logic
 //!
 //! ```rust
@@ -217,6 +238,75 @@ pub type HttpHeaders = Vec<(String, String)>;
 
 /// Result type alias for functions returning a vector of targets
 pub type TargetVecResult = crate::Result<Vec<Target>>;
+
+/// Port categories as defined by RFC 6335
+///
+/// This enum represents the three official IANA port range categories.
+/// The `#[non_exhaustive]` attribute allows for future API evolution
+/// if additional categories are defined by IANA.
+///
+/// # Examples
+///
+/// ```rust
+/// use waitup::{Port, PortCategory};
+///
+/// let port = Port::http();
+/// match port.category() {
+///     PortCategory::System => println!("Requires root/admin privileges"),
+///     PortCategory::User => println!("Standard application port"),
+///     PortCategory::Dynamic => println!("Ephemeral/temporary port"),
+///     _ => {} // Required due to #[non_exhaustive]
+/// }
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum PortCategory {
+    /// System Ports (0-1023) - Require elevated privileges
+    ///
+    /// Per RFC 6335, these ports are reserved for system services
+    /// and typically require root/administrator access to bind.
+    System,
+
+    /// User Ports (1024-49151) - Assigned by IANA for applications
+    ///
+    /// Per RFC 6335, these ports are assigned by IANA for specific
+    /// services upon request from users or organizations.
+    User,
+
+    /// Dynamic Ports (49152-65535) - Private/ephemeral use
+    ///
+    /// Per RFC 6335, these ports are used for temporary connections
+    /// and cannot be registered with IANA.
+    Dynamic,
+}
+
+impl PortCategory {
+    /// Get the string representation of this port category
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::System => "system",
+            Self::User => "user",
+            Self::Dynamic => "dynamic",
+        }
+    }
+
+    /// Get the port range for this category
+    #[must_use]
+    pub const fn range(&self) -> (u16, u16) {
+        match self {
+            Self::System => (1, 1023),
+            Self::User => (1024, 49151),
+            Self::Dynamic => (49152, 65535),
+        }
+    }
+}
+
+impl fmt::Display for PortCategory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
 
 /// `NewType` wrapper for ports to provide type safety
 /// Uses `NonZeroU16` internally to guarantee valid port numbers (1-65535)
@@ -397,6 +487,46 @@ impl Port {
     #[inline]
     pub const fn is_dynamic_port(&self) -> bool {
         self.0.get() >= 49152
+    }
+
+    /// Get the RFC 6335 category for this port
+    ///
+    /// Returns the port category (System, User, or Dynamic) as defined by RFC 6335.
+    /// This method enables exhaustive pattern matching on port categories.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use waitup::{Port, PortCategory};
+    ///
+    /// let http = Port::http();
+    /// assert_eq!(http.category(), PortCategory::System);
+    ///
+    /// let app_port = Port::new(8080).unwrap();
+    /// assert_eq!(app_port.category(), PortCategory::User);
+    ///
+    /// let ephemeral = Port::new(50000).unwrap();
+    /// assert_eq!(ephemeral.category(), PortCategory::Dynamic);
+    ///
+    /// // Pattern matching example
+    /// match http.category() {
+    ///     PortCategory::System => println!("Requires elevated privileges"),
+    ///     PortCategory::User => println!("Standard application port"),
+    ///     PortCategory::Dynamic => println!("Temporary/ephemeral port"),
+    ///     _ => {} // Required due to #[non_exhaustive]
+    /// }
+    /// ```
+    #[must_use]
+    #[inline]
+    pub const fn category(&self) -> PortCategory {
+        let port = self.0.get();
+        if port <= 1023 {
+            PortCategory::System
+        } else if port <= 49151 {
+            PortCategory::User
+        } else {
+            PortCategory::Dynamic
+        }
     }
 }
 
@@ -661,7 +791,7 @@ impl RetryCount {
         self.0
     }
 
-    /// Create an Option<RetryCount> representing unlimited retries
+    /// Create an `Option<RetryCount>` representing unlimited retries
     #[must_use]
     #[inline]
     pub const fn unlimited() -> Option<Self> {
