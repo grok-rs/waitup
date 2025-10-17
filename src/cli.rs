@@ -3,7 +3,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use std::borrow::Cow;
 use std::process::Command;
 use std::time::Duration;
-use waitup::{wait_for_connection, Target, WaitConfig, WaitForError, WaitResult};
+use waitup::{Target, WaitConfig, WaitForError, WaitResult, wait_for_connection};
 
 /// Extended error type for CLI-specific errors
 #[derive(thiserror::Error, Debug)]
@@ -264,8 +264,8 @@ mod output {
 
 async fn wait_with_progress(config: &CliConfig) -> Result<WaitResult> {
     if config.verbose && !config.quiet && !config.json {
-        use futures::stream::FuturesUnordered;
         use futures::StreamExt;
+        use futures::stream::FuturesUnordered;
         use waitup::wait_for_single_target;
 
         let multi_progress = indicatif::MultiProgress::new();
@@ -353,7 +353,7 @@ async fn wait_with_progress(config: &CliConfig) -> Result<WaitResult> {
             .inspect(|tr| {
                 if !tr.success {
                     all_successful = false;
-                };
+                }
                 total_attempts += tr.attempts;
             })
             .collect::<Vec<_>>();
@@ -478,7 +478,12 @@ pub async fn run() -> i32 {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test code where panics are acceptable")]
+#[expect(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::expect_used,
+    reason = "test code where panics are acceptable"
+)]
 mod tests {
     use super::*;
     use std::time::Duration;
@@ -520,11 +525,10 @@ mod tests {
                 WaitForError::Timeout { targets } => {
                     assert!(
                         targets.contains("127.0.0.1:65534"),
-                        "timeout targets did not contain unreachable target: {}",
-                        targets
+                        "timeout targets did not contain unreachable target: {targets}"
                     );
                 }
-                other => panic!("unexpected WaitForError: {:?}", other),
+                other => panic!("unexpected WaitForError: {other:?}"),
             },
             Err(e) => panic!("unexpected CLI error: {e}"),
         }

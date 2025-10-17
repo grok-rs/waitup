@@ -11,7 +11,7 @@
 //! Run with: cargo run --example `multiple_services`
 
 use std::time::Duration;
-use waitup::{wait_for_connection, Target, WaitConfig};
+use waitup::{Target, WaitConfig, wait_for_connection};
 
 async fn wait_for_core_services() -> Result<(), waitup::WaitForError> {
     println!("🏗️  Phase 1: Waiting for core infrastructure services...");

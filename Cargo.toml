@@ -1,8 +1,8 @@
 [package]
 name = "waitup"
 version = "1.0.1"
-edition = "2021"
-rust-version = "1.70.0"
+edition = "2024"
+rust-version = "1.85.0"
 authors = ["Serhii Kaliuzhnyi <kalyuzhni.sergei@gmail.com>"]
 description = "Wait for TCP ports and HTTP endpoints to be available. Essential for Docker, K8s, and CI/CD pipelines to ensure services are ready before proceeding."
 license = "MIT"

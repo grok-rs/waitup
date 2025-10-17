@@ -10,7 +10,7 @@
 //! Run with: cargo run --example `basic_tcp`
 
 use std::time::Duration;
-use waitup::{wait_for_connection, Target, WaitConfig};
+use waitup::{Target, WaitConfig, wait_for_connection};
 
 #[tokio::main]
 async fn main() -> Result<(), waitup::WaitForError> {

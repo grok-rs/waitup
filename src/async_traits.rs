@@ -499,7 +499,7 @@ async fn wait_for_single_target_with_checker(
     checker: &dyn AsyncTargetChecker,
     config: &WaitConfig,
 ) -> Result<TargetResult> {
-    use tokio::time::{sleep, Instant};
+    use tokio::time::{Instant, sleep};
 
     let start = Instant::now();
     let deadline = start + config.timeout;
