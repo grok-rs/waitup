@@ -1151,7 +1151,11 @@ impl std::borrow::Borrow<str> for Hostname {
 }
 
 /// Specific error types for different connection failure modes
+///
+/// This enum is marked `#[non_exhaustive]` to allow adding new error variants
+/// in the future without breaking changes.
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum ConnectionError {
     /// Failed to establish TCP connection to the target host and port
     #[error("Failed to connect to {host}:{port} - {reason}")]
@@ -1182,7 +1186,11 @@ pub enum ConnectionError {
 }
 
 /// Specific error types for HTTP operations
+///
+/// This enum is marked `#[non_exhaustive]` to allow adding new error variants
+/// in the future without breaking changes.
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum HttpError {
     /// HTTP request failed due to network or server error
     #[error("HTTP request failed for {url}: {reason}")]
@@ -1210,7 +1218,27 @@ pub enum HttpError {
 }
 
 /// A target service to wait for.
+///
+/// This enum is marked `#[non_exhaustive]` to allow adding new target types
+/// in the future (e.g., UDP, WebSocket, gRPC) without breaking changes.
+///
+/// # Examples
+///
+/// ```rust
+/// use waitup::Target;
+///
+/// let tcp_target = Target::tcp("localhost", 8080).unwrap();
+/// let http_target = Target::http_url("https://example.com/health", 200).unwrap();
+///
+/// // Pattern matching requires wildcard due to #[non_exhaustive]
+/// match tcp_target {
+///     Target::Tcp { host, port } => println!("TCP: {}:{}", host.as_str(), port.get()),
+///     Target::Http { url, .. } => println!("HTTP: {}", url),
+///     _ => {} // Required for external crates
+/// }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Target {
     /// TCP connection target with host and port.
     Tcp {

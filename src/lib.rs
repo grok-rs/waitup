@@ -913,4 +913,285 @@ mod tests {
         };
         assert_eq!(message, "Requires elevated privileges");
     }
+
+    // Comprehensive tests for PortCategory boundaries
+    #[test]
+    fn test_port_category_boundaries() {
+        // System port boundaries
+        let port_1 = Port::new(1).unwrap();
+        assert_eq!(port_1.category(), PortCategory::System);
+
+        let port_1023 = Port::new(1023).unwrap();
+        assert_eq!(port_1023.category(), PortCategory::System);
+
+        // User port boundaries
+        let port_1024 = Port::new(1024).unwrap();
+        assert_eq!(port_1024.category(), PortCategory::User);
+
+        let port_49151 = Port::new(49151).unwrap();
+        assert_eq!(port_49151.category(), PortCategory::User);
+
+        // Dynamic port boundaries
+        let port_49152 = Port::new(49152).unwrap();
+        assert_eq!(port_49152.category(), PortCategory::Dynamic);
+
+        let port_65535 = Port::new(65535).unwrap();
+        assert_eq!(port_65535.category(), PortCategory::Dynamic);
+    }
+
+    // Test all common service ports categorization
+    #[test]
+    fn test_common_service_ports_categorization() {
+        // System ports
+        assert_eq!(Port::http().category(), PortCategory::System); // 80
+        assert_eq!(Port::https().category(), PortCategory::System); // 443
+        assert_eq!(Port::ssh().category(), PortCategory::System); // 22
+
+        // User ports
+        assert_eq!(Port::postgres().category(), PortCategory::User); // 5432
+        assert_eq!(Port::mysql().category(), PortCategory::User); // 3306
+        assert_eq!(Port::redis().category(), PortCategory::User); // 6379
+
+        // Common application ports
+        let port_8080 = Port::new(8080).unwrap();
+        assert_eq!(port_8080.category(), PortCategory::User);
+
+        let port_3000 = Port::new(3000).unwrap();
+        assert_eq!(port_3000.category(), PortCategory::User);
+
+        let port_9000 = Port::new(9000).unwrap();
+        assert_eq!(port_9000.category(), PortCategory::User);
+    }
+
+    // Test PortCategory Debug and Clone
+    #[test]
+    fn test_port_category_traits() {
+        let category = PortCategory::System;
+
+        // Test Clone (PortCategory is Copy, so clone is implicit)
+        let cloned = category;
+        assert_eq!(category, cloned);
+
+        // Test Debug
+        let debug_str = format!("{:?}", category);
+        assert!(debug_str.contains("System"));
+
+        // Test Hash (compile-time check)
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(category);
+        assert!(set.contains(&PortCategory::System));
+    }
+
+    // Test PortCategory::range() method
+    #[test]
+    fn test_port_category_range_validation() {
+        let system_range = PortCategory::System.range();
+        assert_eq!(system_range, (1, 1023));
+
+        // Verify that ports in this range actually belong to System category
+        for port_num in [1, 512, 1023] {
+            let port = Port::new(port_num).unwrap();
+            assert_eq!(port.category(), PortCategory::System);
+            let range = port.category().range();
+            assert!(port_num >= range.0 && port_num <= range.1);
+        }
+
+        let user_range = PortCategory::User.range();
+        assert_eq!(user_range, (1024, 49151));
+
+        for port_num in [1024, 25000, 49151] {
+            let port = Port::new(port_num).unwrap();
+            assert_eq!(port.category(), PortCategory::User);
+            let range = port.category().range();
+            assert!(port_num >= range.0 && port_num <= range.1);
+        }
+
+        let dynamic_range = PortCategory::Dynamic.range();
+        assert_eq!(dynamic_range, (49152, 65535));
+
+        for port_num in [49152, 55000, 65535] {
+            let port = Port::new(port_num).unwrap();
+            assert_eq!(port.category(), PortCategory::Dynamic);
+            let range = port.category().range();
+            assert!(port_num >= range.0 && port_num <= range.1);
+        }
+    }
+
+    // Test Target pattern matching with #[non_exhaustive]
+    #[test]
+    fn test_target_pattern_matching_tcp() {
+        let tcp_target = Target::tcp("localhost", 8080).unwrap();
+
+        let result = match tcp_target {
+            Target::Tcp { host, port } => {
+                format!("TCP target: {}:{}", host.as_str(), port.get())
+            }
+            Target::Http { .. } => String::from("HTTP target"),
+            #[allow(unreachable_patterns)]
+            _ => String::from("Unknown target type"),
+        };
+
+        assert_eq!(result, "TCP target: localhost:8080");
+    }
+
+    #[test]
+    fn test_target_pattern_matching_http() {
+        let http_target = Target::http_url("https://example.com/health", 200).unwrap();
+
+        let result = match http_target {
+            Target::Tcp { .. } => String::from("TCP target"),
+            Target::Http {
+                url,
+                expected_status,
+                ..
+            } => {
+                format!("HTTP target: {} (expecting {})", url, expected_status)
+            }
+            #[allow(unreachable_patterns)]
+            _ => String::from("Unknown target type"),
+        };
+
+        assert_eq!(
+            result,
+            "HTTP target: https://example.com/health (expecting 200)"
+        );
+    }
+
+    // Test error pattern matching with #[non_exhaustive]
+    #[test]
+    fn test_error_pattern_matching() {
+        let invalid_port_error = WaitForError::InvalidPort(0);
+
+        let message = match invalid_port_error {
+            WaitForError::InvalidPort(port) => format!("Invalid port: {}", port),
+            WaitForError::InvalidTarget(msg) => format!("Invalid target: {}", msg),
+            WaitForError::Timeout { targets } => format!("Timeout: {}", targets),
+            WaitForError::Cancelled => String::from("Cancelled"),
+            #[allow(unreachable_patterns)]
+            _ => String::from("Other error"),
+        };
+
+        assert_eq!(message, "Invalid port: 0");
+    }
+
+    // Comprehensive Port predicate tests
+    #[test]
+    fn test_port_predicates_comprehensive() {
+        // Test is_system_port
+        let system_ports = vec![1, 22, 80, 443, 1023];
+        for port_num in system_ports {
+            let port = Port::new(port_num).unwrap();
+            assert!(
+                port.is_system_port(),
+                "Port {} should be a system port",
+                port_num
+            );
+            assert!(
+                !port.is_user_port(),
+                "Port {} should not be a user port",
+                port_num
+            );
+            assert!(
+                !port.is_dynamic_port(),
+                "Port {} should not be a dynamic port",
+                port_num
+            );
+        }
+
+        // Test is_user_port
+        let user_ports = vec![1024, 3306, 5432, 8080, 49151];
+        for port_num in user_ports {
+            let port = Port::new(port_num).unwrap();
+            assert!(
+                !port.is_system_port(),
+                "Port {} should not be a system port",
+                port_num
+            );
+            assert!(
+                port.is_user_port(),
+                "Port {} should be a user port",
+                port_num
+            );
+            assert!(
+                !port.is_dynamic_port(),
+                "Port {} should not be a dynamic port",
+                port_num
+            );
+        }
+
+        // Test is_dynamic_port
+        let dynamic_ports = vec![49152, 50000, 60000, 65535];
+        for port_num in dynamic_ports {
+            let port = Port::new(port_num).unwrap();
+            assert!(
+                !port.is_system_port(),
+                "Port {} should not be a system port",
+                port_num
+            );
+            assert!(
+                !port.is_user_port(),
+                "Port {} should not be a user port",
+                port_num
+            );
+            assert!(
+                port.is_dynamic_port(),
+                "Port {} should be a dynamic port",
+                port_num
+            );
+        }
+    }
+
+    // Property-based test for PortCategory consistency
+    proptest! {
+        #[test]
+        fn test_port_category_consistency(port_num in 1u16..=65535) {
+            let port = Port::new(port_num).unwrap();
+            let category = port.category();
+
+            // Verify category matches predicate methods
+            match category {
+                PortCategory::System => {
+                    assert!(port.is_system_port());
+                    assert!(!port.is_user_port());
+                    assert!(!port.is_dynamic_port());
+                }
+                PortCategory::User => {
+                    assert!(!port.is_system_port());
+                    assert!(port.is_user_port());
+                    assert!(!port.is_dynamic_port());
+                }
+                PortCategory::Dynamic => {
+                    assert!(!port.is_system_port());
+                    assert!(!port.is_user_port());
+                    assert!(port.is_dynamic_port());
+                }
+                #[allow(unreachable_patterns)]
+                _ => {} // For future categories
+            }
+
+            // Verify port falls within category range
+            let (min, max) = category.range();
+            assert!(port_num >= min && port_num <= max,
+                "Port {} should be within range {}..={} for category {}",
+                port_num, min, max, category);
+        }
+
+        #[test]
+        fn test_port_category_as_str(port_num in 1u16..=65535) {
+            let port = Port::new(port_num).unwrap();
+            let category = port.category();
+            let category_str = category.as_str();
+
+            // Verify as_str returns expected values
+            assert!(
+                category_str == "system" || category_str == "user" || category_str == "dynamic",
+                "Category string should be one of system/user/dynamic, got: {}",
+                category_str
+            );
+
+            // Verify Display matches as_str
+            assert_eq!(category.to_string(), category_str);
+        }
+    }
 }

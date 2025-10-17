@@ -87,7 +87,11 @@ use thiserror::Error;
 use crate::types::{ConnectionError, HttpError};
 
 /// Core error source types for proper error chaining without Box
+///
+/// This enum is marked `#[non_exhaustive]` to allow adding new error sources
+/// in the future without breaking changes.
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum ErrorSource {
     /// Connection-related errors (TCP connection failures, DNS resolution, etc.)
     #[error("Connection error: {0}")]
@@ -104,7 +108,11 @@ pub enum ErrorSource {
 }
 
 /// Error types that can occur during wait operations.
+///
+/// This enum is marked `#[non_exhaustive]` to allow adding new error types
+/// in the future without breaking changes.
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum WaitForError {
     /// Invalid target format provided (must be host:port or http(s)://host:port/path)
     #[error("Invalid target format '{0}': expected host:port or http(s)://host:port/path")]
