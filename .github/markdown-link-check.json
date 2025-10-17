@@ -11,6 +11,12 @@
     },
     {
       "pattern": "^https://127.0.0.1"
+    },
+    {
+      "pattern": "^https://crates.io/crates/waitup"
+    },
+    {
+      "pattern": "^https://docs.rs/waitup"
     }
   ],
   "replacementPatterns": [],
