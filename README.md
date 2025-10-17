@@ -186,7 +186,7 @@ waitup --generate-completion zsh > ~/.local/share/zsh/site-functions/_waitup
 waitup --generate-completion fish > ~/.config/fish/completions/waitup.fish
 ```
 
-## Common Use Cases
+## Examples
 
 ### Database Startup
 
