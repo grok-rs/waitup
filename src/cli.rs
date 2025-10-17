@@ -262,35 +262,83 @@ mod output {
     }
 }
 
+/// Sets up progress bars for each target
+#[allow(
+    clippy::type_complexity,
+    reason = "Return type complexity is inherent to indicatif API"
+)]
+fn setup_progress_bars(targets: &[Target]) -> Result<(indicatif::MultiProgress, Vec<ProgressBar>)> {
+    let multi_progress = indicatif::MultiProgress::new();
+    let progress_bars: Result<Vec<_>> = targets
+        .iter()
+        .map(|target| -> Result<ProgressBar> {
+            let pb = multi_progress.add(ProgressBar::new_spinner());
+            pb.set_style(
+                ProgressStyle::default_spinner()
+                    .template("{spinner:.green} {msg}")
+                    .map_err(|_| {
+                        CliError::WaitError(WaitForError::InvalidTimeout(
+                            std::borrow::Cow::Borrowed("progress"),
+                            std::borrow::Cow::Borrowed("Invalid progress template"),
+                        ))
+                    })?,
+            );
+            pb.set_message(format!("Waiting for {target}", target = target.display()));
+            pb.enable_steady_tick(Duration::from_millis(100));
+            Ok(pb)
+        })
+        .collect();
+
+    Ok((multi_progress, progress_bars?))
+}
+
+/// Finalizes wait results by collecting target results and checking for failures
+fn finalize_wait_results(target_results: Vec<Option<waitup::TargetResult>>) -> Result<WaitResult> {
+    let mut all_successful = true;
+    let mut total_attempts: u32 = 0;
+    let final_results = target_results
+        .into_iter()
+        .flatten()
+        .inspect(|tr| {
+            if !tr.success {
+                all_successful = false;
+            }
+            total_attempts += tr.attempts;
+        })
+        .collect::<Vec<_>>();
+
+    let total_elapsed = final_results
+        .iter()
+        .map(|tr| tr.elapsed)
+        .max()
+        .unwrap_or_else(|| Duration::from_millis(0));
+
+    if !all_successful {
+        let failed_targets: Vec<_> = final_results
+            .iter()
+            .filter(|r| !r.success)
+            .map(|r| r.target.display())
+            .collect();
+        return Err(CliError::WaitError(WaitForError::Timeout {
+            targets: std::borrow::Cow::Owned(failed_targets.join(", ")),
+        }));
+    }
+
+    Ok(WaitResult {
+        success: all_successful,
+        elapsed: total_elapsed,
+        attempts: total_attempts,
+        target_results: final_results,
+    })
+}
+
 async fn wait_with_progress(config: &CliConfig) -> Result<WaitResult> {
     if config.verbose && !config.quiet && !config.json {
         use futures::StreamExt;
         use futures::stream::FuturesUnordered;
         use waitup::wait_for_single_target;
 
-        let multi_progress = indicatif::MultiProgress::new();
-        let progress_bars: Result<Vec<_>> = config
-            .targets
-            .iter()
-            .map(|target| -> Result<ProgressBar> {
-                let pb = multi_progress.add(ProgressBar::new_spinner());
-                pb.set_style(
-                    ProgressStyle::default_spinner()
-                        .template("{spinner:.green} {msg}")
-                        .map_err(|_| {
-                            CliError::WaitError(WaitForError::InvalidTimeout(
-                                std::borrow::Cow::Borrowed("progress"),
-                                std::borrow::Cow::Borrowed("Invalid progress template"),
-                            ))
-                        })?,
-                );
-                pb.set_message(format!("Waiting for {target}", target = target.display()));
-                pb.enable_steady_tick(Duration::from_millis(100));
-                Ok(pb)
-            })
-            .collect();
-
-        let progress_bars = progress_bars?;
+        let (_multi_progress, progress_bars) = setup_progress_bars(&config.targets)?;
 
         // Spawn per-target futures and update progress bars as each completes.
         let mut futures: FuturesUnordered<_> = FuturesUnordered::new();
@@ -344,42 +392,7 @@ async fn wait_with_progress(config: &CliConfig) -> Result<WaitResult> {
             }
         }
 
-        // Collect final results
-        let mut all_successful = true;
-        let mut total_attempts: u32 = 0;
-        let final_results = target_results
-            .into_iter()
-            .flatten()
-            .inspect(|tr| {
-                if !tr.success {
-                    all_successful = false;
-                }
-                total_attempts += tr.attempts;
-            })
-            .collect::<Vec<_>>();
-
-        let total_elapsed = final_results
-            .iter()
-            .map(|tr| tr.elapsed)
-            .max()
-            .unwrap_or_else(|| Duration::from_millis(0));
-        if !all_successful {
-            let failed_targets: Vec<_> = final_results
-                .iter()
-                .filter(|r| !r.success)
-                .map(|r| r.target.display())
-                .collect();
-            return Err(CliError::WaitError(WaitForError::Timeout {
-                targets: std::borrow::Cow::Owned(failed_targets.join(", ")),
-            }));
-        }
-
-        Ok(WaitResult {
-            success: all_successful,
-            elapsed: total_elapsed,
-            attempts: total_attempts,
-            target_results: final_results,
-        })
+        finalize_wait_results(target_results)
     } else {
         wait_for_connection(&config.targets, &config.wait_config)
             .await
