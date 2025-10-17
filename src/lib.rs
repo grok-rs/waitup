@@ -481,8 +481,8 @@ pub use iterators::{ResultSummary, TargetIterExt, TargetResultIterExt};
 pub use security::{RateLimiter, SecurityValidator};
 pub use target::{HttpTargetBuilder, TcpTargetBuilder};
 pub use types::{
-    ConnectionError, Hostname, HttpError, Port, RetryCount, StatusCode, Target, TargetResult,
-    WaitConfig, WaitResult,
+    ConnectionError, Hostname, HttpError, Port, PortCategory, RetryCount, StatusCode, Target,
+    TargetResult, WaitConfig, WaitResult,
 };
 pub use zero_cost::{
     ConstRetryStrategy, DynamicPort, LazyFormat, RegisteredPort, SmallString, StringBuilder,
@@ -863,5 +863,54 @@ mod tests {
         ];
 
         result.unwrap_err();
+    }
+
+    #[test]
+    fn test_port_category() {
+        // System ports
+        let http = Port::http();
+        assert_eq!(http.category(), PortCategory::System);
+
+        let ssh = Port::ssh();
+        assert_eq!(ssh.category(), PortCategory::System);
+
+        // User ports
+        let app_port = Port::new(8080).unwrap();
+        assert_eq!(app_port.category(), PortCategory::User);
+
+        let postgres = Port::postgres();
+        assert_eq!(postgres.category(), PortCategory::User);
+
+        // Dynamic ports
+        let ephemeral = Port::new(50000).unwrap();
+        assert_eq!(ephemeral.category(), PortCategory::Dynamic);
+
+        let dynamic = Port::new(65535).unwrap();
+        assert_eq!(dynamic.category(), PortCategory::Dynamic);
+    }
+
+    #[test]
+    fn test_port_category_display() {
+        assert_eq!(PortCategory::System.to_string(), "system");
+        assert_eq!(PortCategory::User.to_string(), "user");
+        assert_eq!(PortCategory::Dynamic.to_string(), "dynamic");
+    }
+
+    #[test]
+    fn test_port_category_range() {
+        assert_eq!(PortCategory::System.range(), (1, 1023));
+        assert_eq!(PortCategory::User.range(), (1024, 49151));
+        assert_eq!(PortCategory::Dynamic.range(), (49152, 65535));
+    }
+
+    #[test]
+    fn test_port_category_pattern_matching() {
+        let port = Port::http();
+        let message = match port.category() {
+            PortCategory::System => "Requires elevated privileges",
+            PortCategory::User => "Standard application port",
+            PortCategory::Dynamic => "Temporary/ephemeral port",
+        };
+        assert_eq!(message, "Requires elevated privileges");
     }
 }
