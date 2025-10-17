@@ -118,7 +118,7 @@ initContainers:
 
 ## Command Line Options
 
-```
+```text
 waitup [OPTIONS] <TARGETS>... [-- <COMMAND>...]
 
 Options:
@@ -139,6 +139,7 @@ Options:
 ## Time Format
 
 Use human-readable duration formats:
+
 - `30s` - 30 seconds
 - `2m` - 2 minutes
 - `1h30m` - 1 hour 30 minutes
@@ -240,6 +241,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## Related Projects
 
 Similar tools for service orchestration:
+
 - [wait-for-it](https://github.com/vishnubob/wait-for-it) - Bash script for TCP waiting
 - [dockerize](https://github.com/jwilder/dockerize) - Go-based utility with templating
 - [wait-on](https://github.com/jeffbski/wait-on) - Node.js based waiting tool
