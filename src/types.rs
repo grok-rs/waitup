@@ -2,10 +2,137 @@
 //!
 //! This module contains the fundamental types used throughout the waitup library:
 //! - [`Port`] and [`Hostname`] - `NewType` wrappers for type safety
+//! - [`StatusCode`] and [`RetryCount`] - Semantic wrappers for HTTP and retry logic
 //! - [`Target`] - Represents services to wait for (TCP or HTTP)
 //! - [`WaitConfig`] - Configuration for wait operations
 //! - [`WaitResult`] and [`TargetResult`] - Result types for wait operations
 //! - Error types for different failure modes
+//!
+//! # Why NewType Patterns?
+//!
+//! NewType wrappers provide several benefits that make code more readable and maintainable:
+//!
+//! ## 1. Type Safety - Prevents Bugs at Compile Time
+//!
+//! **Without NewTypes (Error-Prone):**
+//! ```rust,ignore
+//! // Easy to mix up parameters!
+//! fn connect(port: u16, timeout: u16, status: u16) { }
+//!
+//! // Which one is which? Compiler can't help!
+//! connect(200, 8080, 30);  // BUG: Wrong order!
+//! ```
+//!
+//! **With NewTypes (Type-Safe):**
+//! ```rust,ignore
+//! use waitup::{Port, StatusCode};
+//!
+//! fn connect(port: Port, status: StatusCode) { }
+//!
+//! // Compiler error - can't mix types!
+//! // connect(StatusCode::OK, Port::http());  // Won't compile!
+//!
+//! // Correct usage is clear and safe
+//! connect(Port::http(), StatusCode::OK);  // ✓ Type-safe!
+//! ```
+//!
+//! ## 2. Self-Documenting Code - Improves Readability
+//!
+//! **Without NewTypes (Unclear):**
+//! ```rust,ignore
+//! let result = check_service("localhost", 8080, 200, 5);
+//! // What do these numbers mean? Need to check docs!
+//! ```
+//!
+//! **With NewTypes (Self-Explanatory):**
+//! ```rust,no_run
+//! use waitup::{Port, StatusCode, RetryCount, Hostname};
+//!
+//! let hostname = Hostname::localhost();
+//! let port = Port::new(8080).unwrap();
+//! let expected = StatusCode::OK;
+//! let retries = RetryCount::MODERATE;
+//!
+//! // Crystal clear what each parameter represents!
+//! // (Note: This is illustrative - actual API differs)
+//! ```
+//!
+//! ## 3. Domain Knowledge Built-In
+//!
+//! **Without NewTypes:**
+//! ```rust,ignore
+//! if port <= 1023 {
+//!     println!("Needs root privileges");
+//! }
+//! if status >= 200 && status < 300 {
+//!     println!("Success!");
+//! }
+//! ```
+//!
+//! **With NewTypes (Expressive):**
+//! ```rust
+//! use waitup::{Port, StatusCode};
+//!
+//! let port = Port::http();
+//! if port.is_system_port() {
+//!     println!("Needs root privileges");
+//! }
+//!
+//! let status = StatusCode::OK;
+//! if status.is_success() {
+//!     println!("Success!");
+//! }
+//! ```
+//!
+//! ## 4. Validation at Construction
+//!
+//! **Without NewTypes (Runtime Errors):**
+//! ```rust,ignore
+//! let port = 70000;  // Oops! Invalid port, but compiles fine
+//! // Error happens later at runtime...
+//! ```
+//!
+//! **With NewTypes (Compile-Time Safety):**
+//! ```rust
+//! use waitup::Port;
+//!
+//! // Validation happens at construction
+//! let port = Port::new(70000);
+//! assert!(port.is_none());  // ✓ Caught immediately!
+//!
+//! // Constants are compile-time validated
+//! let http = Port::http();  // ✓ Always valid!
+//! ```
+//!
+//! # Real-World Example
+//!
+//! Here's a complete example showing how newtypes make code more readable:
+//!
+//! ```rust,no_run
+//! use waitup::{Port, Hostname, StatusCode, RetryCount, WaitConfig, Target};
+//! use std::time::Duration;
+//!
+//! // Clear, self-documenting configuration
+//! let config = WaitConfig::builder()
+//!     .timeout(Duration::from_secs(30))
+//!     .max_retries(Some(RetryCount::MODERATE.get()))
+//!     .build();
+//!
+//! // Type-safe target construction
+//! let database = Target::tcp(
+//!     Hostname::localhost().as_str(),
+//!     Port::postgres().get()
+//! ).unwrap();
+//!
+//! println!("Connecting to {} on port {}",
+//!     "localhost",
+//!     if database.port().map(|p| Port::new(p).unwrap().is_system_port()).unwrap_or(false) {
+//!         "system port"
+//!     } else {
+//!         "user port"
+//!     }
+//! );
+//! ```
 //!
 //! # Examples
 //!
@@ -14,39 +141,64 @@
 //! ```rust
 //! use waitup::{Port, Hostname};
 //!
-//! // Create a validated port
+//! // Create validated ports
 //! let port = Port::new(8080).expect("Valid port");
 //! assert_eq!(port.get(), 8080);
+//! assert!(port.is_user_port());
 //!
 //! // Use port range validation
-//! let http_port = Port::well_known(80).expect("HTTP is well-known");
-//! let app_port = Port::registered(8080).expect("8080 is registered");
-//! let ephemeral = Port::dynamic(49152).expect("49152 is dynamic");
+//! let http_port = Port::http();
+//! assert!(http_port.is_system_port());
+//!
+//! let app_port = Port::user_port(8080).expect("8080 is user port");
+//! let ephemeral = Port::dynamic_port(49152).expect("49152 is dynamic");
 //!
 //! // Create validated hostnames
 //! let hostname = Hostname::new("example.com").expect("Valid hostname");
 //! let localhost = Hostname::localhost();
+//! assert!(localhost.is_localhost());
+//!
 //! let ip = Hostname::ipv4("192.168.1.1").expect("Valid IPv4");
+//! assert!(ip.is_ipv4());
 //! ```
 //!
-//! ## Defining targets
+//! ## Working with HTTP status codes
 //!
 //! ```rust
-//! use waitup::Target;
-//! use url::Url;
+//! use waitup::StatusCode;
 //!
-//! // TCP target
-//! let tcp_target = Target::Tcp {
-//!     host: waitup::Hostname::new("database.example.com").unwrap(),
-//!     port: waitup::Port::new(5432).unwrap(),
-//! };
+//! // Use common status code constants
+//! let ok = StatusCode::OK;
+//! let not_found = StatusCode::NOT_FOUND;
+//! let server_error = StatusCode::INTERNAL_SERVER_ERROR;
 //!
-//! // HTTP target
-//! let http_target = Target::Http {
-//!     url: Url::parse("https://api.example.com/health").unwrap(),
-//!     expected_status: 200,
-//!     headers: Some(vec![("Authorization".to_string(), "Bearer token".to_string())]),
-//! };
+//! // Check status code categories
+//! assert!(ok.is_success());
+//! assert!(not_found.is_client_error());
+//! assert!(server_error.is_server_error());
+//!
+//! // Custom status codes with validation
+//! let created = StatusCode::new(201).expect("Valid status");
+//! assert!(created.is_success());
+//! ```
+//!
+//! ## Managing retry logic
+//!
+//! ```rust
+//! use waitup::RetryCount;
+//!
+//! // Use semantic retry count constants
+//! let quick_fail = RetryCount::FEW;        // 3 retries
+//! let balanced = RetryCount::MODERATE;     // 5 retries
+//! let persistent = RetryCount::MANY;       // 10 retries
+//!
+//! // Custom retry counts
+//! let custom = RetryCount::new(7);
+//! assert_eq!(custom.get(), 7);
+//!
+//! // Unlimited retries
+//! let unlimited = RetryCount::unlimited();
+//! assert!(unlimited.is_none());
 //! ```
 
 use core::fmt;
@@ -82,12 +234,12 @@ impl Port {
         }
     }
 
-    /// Create a port from a standard well-known port number (1-1023)
+    /// Create a port from a system port number (0-1023)
     ///
-    /// These ports are reserved for system services and require elevated privileges.
+    /// System Ports (per RFC 6335) are reserved for system services and require elevated privileges.
     #[must_use]
     #[inline]
-    pub const fn well_known(port: u16) -> Option<Self> {
+    pub const fn system_port(port: u16) -> Option<Self> {
         if port == 0 || port > 1023 {
             None
         } else {
@@ -95,12 +247,12 @@ impl Port {
         }
     }
 
-    /// Create a port from a registered port number range (1024-49151)
+    /// Create a port from a user port number range (1024-49151)
     ///
-    /// These ports are assigned by IANA for user applications.
+    /// User Ports (per RFC 6335) are assigned by IANA for user applications.
     #[must_use]
     #[inline]
-    pub const fn registered(port: u16) -> Option<Self> {
+    pub const fn user_port(port: u16) -> Option<Self> {
         if port < 1024 || port > 49151 {
             None
         } else {
@@ -108,12 +260,12 @@ impl Port {
         }
     }
 
-    /// Create a port from a dynamic/private port number range (49152-65535)
+    /// Create a port from a dynamic port number range (49152-65535)
     ///
-    /// These ports are used for temporary or private connections.
+    /// Dynamic Ports (per RFC 6335) are used for temporary or private connections.
     #[must_use]
     #[inline]
-    pub const fn dynamic(port: u16) -> Option<Self> {
+    pub const fn dynamic_port(port: u16) -> Option<Self> {
         if port < 49152 { None } else { Self::new(port) }
     }
 
@@ -179,6 +331,72 @@ impl Port {
     #[inline(always)]
     pub const fn get(&self) -> u16 {
         self.0.get()
+    }
+
+    // Predicate methods for better readability
+
+    /// Check if this port is a System Port (0-1023)
+    ///
+    /// System Ports (per RFC 6335) are reserved for system services and require elevated privileges.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use waitup::Port;
+    ///
+    /// let http = Port::http();
+    /// assert!(http.is_system_port());
+    ///
+    /// let app_port = Port::new(8080).unwrap();
+    /// assert!(!app_port.is_system_port());
+    /// ```
+    #[must_use]
+    #[inline]
+    pub const fn is_system_port(&self) -> bool {
+        self.0.get() <= 1023
+    }
+
+    /// Check if this port is a User Port (1024-49151)
+    ///
+    /// User Ports (per RFC 6335) are assigned by IANA for user applications.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use waitup::Port;
+    ///
+    /// let app_port = Port::new(8080).unwrap();
+    /// assert!(app_port.is_user_port());
+    ///
+    /// let http = Port::http();
+    /// assert!(!http.is_user_port());
+    /// ```
+    #[must_use]
+    #[inline]
+    pub const fn is_user_port(&self) -> bool {
+        let port = self.0.get();
+        port >= 1024 && port <= 49151
+    }
+
+    /// Check if this port is a Dynamic Port (49152-65535)
+    ///
+    /// Dynamic Ports (per RFC 6335) are used for temporary or private connections.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use waitup::Port;
+    ///
+    /// let ephemeral = Port::new(50000).unwrap();
+    /// assert!(ephemeral.is_dynamic_port());
+    ///
+    /// let http = Port::http();
+    /// assert!(!http.is_dynamic_port());
+    /// ```
+    #[must_use]
+    #[inline]
+    pub const fn is_dynamic_port(&self) -> bool {
+        self.0.get() >= 49152
     }
 }
 
@@ -258,6 +476,230 @@ impl From<Port> for NonZeroU16 {
     #[inline(always)]
     fn from(port: Port) -> Self {
         port.0
+    }
+}
+
+/// `NewType` wrapper for HTTP status codes to provide type safety and validation
+///
+/// This type ensures that HTTP status codes are always in the valid range (100-599)
+/// and provides convenient constructors for common status codes.
+///
+/// # Examples
+///
+/// ```rust
+/// use waitup::StatusCode;
+///
+/// // Common status codes
+/// let ok = StatusCode::OK;
+/// let not_found = StatusCode::NOT_FOUND;
+/// let server_error = StatusCode::INTERNAL_SERVER_ERROR;
+///
+/// // Custom status code with validation
+/// let custom = StatusCode::new(201).expect("Valid status code");
+/// assert_eq!(custom.get(), 201);
+///
+/// // Invalid status codes are rejected
+/// assert!(StatusCode::new(999).is_none());
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct StatusCode(u16);
+
+impl StatusCode {
+    /// Create a new status code with validation (must be 100-599)
+    #[must_use]
+    #[inline]
+    pub const fn new(code: u16) -> Option<Self> {
+        if code >= 100 && code <= 599 {
+            Some(Self(code))
+        } else {
+            None
+        }
+    }
+
+    /// Get the inner status code value
+    #[must_use]
+    #[inline(always)]
+    pub const fn get(&self) -> u16 {
+        self.0
+    }
+
+    /// Check if this is a successful status code (200-299)
+    #[must_use]
+    #[inline]
+    pub const fn is_success(&self) -> bool {
+        self.0 >= 200 && self.0 <= 299
+    }
+
+    /// Check if this is a redirection status code (300-399)
+    #[must_use]
+    #[inline]
+    pub const fn is_redirection(&self) -> bool {
+        self.0 >= 300 && self.0 <= 399
+    }
+
+    /// Check if this is a client error status code (400-499)
+    #[must_use]
+    #[inline]
+    pub const fn is_client_error(&self) -> bool {
+        self.0 >= 400 && self.0 <= 499
+    }
+
+    /// Check if this is a server error status code (500-599)
+    #[must_use]
+    #[inline]
+    pub const fn is_server_error(&self) -> bool {
+        self.0 >= 500 && self.0 <= 599
+    }
+
+    // Common HTTP status codes as constants
+
+    /// HTTP 200 OK
+    pub const OK: Self = Self(200);
+
+    /// HTTP 201 Created
+    pub const CREATED: Self = Self(201);
+
+    /// HTTP 202 Accepted
+    pub const ACCEPTED: Self = Self(202);
+
+    /// HTTP 204 No Content
+    pub const NO_CONTENT: Self = Self(204);
+
+    /// HTTP 301 Moved Permanently
+    pub const MOVED_PERMANENTLY: Self = Self(301);
+
+    /// HTTP 302 Found
+    pub const FOUND: Self = Self(302);
+
+    /// HTTP 304 Not Modified
+    pub const NOT_MODIFIED: Self = Self(304);
+
+    /// HTTP 400 Bad Request
+    pub const BAD_REQUEST: Self = Self(400);
+
+    /// HTTP 401 Unauthorized
+    pub const UNAUTHORIZED: Self = Self(401);
+
+    /// HTTP 403 Forbidden
+    pub const FORBIDDEN: Self = Self(403);
+
+    /// HTTP 404 Not Found
+    pub const NOT_FOUND: Self = Self(404);
+
+    /// HTTP 500 Internal Server Error
+    pub const INTERNAL_SERVER_ERROR: Self = Self(500);
+
+    /// HTTP 502 Bad Gateway
+    pub const BAD_GATEWAY: Self = Self(502);
+
+    /// HTTP 503 Service Unavailable
+    pub const SERVICE_UNAVAILABLE: Self = Self(503);
+}
+
+impl fmt::Display for StatusCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl TryFrom<u16> for StatusCode {
+    type Error = crate::WaitForError;
+
+    fn try_from(code: u16) -> crate::Result<Self> {
+        Self::new(code).ok_or_else(|| {
+            crate::WaitForError::InvalidTarget(Cow::Owned(format!(
+                "Invalid HTTP status code: {code} (must be 100-599)"
+            )))
+        })
+    }
+}
+
+impl From<StatusCode> for u16 {
+    #[inline(always)]
+    fn from(code: StatusCode) -> Self {
+        code.0
+    }
+}
+
+/// `NewType` wrapper for retry counts to provide type safety
+///
+/// This type provides semantic meaning to retry counts and prevents
+/// accidental mixing with other numeric types.
+///
+/// # Examples
+///
+/// ```rust
+/// use waitup::RetryCount;
+///
+/// // Common retry patterns
+/// let few_retries = RetryCount::FEW;      // 3 retries
+/// let moderate = RetryCount::MODERATE;    // 5 retries
+/// let many = RetryCount::MANY;            // 10 retries
+///
+/// // Custom retry count
+/// let custom = RetryCount::new(7);
+/// assert_eq!(custom.get(), 7);
+///
+/// // Unlimited retries (None represents unlimited)
+/// let unlimited = RetryCount::unlimited();
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct RetryCount(u32);
+
+impl RetryCount {
+    /// Create a new retry count
+    #[must_use]
+    #[inline]
+    pub const fn new(count: u32) -> Self {
+        Self(count)
+    }
+
+    /// Get the inner retry count value
+    #[must_use]
+    #[inline(always)]
+    pub const fn get(&self) -> u32 {
+        self.0
+    }
+
+    /// Create an Option<RetryCount> representing unlimited retries
+    #[must_use]
+    #[inline]
+    pub const fn unlimited() -> Option<Self> {
+        None
+    }
+
+    // Common retry count patterns
+
+    /// Very few retries (3) - for fast-failing operations
+    pub const FEW: Self = Self(3);
+
+    /// Moderate retries (5) - balanced approach
+    pub const MODERATE: Self = Self(5);
+
+    /// Many retries (10) - for critical operations
+    pub const MANY: Self = Self(10);
+
+    /// Aggressive retries (20) - for long-running services
+    pub const AGGRESSIVE: Self = Self(20);
+}
+
+impl fmt::Display for RetryCount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<u32> for RetryCount {
+    #[inline(always)]
+    fn from(count: u32) -> Self {
+        Self(count)
+    }
+}
+
+impl From<RetryCount> for u32 {
+    #[inline(always)]
+    fn from(count: RetryCount) -> Self {
+        count.0
     }
 }
 
@@ -390,6 +832,94 @@ impl Hostname {
     #[inline(always)]
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    // Predicate methods for better readability
+
+    /// Check if this hostname is "localhost"
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use waitup::Hostname;
+    ///
+    /// let host = Hostname::localhost();
+    /// assert!(host.is_localhost());
+    ///
+    /// let other = Hostname::new("example.com").unwrap();
+    /// assert!(!other.is_localhost());
+    /// ```
+    #[must_use]
+    #[inline]
+    pub fn is_localhost(&self) -> bool {
+        self.0 == "localhost"
+    }
+
+    /// Check if this hostname is a loopback address (127.0.0.1 or ::1)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use waitup::Hostname;
+    ///
+    /// let ipv4 = Hostname::loopback();
+    /// assert!(ipv4.is_loopback());
+    ///
+    /// let ipv6 = Hostname::loopback_v6();
+    /// assert!(ipv6.is_loopback());
+    ///
+    /// let other = Hostname::new("example.com").unwrap();
+    /// assert!(!other.is_loopback());
+    /// ```
+    #[must_use]
+    #[inline]
+    pub fn is_loopback(&self) -> bool {
+        self.0 == "127.0.0.1" || self.0 == "::1"
+    }
+
+    /// Check if this hostname looks like an IPv4 address
+    ///
+    /// This is a simple heuristic check, not a full validation.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use waitup::Hostname;
+    ///
+    /// let ip = Hostname::ipv4("192.168.1.1").unwrap();
+    /// assert!(ip.is_ipv4());
+    ///
+    /// let hostname = Hostname::new("example.com").unwrap();
+    /// assert!(!hostname.is_ipv4());
+    /// ```
+    #[must_use]
+    #[inline]
+    pub fn is_ipv4(&self) -> bool {
+        // Simple heuristic: contains dots and all parts are digits
+        let parts: Vec<&str> = self.0.split('.').collect();
+        parts.len() == 4 && parts.iter().all(|p| p.chars().all(|c| c.is_ascii_digit()))
+    }
+
+    /// Check if this hostname looks like an IPv6 address
+    ///
+    /// This is a simple heuristic check, not a full validation.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use waitup::Hostname;
+    ///
+    /// let ipv6 = Hostname::loopback_v6();
+    /// assert!(ipv6.is_ipv6());
+    ///
+    /// let hostname = Hostname::new("example.com").unwrap();
+    /// assert!(!hostname.is_ipv6());
+    /// ```
+    #[must_use]
+    #[inline]
+    pub fn is_ipv6(&self) -> bool {
+        // Simple heuristic: contains colons
+        self.0.contains(':')
     }
 
     /// IPv4 loopback address (zero allocation)

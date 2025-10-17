@@ -547,7 +547,7 @@ impl TcpTargetBuilder {
     /// Set a well-known port (0-1023)
     #[must_use]
     pub fn well_known_port(mut self, port: u16) -> Self {
-        match Port::well_known(port) {
+        match Port::system_port(port) {
             Some(p) => {
                 self.port = Some(p);
                 self.port_validation_error = None;
@@ -562,7 +562,7 @@ impl TcpTargetBuilder {
     /// Set a registered port (1024-49151)
     #[must_use]
     pub fn registered_port(mut self, port: u16) -> Self {
-        match Port::registered(port) {
+        match Port::user_port(port) {
             Some(p) => {
                 self.port = Some(p);
                 self.port_validation_error = None;
@@ -577,7 +577,7 @@ impl TcpTargetBuilder {
     /// Set a dynamic port (49152-65535)
     #[must_use]
     pub fn dynamic_port(mut self, port: u16) -> Self {
-        match Port::dynamic(port) {
+        match Port::dynamic_port(port) {
             Some(p) => {
                 self.port = Some(p);
                 self.port_validation_error = None;

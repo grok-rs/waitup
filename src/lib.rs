@@ -481,7 +481,8 @@ pub use iterators::{ResultSummary, TargetIterExt, TargetResultIterExt};
 pub use security::{RateLimiter, SecurityValidator};
 pub use target::{HttpTargetBuilder, TcpTargetBuilder};
 pub use types::{
-    ConnectionError, Hostname, HttpError, Port, Target, TargetResult, WaitConfig, WaitResult,
+    ConnectionError, Hostname, HttpError, Port, RetryCount, StatusCode, Target, TargetResult,
+    WaitConfig, WaitResult,
 };
 pub use zero_cost::{
     ConstRetryStrategy, DynamicPort, LazyFormat, RegisteredPort, SmallString, StringBuilder,
@@ -592,46 +593,46 @@ mod tests {
 
         #[test]
         fn test_port_well_known_valid_range(port in 1u16..=1023) {
-            let result = Port::well_known(port);
+            let result = Port::system_port(port);
             assert!(result.is_some());
             assert_eq!(result.unwrap().get(), port);
         }
 
         #[test]
         fn test_port_well_known_invalid_range(port in 1024u16..=65535) {
-            let result = Port::well_known(port);
+            let result = Port::system_port(port);
             assert!(result.is_none());
         }
 
         #[test]
         fn test_port_registered_valid_range(port in 1024u16..=49151) {
-            let result = Port::registered(port);
+            let result = Port::user_port(port);
             assert!(result.is_some());
             assert_eq!(result.unwrap().get(), port);
         }
 
         #[test]
         fn test_port_registered_invalid_low_range(port in 1u16..=1023) {
-            let result = Port::registered(port);
+            let result = Port::user_port(port);
             assert!(result.is_none());
         }
 
         #[test]
         fn test_port_registered_invalid_high_range(port in 49152u16..=65535) {
-            let result = Port::registered(port);
+            let result = Port::user_port(port);
             assert!(result.is_none());
         }
 
         #[test]
         fn test_port_dynamic_valid_range(port in 49152u16..=65535) {
-            let result = Port::dynamic(port);
+            let result = Port::dynamic_port(port);
             assert!(result.is_some());
             assert_eq!(result.unwrap().get(), port);
         }
 
         #[test]
         fn test_port_dynamic_invalid_range(port in 1u16..=49151) {
-            let result = Port::dynamic(port);
+            let result = Port::dynamic_port(port);
             assert!(result.is_none());
         }
 
