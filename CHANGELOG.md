@@ -50,6 +50,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Microservices orchestration
 - Health check automation
 
+## [1.1.0] - 2025-10-17
+
+### Added
+
+- **Type-safe Port Classification**: New `PortCategory` enum implementing RFC 6335 port ranges
+  - System Ports (0-1023): `is_system_port()`, `Port::system_port()`
+  - User Ports (1024-49151): `is_user_port()`, `Port::user_port()`
+  - Dynamic Ports (49152-65535): `is_dynamic_port()`, `Port::dynamic_port()`
+  - `Port::category()` method for type-safe port classification
+- **Semantic Newtype Wrappers**: Self-documenting types with built-in validation
+  - `StatusCode`: HTTP status code validation with semantic methods (`is_success()`, `is_client_error()`, etc.)
+  - `RetryCount`: Semantic wrapper for retry logic with constants (FEW, MODERATE, MANY, AGGRESSIVE)
+  - `Hostname`: Helper methods (`is_localhost()`, `is_loopback()`, `is_ipv4()`, `is_ipv6()`)
+- **API Extensibility**: Added `#[non_exhaustive]` attribute to public enums (`Target`, `ConnectionError`, `HttpError`, `ErrorSource`, `WaitForError`) for future-proof API evolution
+- **Rust 2024 Edition**: Upgraded to Rust 2024 edition with minimum rust-version 1.85.0
+
+### Changed
+
+- **Performance Optimizations**: Strategic `#[inline]` hints on hot-path functions
+- **Code Quality**: Refactored `wait_with_progress` function, extracted helper functions to improve maintainability
+- Port method naming updated to RFC 6335 official terminology for better standards compliance
+
+### Fixed
+
+- Verbose progress now streams per-target completion updates in real-time
+- Clippy lints: `uninlined_format_args`, `too_many_lines`, unnecessary semicolons
+- Simplified `Port::new_unchecked` to remove unsafe code patterns
+
+### Dependencies
+
+- Updated `clap` to 4.5.48
+- Updated `clap_complete` to 4.5.58
+- Updated `thiserror` to 2.0.17
+- Updated `humantime` to 2.3.0
+- Updated `serde` to 1.0.228
+- Updated `proptest` to 1.8.0
+- Multiple minor dependency updates for improved security and performance
+
 ## [Unreleased]
 
 ### Planned
