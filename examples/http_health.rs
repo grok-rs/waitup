@@ -12,7 +12,7 @@
 
 use std::time::Duration;
 use url::Url;
-use waitup::{wait_for_connection, Target, WaitConfig, WaitResult};
+use waitup::{Target, WaitConfig, WaitResult, wait_for_connection};
 
 async fn basic_health_check() -> Result<(), waitup::WaitForError> {
     println!("\n📊 Example 1: Basic health check");

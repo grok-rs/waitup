@@ -12,7 +12,7 @@
 //! Run with: cargo run --example `library_usage`
 
 use std::time::Duration;
-use waitup::{wait_for_connection, wait_for_single_target, Target, WaitConfig, WaitResult};
+use waitup::{Target, WaitConfig, WaitResult, wait_for_connection, wait_for_single_target};
 
 /// Example of a custom service health checker
 struct ServiceHealthChecker {

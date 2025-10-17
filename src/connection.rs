@@ -89,8 +89,8 @@
 use std::borrow::Cow;
 use std::net::SocketAddr;
 use std::time::Duration;
-use tokio::net::{lookup_host, TcpStream};
-use tokio::time::{sleep, timeout, Instant};
+use tokio::net::{TcpStream, lookup_host};
+use tokio::time::{Instant, sleep, timeout};
 use url::Url;
 
 use crate::types::{ConnectionError, HttpError, Target, TargetResult, WaitConfig, WaitResult};
@@ -295,11 +295,7 @@ pub(crate) fn calculate_next_interval(current: Duration, max: Duration) -> Durat
         reason = "safe cast after bounds check"
     )]
     let next = Duration::from_millis(multiplied as u64);
-    if next > max {
-        max
-    } else {
-        next
-    }
+    if next > max { max } else { next }
 }
 
 /// Wait for a single target to become available.

@@ -143,8 +143,7 @@ mod tests {
         assert_eq!(output.status.code(), Some(1));
         assert!(
             combined.contains("127.0.0.1:65534"),
-            "expected unreachable target in output: {}",
-            combined
+            "expected unreachable target in output: {combined}"
         );
     }
 

@@ -104,11 +104,7 @@ impl Port {
     /// Create a port from a dynamic/private port number range
     #[must_use]
     pub const fn dynamic(port: u16) -> Option<Self> {
-        if port < 49152 {
-            None
-        } else {
-            Self::new(port)
-        }
+        if port < 49152 { None } else { Self::new(port) }
     }
 
     /// Create a new port without validation (for known valid values)
