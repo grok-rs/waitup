@@ -88,6 +88,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated `proptest` to 1.8.0
 - Multiple minor dependency updates for improved security and performance
 
+## [1.1.1] - 2025-10-22
+
+### Changed
+
+#### Dependencies
+
+- Updated `clap` to 4.5.50
+- Updated `clap_complete` to 4.5.59
+- Updated `tokio` to 1.48.0
+- Updated `reqwest` to 0.12.24
+- Updated `rustls` to 0.23.34
+- Updated `indicatif` to 0.18.1
+- Updated 51 other transitive dependencies for improved security and performance
+
 ## [Unreleased]
 
 ### Planned
