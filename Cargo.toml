@@ -50,7 +50,7 @@ panic = "abort"
 
 [dev-dependencies]
 tokio-test = "0.4"
-proptest = "1.8"
+proptest = "1.9"
 test-case = "3.3"
 
 [[bin]]
