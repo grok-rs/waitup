@@ -100,7 +100,6 @@ jobs:
             -W clippy::dbg_macro \
             -W clippy::print_stdout \
             -W clippy::print_stderr \
-            -W clippy::string_to_string \
             -W clippy::string_slice \
             -W clippy::clone_on_ref_ptr \
             -W clippy::rc_buffer \
