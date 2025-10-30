@@ -4,6 +4,9 @@ version = "1.1.1"
 edition = "2024"
 rust-version = "1.85.0"
 authors = ["Serhii Kaliuzhnyi <kalyuzhni.sergei@gmail.com>"]
+
+[package.metadata.cargo-machete]
+ignored = ["writeable"]
 description = "Wait for TCP ports and HTTP endpoints to be available. Essential for Docker, K8s, and CI/CD pipelines to ensure services are ready before proceeding."
 license = "MIT"
 repository = "https://github.com/grok-rs/waitup"
