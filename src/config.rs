@@ -1,4 +1,4 @@
-//! Builder for WaitConfig with timeout and retry settings.
+//! Builder for `WaitConfig` with timeout and retry settings.
 
 use core::time::Duration;
 use tokio_util::sync::CancellationToken;

@@ -9,7 +9,7 @@ use crate::{Result, WaitForError};
 
 /// Safe conversion from Duration to u64 milliseconds.
 ///
-/// Handles overflow by clamping to u64::MAX.
+/// Handles overflow by clamping to `u64::MAX`.
 #[inline]
 pub fn duration_to_millis_u64(duration: Duration) -> u64 {
     u64::try_from(duration.as_millis().min(u128::from(u64::MAX))).unwrap_or(u64::MAX)
@@ -60,21 +60,18 @@ pub fn parse_duration_unit(number: f64, unit_multiplier: f64, input: &str) -> Re
 ///
 /// Returns `WaitForError::Cancelled` if the cancellation token is triggered.
 #[inline]
-pub(crate) async fn sleep_with_cancellation(
+pub async fn sleep_with_cancellation(
     duration: Duration,
     token: Option<&CancellationToken>,
 ) -> Result<()> {
-    match token {
-        Some(t) => {
-            tokio::select! {
-                () = sleep(duration) => Ok(()),
-                () = t.cancelled() => Err(WaitForError::Cancelled),
-            }
+    if let Some(t) = token {
+        tokio::select! {
+            () = sleep(duration) => Ok(()),
+            () = t.cancelled() => Err(WaitForError::Cancelled),
         }
-        None => {
-            sleep(duration).await;
-            Ok(())
-        }
+    } else {
+        sleep(duration).await;
+        Ok(())
     }
 }
 
@@ -98,13 +95,13 @@ mod tests {
 
     #[test]
     fn test_parse_duration_unit_seconds() {
-        let result = parse_duration_unit(5.0, 1000.0, "5s").unwrap();
+        let result = parse_duration_unit(5.0, 1000.0, "5s").expect("valid duration");
         assert_eq!(result, Duration::from_secs(5));
     }
 
     #[test]
     fn test_parse_duration_unit_minutes() {
-        let result = parse_duration_unit(2.0, 60_000.0, "2m").unwrap();
+        let result = parse_duration_unit(2.0, 60_000.0, "2m").expect("valid duration");
         assert_eq!(result, Duration::from_secs(120));
     }
 

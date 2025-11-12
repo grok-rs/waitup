@@ -58,6 +58,7 @@ impl Port {
     /// Create port without validation. Panics if port is zero.
     #[must_use]
     #[inline]
+    #[allow(clippy::panic)]
     pub const fn new_unchecked(port: u16) -> Self {
         match NonZeroU16::new(port) {
             Some(nz) => Self(nz),
@@ -67,8 +68,8 @@ impl Port {
 
     /// Get port value.
     #[must_use]
-    #[inline(always)]
-    pub const fn get(&self) -> u16 {
+    #[inline]
+    pub const fn get(self) -> u16 {
         self.0.get()
     }
 }
@@ -105,14 +106,14 @@ impl std::str::FromStr for Port {
 }
 
 impl From<Port> for u16 {
-    #[inline(always)]
+    #[inline]
     fn from(port: Port) -> Self {
         port.0.get()
     }
 }
 
 impl From<Port> for NonZeroU16 {
-    #[inline(always)]
+    #[inline]
     fn from(port: Port) -> Self {
         port.0
     }
@@ -237,7 +238,7 @@ impl Hostname {
         Self::from_static(LOOPBACK_V4)
     }
 
-    /// IPv6 loopback (::1).
+    /// IPv6 loopback (`::1`).
     #[must_use]
     pub const fn loopback_v6() -> Self {
         Self::from_static(LOOPBACK_V6)
@@ -260,7 +261,7 @@ impl Hostname {
 
     /// Get as string slice.
     #[must_use]
-    #[inline(always)]
+    #[inline]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -326,14 +327,14 @@ impl TryFrom<std::net::Ipv6Addr> for Hostname {
 }
 
 impl AsRef<str> for Hostname {
-    #[inline(always)]
+    #[inline]
     fn as_ref(&self) -> &str {
         &self.0
     }
 }
 
 impl std::borrow::Borrow<str> for Hostname {
-    #[inline(always)]
+    #[inline]
     fn borrow(&self) -> &str {
         &self.0
     }

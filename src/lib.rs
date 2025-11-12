@@ -752,7 +752,7 @@ mod tests {
     #[test]
     fn test_http_target_empty_header_key() {
         let url = Url::parse("http://example.com").unwrap();
-        let headers = vec![("".to_string(), "value".to_string())];
+        let headers = vec![(String::new(), "value".to_string())];
         let result = Target::http_with_headers(url, 200, headers);
         assert!(result.is_err());
     }
@@ -760,7 +760,7 @@ mod tests {
     #[test]
     fn test_http_target_empty_header_value() {
         let url = Url::parse("http://example.com").unwrap();
-        let headers = vec![("X-Custom".to_string(), "".to_string())];
+        let headers = vec![("X-Custom".to_string(), String::new())];
         let result = Target::http_with_headers(url, 200, headers);
         assert!(result.is_err());
     }

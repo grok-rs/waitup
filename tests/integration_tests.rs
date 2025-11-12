@@ -239,7 +239,7 @@ mod tests {
 
         assert!(!output.status.success());
         // Exit code can be 1 (timeout) or 2 (other error)
-        assert!(matches!(output.status.code(), Some(1) | Some(2)));
+        assert!(matches!(output.status.code(), Some(1 | 2)));
     }
 
     #[tokio::test]

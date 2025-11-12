@@ -237,7 +237,8 @@ pub async fn wait_for_single_target(target: &Target, config: &WaitConfig) -> Res
                 success: false,
                 elapsed: now.duration_since(start),
                 attempts: attempt,
-                error: last_error.or(Some(crate::error_messages::TIMEOUT_EXCEEDED.to_string())),
+                error: last_error
+                    .or_else(|| Some(crate::error_messages::TIMEOUT_EXCEEDED.to_string())),
             });
         }
 
