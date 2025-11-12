@@ -79,6 +79,7 @@ impl WaitConfigBuilder {
 
     /// Enable cancellation with a new token.
     #[inline]
+    #[must_use]
     pub fn with_cancellation(mut self) -> (Self, CancellationToken) {
         let token = CancellationToken::new();
         self.config.cancellation_token = Some(token.clone());
@@ -87,6 +88,7 @@ impl WaitConfigBuilder {
 
     /// Build the `WaitConfig`.
     #[inline]
+    #[must_use]
     pub fn build(self) -> WaitConfig {
         self.config
     }

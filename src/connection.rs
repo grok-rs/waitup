@@ -133,6 +133,8 @@ pub(crate) fn calculate_next_interval(current: Duration, max: Duration) -> Durat
 
     #[expect(
         clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
         reason = "f64 calculation needed for exponential backoff"
     )]
     let next_ms = (current_ms as f64 * EXPONENTIAL_BACKOFF_MULTIPLIER) as u64;
@@ -215,6 +217,10 @@ async fn wait_for_all_targets(
 }
 
 /// Wait for single target with retry.
+///
+/// # Errors
+///
+/// Returns error if target is unreachable or cancelled.
 #[inline]
 pub async fn wait_for_single_target(target: &Target, config: &WaitConfig) -> Result<TargetResult> {
     let start = Instant::now();
@@ -303,6 +309,10 @@ pub async fn wait_for_single_target(target: &Target, config: &WaitConfig) -> Res
 }
 
 /// Wait for multiple targets (all or any).
+///
+/// # Errors
+///
+/// Returns error if targets are unreachable, timeout occurs, or cancelled.
 #[inline]
 pub async fn wait_for_connection(targets: &[Target], config: &WaitConfig) -> Result<WaitResult> {
     let start = Instant::now();

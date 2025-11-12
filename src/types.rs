@@ -55,7 +55,11 @@ impl Port {
         Self(port)
     }
 
-    /// Create port without validation. Panics if port is zero.
+    /// Create port without validation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if port is zero.
     #[must_use]
     #[inline]
     #[allow(clippy::panic)]
@@ -125,6 +129,10 @@ pub struct Hostname(Cow<'static, str>);
 
 impl Hostname {
     /// Create and validate hostname.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if hostname is invalid per RFC 1035.
     pub fn new(hostname: impl Into<String>) -> crate::Result<Self> {
         let hostname = hostname.into();
         Self::validate(&hostname)?;
@@ -251,6 +259,10 @@ impl Hostname {
     }
 
     /// Create from IPv4 address string.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if IP address is invalid.
     pub fn ipv4(ip: impl AsRef<str>) -> crate::Result<Self> {
         let ip_str = ip.as_ref();
         ip_str.parse::<std::net::Ipv4Addr>().map_err(|_| {
