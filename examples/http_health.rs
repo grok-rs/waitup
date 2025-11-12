@@ -97,7 +97,7 @@ async fn multiple_endpoints_check() -> Result<(), waitup::WaitForError> {
                 result
                     .target_results
                     .first()
-                    .map_or_else(|| "Unknown".to_string(), |r| r.target.display())
+                    .map_or_else(|| "Unknown".to_string(), |r| r.target.to_string())
             );
         }
         Err(e) => println!("❌ No endpoints available: {e}"),
@@ -131,7 +131,7 @@ fn print_results(result: &WaitResult) {
     for target_result in &result.target_results {
         println!(
             "  - {}: {} ({} attempts, {:?})",
-            target_result.target.display(),
+            target_result.target,
             if target_result.success {
                 "✅ Ready"
             } else {

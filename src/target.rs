@@ -1,76 +1,16 @@
-//! Target implementation and builders.
-//!
-//! This module provides implementations for creating and working with targets,
-//! which represent services to wait for. Targets can be either TCP connections
-//! or HTTP endpoints.
-//!
-//! # Features
-//!
-//! - **TCP Targets**: Direct socket connections to host:port
-//! - **HTTP Targets**: HTTP/HTTPS requests with status code validation
-//! - **Builder Pattern**: Fluent APIs for complex target configuration
-//! - **Input Validation**: Comprehensive validation for all inputs
-//! - **Parsing**: String-to-target parsing for CLI and config files
-//!
-//! # Examples
-//!
-//! ## Basic target creation
-//!
-//! ```rust
-//! use waitup::Target;
-//! use url::Url;
-//!
-//! // Create TCP targets
-//! let db = Target::tcp("database.example.com", 5432)?;
-//! let localhost_api = Target::localhost(8080)?;
-//!
-//! // Create HTTP targets
-//! let health_check = Target::http_url("https://api.example.com/health", 200)?;
-//! let status_page = Target::http(
-//!     Url::parse("https://status.example.com")?,
-//!     200
-//! )?;
-//! # Ok::<(), waitup::WaitForError>(())
-//! ```
-//!
-//! ## Using builders for complex configurations
-//!
-//! ```rust
-//! use waitup::Target;
-//! use url::Url;
-//!
-//! // HTTP target with custom headers
-//! let api_target = Target::http_builder(Url::parse("https://api.example.com/protected")?)
-//!     .status(201)
-//!     .auth_bearer("your-api-token")
-//!     .content_type("application/json")
-//!     .header("X-Custom-Header", "custom-value")
-//!     .build()?;
-//!
-//! // TCP target with specific port type validation
-//! let service = Target::tcp_builder("service.example.com")?
-//!     .registered_port(8080)
-//!     .build()?;
-//! # Ok::<(), waitup::WaitForError>(())
-//! ```
-//!
-//! ## Parsing targets from strings
-//!
-//! ```rust
-//! use waitup::Target;
-//!
-//! // Parse various target formats
-//! let tcp_target = Target::parse("localhost:8080", 200)?;
-//! let http_target = Target::parse("https://example.com/health", 200)?;
-//! let custom_port = Target::parse("api.example.com:3000", 200)?;
-//! # Ok::<(), waitup::WaitForError>(())
-//! ```
+//! Target builders for TCP and HTTP endpoints.
 
 use std::borrow::Cow;
 use url::Url;
 
 use crate::types::{Hostname, Port, Target};
 use crate::{Result, ResultExt, WaitForError};
+
+// Constants for HTTP status code validation
+/// Minimum valid HTTP status code
+const MIN_HTTP_STATUS_CODE: u16 = 100;
+/// Maximum valid HTTP status code
+const MAX_HTTP_STATUS_CODE: u16 = 599;
 
 impl Target {
     /// Create multiple TCP targets from a list of host:port pairs
@@ -89,6 +29,46 @@ impl Target {
             .collect()
     }
 
+    /// Create multiple TCP targets for different ports on the same host.
+    ///
+    /// This is a convenience method for the common pattern of checking multiple ports
+    /// on a single host (e.g., a service cluster with multiple instances).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the hostname is invalid or any port is invalid
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use waitup::Target;
+    ///
+    /// // Check multiple ports on localhost
+    /// let targets = Target::tcp_ports("localhost", &[8080, 8081, 8082])?;
+    /// assert_eq!(targets.len(), 3);
+    ///
+    /// // Check multiple ports on a server
+    /// let app_targets = Target::tcp_ports("api-server", &[8080, 8081, 8082])?;
+    /// assert_eq!(app_targets.len(), 3);
+    /// # Ok::<(), waitup::WaitForError>(())
+    /// ```
+    pub fn tcp_ports(host: impl AsRef<str>, ports: &[u16]) -> crate::types::TargetVecResult {
+        let hostname = Hostname::new(host.as_ref())
+            .with_context(|| format!("Invalid hostname '{host}'", host = host.as_ref()))?;
+
+        ports
+            .iter()
+            .map(|&port| {
+                Port::try_from(port)
+                    .map(|p| Self::Tcp {
+                        host: hostname.clone(),
+                        port: p,
+                    })
+                    .with_context(|| format!("Invalid port {port}"))
+            })
+            .collect()
+    }
+
     /// Create multiple HTTP targets from a list of URLs
     ///
     /// # Errors
@@ -103,6 +83,7 @@ impl Target {
             .map(|url| Self::http_url(url.as_ref(), default_status))
             .collect()
     }
+
     /// Create a new TCP target.
     ///
     /// # Errors
@@ -127,6 +108,18 @@ impl Target {
         })
     }
 
+    /// Internal helper to create a TCP target with a validated port.
+    ///
+    /// Reduces code duplication for localhost/loopback constructors.
+    #[inline]
+    fn tcp_with_hostname(hostname: Hostname, port: u16) -> Result<Self> {
+        let port = Port::try_from(port)?;
+        Ok(Self::Tcp {
+            host: hostname,
+            port,
+        })
+    }
+
     /// Create a TCP target for localhost.
     ///
     /// # Errors
@@ -141,12 +134,9 @@ impl Target {
     /// let target = Target::localhost(8080)?;
     /// # Ok::<(), waitup::WaitForError>(())
     /// ```
+    #[inline]
     pub fn localhost(port: u16) -> Result<Self> {
-        let port = Port::try_from(port).with_context(|| format!("Invalid port {port}"))?;
-        Ok(Self::Tcp {
-            host: Hostname::localhost(),
-            port,
-        })
+        Self::tcp_with_hostname(Hostname::localhost(), port)
     }
 
     /// Create a TCP target for IPv4 loopback (127.0.0.1).
@@ -163,12 +153,9 @@ impl Target {
     /// let target = Target::loopback(8080)?;
     /// # Ok::<(), waitup::WaitForError>(())
     /// ```
+    #[inline]
     pub fn loopback(port: u16) -> Result<Self> {
-        let port = Port::try_from(port).with_context(|| format!("Invalid port {port}"))?;
-        Ok(Self::Tcp {
-            host: Hostname::loopback(),
-            port,
-        })
+        Self::tcp_with_hostname(Hostname::loopback(), port)
     }
 
     /// Create a TCP target for IPv6 loopback (`::1`).
@@ -185,15 +172,39 @@ impl Target {
     /// let target = Target::loopback_v6(8080)?;
     /// # Ok::<(), waitup::WaitForError>(())
     /// ```
+    #[inline]
     pub fn loopback_v6(port: u16) -> Result<Self> {
-        let port = Port::try_from(port).with_context(|| format!("Invalid port {port}"))?;
-        Ok(Self::Tcp {
-            host: Hostname::loopback_v6(),
-            port,
-        })
+        Self::tcp_with_hostname(Hostname::loopback_v6(), port)
     }
 
-    /// Create a TCP target with validated types (no additional validation).
+    /// Create an HTTP target for localhost with a custom port.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the port is invalid
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use waitup::Target;
+    ///
+    /// let target = Target::http_localhost(8080)?;
+    /// // Equivalent to: Target::http_url("http://localhost:8080", 200)?
+    /// # Ok::<(), waitup::WaitForError>(())
+    /// ```
+    pub fn http_localhost(port: u16) -> Result<Self> {
+        Self::http_url(format!("http://localhost:{port}"), 200)
+    }
+
+    /// Create a TCP target from already-validated hostname and port.
+    ///
+    /// This constructor performs no additional validation, assuming the provided
+    /// `Hostname` and `Port` are already valid. This is safe because both types
+    /// guarantee validity through their constructors.
+    ///
+    /// Use this when you have already-validated components and want to avoid
+    /// redundant validation overhead. For parsing strings, use [`Target::tcp()`]
+    /// or [`Target::parse()`] instead.
     ///
     /// # Examples
     ///
@@ -254,6 +265,31 @@ impl Target {
         Self::http(url, expected_status)
     }
 
+    /// Validate a single HTTP header key-value pair
+    fn validate_header(key: &str, value: &str) -> Result<()> {
+        if key.is_empty() {
+            return Err(WaitForError::InvalidTarget(Cow::Borrowed(
+                "HTTP header key cannot be empty",
+            )));
+        }
+        if value.is_empty() {
+            return Err(WaitForError::InvalidTarget(Cow::Borrowed(
+                "HTTP header value cannot be empty",
+            )));
+        }
+
+        // Basic header name validation (RFC 7230: field-name = token)
+        if !key
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "-_".contains(c))
+        {
+            return Err(WaitForError::InvalidTarget(Cow::Owned(format!(
+                "Invalid HTTP header name: {key}"
+            ))));
+        }
+        Ok(())
+    }
+
     /// Validate HTTP target configuration
     pub(crate) fn validate_http_config(
         url: &Url,
@@ -269,7 +305,7 @@ impl Target {
         }
 
         // Validate status code
-        if !(100..=599).contains(&expected_status) {
+        if !(MIN_HTTP_STATUS_CODE..=MAX_HTTP_STATUS_CODE).contains(&expected_status) {
             return Err(WaitForError::InvalidTarget(Cow::Owned(format!(
                 "Invalid HTTP status code: {expected_status}"
             ))));
@@ -278,25 +314,7 @@ impl Target {
         // Validate headers if present
         if let Some(headers) = headers {
             for (key, value) in headers {
-                if key.is_empty() {
-                    return Err(WaitForError::InvalidTarget(Cow::Borrowed(
-                        "HTTP header key cannot be empty",
-                    )));
-                }
-                if value.is_empty() {
-                    return Err(WaitForError::InvalidTarget(Cow::Borrowed(
-                        "HTTP header value cannot be empty",
-                    )));
-                }
-                // Basic header name validation (simplified)
-                if !key
-                    .chars()
-                    .all(|c| c.is_ascii_alphanumeric() || "-_".contains(c))
-                {
-                    return Err(WaitForError::InvalidTarget(Cow::Owned(format!(
-                        "Invalid HTTP header name: {key}"
-                    ))));
-                }
+                Self::validate_header(key, value)?;
             }
         }
 
@@ -353,48 +371,36 @@ impl Target {
     /// # Ok::<(), waitup::WaitForError>(())
     /// ```
     pub fn parse(target_str: &str, default_http_status: u16) -> Result<Self> {
+        // Handle HTTP/HTTPS URLs early
         if target_str.starts_with("http://") || target_str.starts_with("https://") {
             let url = Url::parse(target_str)?;
-            Ok(Self::Http {
+            return Ok(Self::Http {
                 url,
                 expected_status: default_http_status,
                 headers: None,
-            })
-        } else {
-            let parts: Vec<&str> = target_str.split(':').collect();
-            if parts.len() != 2 {
-                return Err(WaitForError::InvalidTarget(Cow::Owned(
-                    target_str.to_string(),
-                )));
-            }
-            let hostname = Hostname::try_from(parts[0]).with_context(|| {
-                format!(
-                    "Invalid hostname '{hostname}' in target '{target_str}'",
-                    hostname = parts[0]
-                )
-            })?;
-            let port = parts[1]
-                .parse::<u16>()
-                .map_err(|_| WaitForError::InvalidTarget(Cow::Owned(target_str.to_string())))
-                .with_context(|| {
-                    format!(
-                        "Invalid port '{port}' in target '{target_str}'",
-                        port = parts[1]
-                    )
-                })?;
-            let port = Port::try_from(port)
-                .with_context(|| format!("Port {port} out of valid range (1-65535)"))?;
-            Ok(Self::Tcp {
-                host: hostname,
-                port,
-            })
+            });
         }
-    }
 
-    /// Get a string representation of this target for display purposes.
-    #[must_use]
-    pub fn display(&self) -> String {
-        crate::zero_cost::TargetDisplay::new(self).to_string()
+        // Parse TCP target (host:port)
+        let (host_str, port_str) = target_str
+            .split_once(':')
+            .ok_or_else(|| WaitForError::InvalidTarget(Cow::Owned(target_str.to_string())))?;
+
+        let hostname = Hostname::try_from(host_str)
+            .with_context(|| format!("Invalid hostname '{host_str}' in target '{target_str}'"))?;
+
+        let port_num = port_str
+            .parse::<u16>()
+            .map_err(|_| WaitForError::InvalidTarget(Cow::Owned(target_str.to_string())))
+            .with_context(|| format!("Invalid port '{port_str}' in target '{target_str}'"))?;
+
+        let port = Port::try_from(port_num)
+            .with_context(|| format!("Port {port_num} out of valid range (1-65535)"))?;
+
+        Ok(Self::Tcp {
+            host: hostname,
+            port,
+        })
     }
 
     /// Get the hostname for this target (useful for logging and grouping)
@@ -419,17 +425,6 @@ impl Target {
     #[must_use]
     pub const fn http_builder(url: Url) -> HttpTargetBuilder {
         HttpTargetBuilder::new(url)
-    }
-
-    /// Create a builder for TCP targets
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the hostname is invalid
-    pub fn tcp_builder(host: impl AsRef<str>) -> Result<TcpTargetBuilder> {
-        let hostname = Hostname::new(host.as_ref())
-            .with_context(|| format!("Invalid hostname '{host}'", host = host.as_ref()))?;
-        Ok(TcpTargetBuilder::new(hostname))
     }
 }
 
@@ -474,10 +469,67 @@ impl HttpTargetBuilder {
     /// Set authorization header with Bearer token
     #[must_use]
     pub fn auth_bearer(self, token: impl AsRef<str>) -> Self {
-        self.header(
-            "Authorization",
-            crate::lazy_format!("Bearer {}", token.as_ref()).to_string(),
-        )
+        // Optimize string concatenation to avoid format! macro overhead
+        let auth_value = ["Bearer ", token.as_ref()].concat();
+        self.header("Authorization", auth_value)
+    }
+
+    /// Set authorization header with Basic authentication
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use waitup::Target;
+    /// use url::Url;
+    ///
+    /// let target = Target::http_builder(Url::parse("https://api.example.com/data")?)
+    ///     .basic_auth("user", "password")
+    ///     .build()?;
+    /// # Ok::<(), waitup::WaitForError>(())
+    /// ```
+    #[must_use]
+    pub fn basic_auth(self, username: impl AsRef<str>, password: impl AsRef<str>) -> Self {
+        use base64::Engine;
+        let credentials = format!("{}:{}", username.as_ref(), password.as_ref());
+        let encoded = base64::engine::general_purpose::STANDARD.encode(credentials.as_bytes());
+        let auth_value = ["Basic ", &encoded].concat();
+        self.header("Authorization", auth_value)
+    }
+
+    /// Set Content-Type header to application/json
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use waitup::Target;
+    /// use url::Url;
+    ///
+    /// let target = Target::http_builder(Url::parse("https://api.example.com/data")?)
+    ///     .json()
+    ///     .build()?;
+    /// # Ok::<(), waitup::WaitForError>(())
+    /// ```
+    #[must_use]
+    pub fn json(self) -> Self {
+        self.header("Content-Type", "application/json")
+    }
+
+    /// Set Accept header to application/json
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use waitup::Target;
+    /// use url::Url;
+    ///
+    /// let target = Target::http_builder(Url::parse("https://api.example.com/data")?)
+    ///     .accept_json()
+    ///     .build()?;
+    /// # Ok::<(), waitup::WaitForError>(())
+    /// ```
+    #[must_use]
+    pub fn accept_json(self) -> Self {
+        self.header("Accept", "application/json")
     }
 
     /// Set content type header
@@ -508,104 +560,6 @@ impl HttpTargetBuilder {
             url: self.url,
             expected_status: self.expected_status,
             headers,
-        })
-    }
-}
-
-/// Builder for TCP targets
-#[derive(Debug)]
-pub struct TcpTargetBuilder {
-    host: Hostname,
-    port: Option<Port>,
-    port_validation_error: Option<WaitForError>,
-}
-
-impl TcpTargetBuilder {
-    pub(crate) const fn new(host: Hostname) -> Self {
-        Self {
-            host,
-            port: None,
-            port_validation_error: None,
-        }
-    }
-
-    /// Set the port
-    #[must_use]
-    pub fn port(mut self, port: u16) -> Self {
-        match Port::try_from(port) {
-            Ok(p) => {
-                self.port = Some(p);
-                self.port_validation_error = None;
-            }
-            Err(e) => {
-                self.port_validation_error = Some(e);
-            }
-        }
-        self
-    }
-
-    /// Set a well-known port (0-1023)
-    #[must_use]
-    pub fn well_known_port(mut self, port: u16) -> Self {
-        match Port::system_port(port) {
-            Some(p) => {
-                self.port = Some(p);
-                self.port_validation_error = None;
-            }
-            None => {
-                self.port_validation_error = Some(WaitForError::InvalidPort(port));
-            }
-        }
-        self
-    }
-
-    /// Set a registered port (1024-49151)
-    #[must_use]
-    pub fn registered_port(mut self, port: u16) -> Self {
-        match Port::user_port(port) {
-            Some(p) => {
-                self.port = Some(p);
-                self.port_validation_error = None;
-            }
-            None => {
-                self.port_validation_error = Some(WaitForError::InvalidPort(port));
-            }
-        }
-        self
-    }
-
-    /// Set a dynamic port (49152-65535)
-    #[must_use]
-    pub fn dynamic_port(mut self, port: u16) -> Self {
-        match Port::dynamic_port(port) {
-            Some(p) => {
-                self.port = Some(p);
-                self.port_validation_error = None;
-            }
-            None => {
-                self.port_validation_error = Some(WaitForError::InvalidPort(port));
-            }
-        }
-        self
-    }
-
-    /// Build the TCP target
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if no port was specified or if validation fails
-    pub fn build(self) -> Result<Target> {
-        // Check for validation errors first
-        if let Some(error) = self.port_validation_error {
-            return Err(error);
-        }
-
-        let port = self
-            .port
-            .ok_or_else(|| WaitForError::InvalidTarget(Cow::Borrowed("Port must be specified")))?;
-        Ok(Target::Tcp {
-            host: self.host,
-            port,
         })
     }
 }

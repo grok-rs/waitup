@@ -39,7 +39,7 @@ async fn main() -> Result<(), waitup::WaitForError> {
     for target_result in &result.target_results {
         println!(
             "  - {}: {} in {:?} ({} attempts)",
-            target_result.target.display(),
+            target_result.target,
             if target_result.success {
                 "✅ Success"
             } else {

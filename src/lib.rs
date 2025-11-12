@@ -1,225 +1,3 @@
-#![allow(
-    clippy::blanket_clippy_restriction_lints,
-    clippy::pub_use,
-    clippy::question_mark_used,
-    clippy::single_call_fn,
-    clippy::mod_module_files,
-    clippy::implicit_return,
-    clippy::separated_literal_suffix,
-    clippy::unseparated_literal_suffix,
-    clippy::pub_with_shorthand,
-    clippy::pub_without_shorthand,
-    clippy::allow_attributes,
-    clippy::arbitrary_source_item_ordering,
-    clippy::min_ident_chars,
-    clippy::exhaustive_structs,
-    clippy::exhaustive_enums,
-    clippy::indexing_slicing,
-    clippy::redundant_test_prefix,
-    clippy::assertions_on_result_states,
-    clippy::absolute_paths,
-    clippy::default_numeric_fallback,
-    clippy::integer_division,
-    clippy::integer_division_remainder_used,
-    clippy::float_arithmetic,
-    clippy::as_conversions,
-    clippy::shadow_unrelated,
-    clippy::std_instead_of_core,
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::todo,
-    clippy::unimplemented,
-    clippy::dbg_macro,
-    clippy::print_stdout,
-    clippy::print_stderr,
-    clippy::missing_docs_in_private_items,
-    clippy::multiple_inherent_impl,
-    clippy::missing_trait_methods,
-    clippy::pattern_type_mismatch,
-    clippy::ref_patterns,
-    clippy::self_named_constructors,
-    clippy::wildcard_enum_match_arm,
-    clippy::string_slice,
-    clippy::arithmetic_side_effects,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_wrap,
-    clippy::cast_precision_loss,
-    clippy::unreachable,
-    clippy::else_if_without_else,
-    clippy::match_wildcard_for_single_variants,
-    clippy::match_same_arms,
-    clippy::single_match_else,
-    clippy::match_bool,
-    clippy::std_instead_of_alloc,
-    clippy::unused_trait_names,
-    clippy::str_to_string,
-    clippy::iter_over_hash_type,
-    clippy::infinite_loop,
-    clippy::little_endian_bytes,
-    clippy::big_endian_bytes,
-    clippy::host_endian_bytes,
-    clippy::partial_pub_fields,
-    clippy::error_impl_error,
-    clippy::lossy_float_literal,
-    clippy::float_cmp,
-    clippy::float_cmp_const,
-    clippy::redundant_type_annotations,
-    clippy::field_reassign_with_default,
-    clippy::clone_on_ref_ptr,
-    clippy::rc_buffer,
-    clippy::rc_mutex,
-    clippy::multiple_unsafe_ops_per_block,
-    clippy::undocumented_unsafe_blocks,
-    clippy::mixed_read_write_in_expression,
-    clippy::tuple_array_conversions,
-    clippy::format_push_string,
-    clippy::tests_outside_test_module,
-    clippy::as_underscore,
-    clippy::deref_by_slicing,
-    clippy::empty_line_after_outer_attr,
-    clippy::empty_structs_with_brackets,
-    clippy::enum_glob_use,
-    clippy::exit,
-    clippy::filetype_is_file,
-    clippy::fn_to_numeric_cast_any,
-    clippy::format_collect,
-    clippy::four_forward_slashes,
-    clippy::get_unwrap,
-    clippy::impl_trait_in_params,
-    clippy::let_underscore_must_use,
-    clippy::let_underscore_untyped,
-    clippy::map_err_ignore,
-    clippy::mem_forget,
-    clippy::missing_assert_message,
-    clippy::missing_asserts_for_indexing,
-    clippy::mixed_attributes_style,
-    clippy::mutex_atomic,
-    clippy::needless_raw_strings,
-    clippy::needless_raw_string_hashes,
-    clippy::non_ascii_literal,
-    clippy::panic_in_result_fn,
-    clippy::print_literal,
-    clippy::rest_pat_in_fully_bound_structs,
-    clippy::same_name_method,
-    clippy::semicolon_outside_block,
-    clippy::shadow_same,
-    clippy::shadow_reuse,
-    clippy::single_char_lifetime_names,
-    clippy::string_lit_chars_any,
-    clippy::string_lit_as_bytes,
-    clippy::try_err,
-    clippy::unneeded_field_pattern,
-    clippy::use_debug,
-    clippy::verbose_file_reads,
-    clippy::wildcard_dependencies,
-    clippy::module_name_repetitions,
-    clippy::missing_inline_in_public_items,
-    clippy::cognitive_complexity,
-    clippy::too_many_lines,
-    clippy::type_complexity,
-    clippy::similar_names,
-    clippy::many_single_char_names,
-    clippy::items_after_statements,
-    clippy::cast_lossless,
-    clippy::fn_params_excessive_bools,
-    clippy::struct_excessive_bools,
-    clippy::if_not_else,
-    clippy::inline_always,
-    clippy::must_use_candidate,
-    clippy::option_if_let_else,
-    clippy::redundant_closure_for_method_calls,
-    clippy::too_many_arguments,
-    clippy::unreadable_literal,
-    clippy::unused_self,
-    clippy::used_underscore_binding,
-    clippy::wildcard_imports,
-    clippy::doc_markdown,
-    clippy::missing_errors_doc,
-    clippy::missing_panics_doc,
-    clippy::return_self_not_must_use,
-    clippy::semicolon_if_nothing_returned,
-    clippy::should_implement_trait,
-    clippy::trivially_copy_pass_by_ref,
-    clippy::unnecessary_wraps,
-    clippy::naive_bytecount,
-    clippy::needless_collect,
-    clippy::needless_pass_by_value,
-    clippy::option_option,
-    clippy::ptr_as_ptr,
-    clippy::range_minus_one,
-    clippy::range_plus_one,
-    clippy::redundant_else,
-    clippy::stable_sort_primitive,
-    clippy::string_add_assign,
-    clippy::unicode_not_nfc,
-    clippy::unnested_or_patterns,
-    clippy::unused_async,
-    clippy::use_self,
-    clippy::verbose_bit_mask,
-    clippy::inconsistent_struct_constructor,
-    clippy::index_refutable_slice,
-    clippy::inefficient_to_string,
-    clippy::implicit_clone,
-    clippy::cloned_instead_of_copied,
-    clippy::copy_iterator,
-    clippy::default_trait_access,
-    clippy::empty_enum,
-    clippy::enum_variant_names,
-    clippy::expl_impl_clone_on_copy,
-    clippy::explicit_deref_methods,
-    clippy::explicit_into_iter_loop,
-    clippy::explicit_iter_loop,
-    clippy::fallible_impl_from,
-    clippy::filter_map_next,
-    clippy::flat_map_option,
-    clippy::from_iter_instead_of_collect,
-    clippy::if_let_mutex,
-    clippy::ignored_unit_patterns,
-    clippy::implicit_hasher,
-    clippy::imprecise_flops,
-    clippy::inline_fn_without_body,
-    clippy::into_iter_on_ref,
-    clippy::invalid_upcast_comparisons,
-    clippy::iter_not_returning_iterator,
-    clippy::large_digit_groups,
-    clippy::large_stack_arrays,
-    clippy::large_types_passed_by_value,
-    clippy::let_unit_value,
-    clippy::linkedlist,
-    clippy::macro_use_imports,
-    clippy::manual_ok_or,
-    clippy::map_flatten,
-    clippy::map_unwrap_or,
-    clippy::match_wild_err_arm,
-    unexpected_cfgs,
-    clippy::missing_enforced_import_renames,
-    clippy::mut_mut,
-    clippy::mutex_integer,
-    clippy::needless_continue,
-    clippy::needless_for_each,
-    clippy::negative_feature_names,
-    clippy::no_effect_underscore_binding,
-    clippy::path_buf_push_overwrite,
-    clippy::ptr_cast_constness,
-    clippy::redundant_feature_names,
-    clippy::ref_option_ref,
-    clippy::same_functions_in_if_condition,
-    clippy::string_add,
-    clippy::suboptimal_flops,
-    clippy::suspicious_operation_groupings,
-    clippy::trait_duplication_in_bounds,
-    clippy::transmute_ptr_to_ptr,
-    clippy::type_repetition_in_bounds,
-    clippy::unchecked_duration_subtraction,
-    clippy::unsafe_derive_deserialize,
-    clippy::useless_transmute,
-    clippy::zero_sized_map_values,
-    unfulfilled_lint_expectations,
-    reason = "restriction lints contain contradictory rules and overly pedantic restrictions"
-)]
-
 //! A robust library for waiting until TCP ports, HTTP endpoints, and services become available.
 //!
 //! This library provides functionality for testing network connectivity and service availability,
@@ -368,9 +146,9 @@
 //! #[tokio::main]
 //! async fn main() -> Result<(), waitup::WaitForError> {
 //!     let services = vec![
-//!         Target::tcp("postgres", 5432)?,     // Database
-//!         Target::tcp("redis", 6379)?,        // Cache
-//!         Target::tcp("elasticsearch", 9200)?, // Search
+//!         Target::tcp("database", 5432)?,     // Database server
+//!         Target::tcp("cache", 6379)?,        // Cache server
+//!         Target::tcp("search", 9200)?,       // Search server
 //!         Target::http_url("http://web:8000/health", 200)?, // Web app
 //!     ];
 //!
@@ -390,38 +168,22 @@
 //! ```
 
 // Module declarations
-pub mod async_traits;
 pub mod config;
 pub mod connection;
 pub mod error;
-pub mod iterators;
-#[macro_use]
 pub mod macros;
-pub mod presets;
-pub mod security;
 pub mod target;
 pub mod types;
-pub mod zero_cost;
+pub(crate) mod utils;
 
 // Re-export commonly used types for convenient public API
-pub use async_traits::{
-    AsyncConnectionStrategy, AsyncRetryStrategy, AsyncTargetChecker, ConcurrentProgressStrategy,
-    DefaultTargetChecker, ExponentialBackoffStrategy, LinearBackoffStrategy, WaitForAllStrategy,
-    WaitForAnyStrategy,
-};
 pub use config::WaitConfigBuilder;
 pub use connection::{wait_for_connection, wait_for_single_target};
 pub use error::{Result, ResultExt, WaitForError};
-pub use iterators::{ResultSummary, TargetIterExt, TargetResultIterExt};
-pub use security::{RateLimiter, SecurityValidator};
-pub use target::{HttpTargetBuilder, TcpTargetBuilder};
+pub use target::HttpTargetBuilder;
 pub use types::{
-    ConnectionError, Hostname, HttpError, Port, PortCategory, RetryCount, StatusCode, Target,
-    TargetResult, WaitConfig, WaitResult,
-};
-pub use zero_cost::{
-    ConstRetryStrategy, DynamicPort, LazyFormat, RegisteredPort, SmallString, StringBuilder,
-    TargetDisplay, ValidatedPort, WellKnownPort,
+    ConnectionError, Hostname, HttpError, Port, Target, TargetKind, TargetResult, WaitConfig,
+    WaitResult,
 };
 
 // Re-export error_messages for internal use
@@ -431,7 +193,6 @@ pub(crate) use error::error_messages;
 #[expect(
     clippy::unwrap_used,
     clippy::panic,
-    clippy::match_wildcard_for_single_variants,
     reason = "test code where panics are acceptable"
 )]
 mod tests {
@@ -472,11 +233,11 @@ mod tests {
     #[test]
     fn test_target_display() {
         let tcp_target = Target::tcp("localhost", 8080).unwrap();
-        assert_eq!(tcp_target.display(), "localhost:8080");
+        assert_eq!(tcp_target.to_string(), "localhost:8080");
 
         let url = Url::parse("https://example.com/health").unwrap();
         let http_target = Target::http(url, 200).unwrap();
-        assert_eq!(http_target.display(), "https://example.com/health");
+        assert_eq!(http_target.to_string(), "https://example.com/health");
     }
 
     #[test]
@@ -523,51 +284,6 @@ mod tests {
         #[test]
         fn test_port_new_zero_invalid(port in 0u16..=0) {
             let result = Port::new(port);
-            assert!(result.is_none());
-        }
-
-        #[test]
-        fn test_port_well_known_valid_range(port in 1u16..=1023) {
-            let result = Port::system_port(port);
-            assert!(result.is_some());
-            assert_eq!(result.unwrap().get(), port);
-        }
-
-        #[test]
-        fn test_port_well_known_invalid_range(port in 1024u16..=65535) {
-            let result = Port::system_port(port);
-            assert!(result.is_none());
-        }
-
-        #[test]
-        fn test_port_registered_valid_range(port in 1024u16..=49151) {
-            let result = Port::user_port(port);
-            assert!(result.is_some());
-            assert_eq!(result.unwrap().get(), port);
-        }
-
-        #[test]
-        fn test_port_registered_invalid_low_range(port in 1u16..=1023) {
-            let result = Port::user_port(port);
-            assert!(result.is_none());
-        }
-
-        #[test]
-        fn test_port_registered_invalid_high_range(port in 49152u16..=65535) {
-            let result = Port::user_port(port);
-            assert!(result.is_none());
-        }
-
-        #[test]
-        fn test_port_dynamic_valid_range(port in 49152u16..=65535) {
-            let result = Port::dynamic_port(port);
-            assert!(result.is_some());
-            assert_eq!(result.unwrap().get(), port);
-        }
-
-        #[test]
-        fn test_port_dynamic_invalid_range(port in 1u16..=49151) {
-            let result = Port::dynamic_port(port);
             assert!(result.is_none());
         }
 
@@ -627,16 +343,6 @@ mod tests {
             }
             _ => panic!("Expected TCP target"),
         }
-    }
-
-    #[test_case(80, Port::http(); "http port constant")]
-    #[test_case(443, Port::https(); "https port constant")]
-    #[test_case(22, Port::ssh(); "ssh port constant")]
-    #[test_case(5432, Port::postgres(); "postgres port constant")]
-    #[test_case(3306, Port::mysql(); "mysql port constant")]
-    #[test_case(6379, Port::redis(); "redis port constant")]
-    fn test_port_constants(expected: u16, port: Port) {
-        assert_eq!(port.get(), expected);
     }
 
     #[test_case("http://example.com/", 200; "http url")]
@@ -727,30 +433,6 @@ mod tests {
     }
 
     #[test]
-    fn test_tcp_builder_fluent_interface() {
-        // Test that builder methods return Self for fluent chaining
-        let target = Target::tcp_builder("example.com")
-            .unwrap()
-            .registered_port(8080)
-            .build()
-            .unwrap();
-
-        assert_eq!(target.hostname(), "example.com");
-        assert_eq!(target.port(), Some(8080));
-    }
-
-    #[test]
-    fn test_tcp_builder_error_deferred() {
-        // Test that validation errors are deferred until build()
-        let result = Target::tcp_builder("example.com")
-            .unwrap()
-            .well_known_port(8080) // Invalid for well-known range
-            .build();
-
-        assert!(result.is_err());
-    }
-
-    #[test]
     fn safe_tcp_targets_macro() {
         // Test the new safe tcp_targets! macro
         let result = tcp_targets![
@@ -798,159 +480,6 @@ mod tests {
         ];
 
         result.unwrap_err();
-    }
-
-    #[test]
-    fn test_port_category() {
-        // System ports
-        let http = Port::http();
-        assert_eq!(http.category(), PortCategory::System);
-
-        let ssh = Port::ssh();
-        assert_eq!(ssh.category(), PortCategory::System);
-
-        // User ports
-        let app_port = Port::new(8080).unwrap();
-        assert_eq!(app_port.category(), PortCategory::User);
-
-        let postgres = Port::postgres();
-        assert_eq!(postgres.category(), PortCategory::User);
-
-        // Dynamic ports
-        let ephemeral = Port::new(50000).unwrap();
-        assert_eq!(ephemeral.category(), PortCategory::Dynamic);
-
-        let dynamic = Port::new(65535).unwrap();
-        assert_eq!(dynamic.category(), PortCategory::Dynamic);
-    }
-
-    #[test]
-    fn test_port_category_display() {
-        assert_eq!(PortCategory::System.to_string(), "system");
-        assert_eq!(PortCategory::User.to_string(), "user");
-        assert_eq!(PortCategory::Dynamic.to_string(), "dynamic");
-    }
-
-    #[test]
-    fn test_port_category_range() {
-        assert_eq!(PortCategory::System.range(), (1, 1023));
-        assert_eq!(PortCategory::User.range(), (1024, 49151));
-        assert_eq!(PortCategory::Dynamic.range(), (49152, 65535));
-    }
-
-    #[test]
-    fn test_port_category_pattern_matching() {
-        let port = Port::http();
-        let message = match port.category() {
-            PortCategory::System => "Requires elevated privileges",
-            PortCategory::User => "Standard application port",
-            PortCategory::Dynamic => "Temporary/ephemeral port",
-        };
-        assert_eq!(message, "Requires elevated privileges");
-    }
-
-    // Comprehensive tests for PortCategory boundaries
-    #[test]
-    fn test_port_category_boundaries() {
-        // System port boundaries
-        let port_1 = Port::new(1).unwrap();
-        assert_eq!(port_1.category(), PortCategory::System);
-
-        let port_1023 = Port::new(1023).unwrap();
-        assert_eq!(port_1023.category(), PortCategory::System);
-
-        // User port boundaries
-        let port_1024 = Port::new(1024).unwrap();
-        assert_eq!(port_1024.category(), PortCategory::User);
-
-        let port_49151 = Port::new(49151).unwrap();
-        assert_eq!(port_49151.category(), PortCategory::User);
-
-        // Dynamic port boundaries
-        let port_49152 = Port::new(49152).unwrap();
-        assert_eq!(port_49152.category(), PortCategory::Dynamic);
-
-        let port_65535 = Port::new(65535).unwrap();
-        assert_eq!(port_65535.category(), PortCategory::Dynamic);
-    }
-
-    // Test all common service ports categorization
-    #[test]
-    fn test_common_service_ports_categorization() {
-        // System ports
-        assert_eq!(Port::http().category(), PortCategory::System); // 80
-        assert_eq!(Port::https().category(), PortCategory::System); // 443
-        assert_eq!(Port::ssh().category(), PortCategory::System); // 22
-
-        // User ports
-        assert_eq!(Port::postgres().category(), PortCategory::User); // 5432
-        assert_eq!(Port::mysql().category(), PortCategory::User); // 3306
-        assert_eq!(Port::redis().category(), PortCategory::User); // 6379
-
-        // Common application ports
-        let port_8080 = Port::new(8080).unwrap();
-        assert_eq!(port_8080.category(), PortCategory::User);
-
-        let port_3000 = Port::new(3000).unwrap();
-        assert_eq!(port_3000.category(), PortCategory::User);
-
-        let port_9000 = Port::new(9000).unwrap();
-        assert_eq!(port_9000.category(), PortCategory::User);
-    }
-
-    // Test PortCategory Debug and Clone
-    #[test]
-    fn test_port_category_traits() {
-        let category = PortCategory::System;
-
-        // Test Clone (PortCategory is Copy, so clone is implicit)
-        let cloned = category;
-        assert_eq!(category, cloned);
-
-        // Test Debug
-        let debug_str = format!("{category:?}");
-        assert!(debug_str.contains("System"));
-
-        // Test Hash (compile-time check)
-        use std::collections::HashSet;
-        let mut set = HashSet::new();
-        set.insert(category);
-        assert!(set.contains(&PortCategory::System));
-    }
-
-    // Test PortCategory::range() method
-    #[test]
-    fn test_port_category_range_validation() {
-        let system_range = PortCategory::System.range();
-        assert_eq!(system_range, (1, 1023));
-
-        // Verify that ports in this range actually belong to System category
-        for port_num in [1, 512, 1023] {
-            let port = Port::new(port_num).unwrap();
-            assert_eq!(port.category(), PortCategory::System);
-            let range = port.category().range();
-            assert!(port_num >= range.0 && port_num <= range.1);
-        }
-
-        let user_range = PortCategory::User.range();
-        assert_eq!(user_range, (1024, 49151));
-
-        for port_num in [1024, 25000, 49151] {
-            let port = Port::new(port_num).unwrap();
-            assert_eq!(port.category(), PortCategory::User);
-            let range = port.category().range();
-            assert!(port_num >= range.0 && port_num <= range.1);
-        }
-
-        let dynamic_range = PortCategory::Dynamic.range();
-        assert_eq!(dynamic_range, (49152, 65535));
-
-        for port_num in [49152, 55000, 65535] {
-            let port = Port::new(port_num).unwrap();
-            assert_eq!(port.category(), PortCategory::Dynamic);
-            let range = port.category().range();
-            assert!(port_num >= range.0 && port_num <= range.1);
-        }
     }
 
     // Test Target pattern matching with #[non_exhaustive]
@@ -1010,109 +539,504 @@ mod tests {
         assert_eq!(message, "Invalid port: 0");
     }
 
-    // Comprehensive Port predicate tests
+    // ========== Hostname Validation Tests ==========
+
     #[test]
-    fn test_port_predicates_comprehensive() {
-        // Test is_system_port
-        let system_ports = vec![1, 22, 80, 443, 1023];
-        for port_num in system_ports {
-            let port = Port::new(port_num).unwrap();
-            assert!(
-                port.is_system_port(),
-                "Port {port_num} should be a system port"
-            );
-            assert!(
-                !port.is_user_port(),
-                "Port {port_num} should not be a user port"
-            );
-            assert!(
-                !port.is_dynamic_port(),
-                "Port {port_num} should not be a dynamic port"
-            );
-        }
+    fn test_hostname_empty() {
+        let result = Hostname::new("");
+        assert!(result.is_err());
+    }
 
-        // Test is_user_port
-        let user_ports = vec![1024, 3306, 5432, 8080, 49151];
-        for port_num in user_ports {
-            let port = Port::new(port_num).unwrap();
-            assert!(
-                !port.is_system_port(),
-                "Port {port_num} should not be a system port"
-            );
-            assert!(port.is_user_port(), "Port {port_num} should be a user port");
-            assert!(
-                !port.is_dynamic_port(),
-                "Port {port_num} should not be a dynamic port"
-            );
-        }
+    #[test]
+    fn test_hostname_too_long() {
+        // RFC 1035: Max 253 characters
+        let long_hostname = "a".repeat(254);
+        let result = Hostname::new(long_hostname);
+        assert!(result.is_err());
+    }
 
-        // Test is_dynamic_port
-        let dynamic_ports = vec![49152, 50000, 60000, 65535];
-        for port_num in dynamic_ports {
-            let port = Port::new(port_num).unwrap();
-            assert!(
-                !port.is_system_port(),
-                "Port {port_num} should not be a system port"
-            );
-            assert!(
-                !port.is_user_port(),
-                "Port {port_num} should not be a user port"
-            );
-            assert!(
-                port.is_dynamic_port(),
-                "Port {port_num} should be a dynamic port"
-            );
+    #[test]
+    fn test_hostname_max_length() {
+        // Exactly 253 characters should work with valid labels
+        // RFC 1035: max 253 chars total, max 63 per label
+        // Build: 63 + dot + 63 + dot + 63 + dot + 61 = 253
+        let label63 = "a".repeat(63);
+        let label61 = "a".repeat(61);
+        let max_hostname = format!("{label63}.{label63}.{label63}.{label61}");
+        assert_eq!(max_hostname.len(), 253);
+        let result = Hostname::new(max_hostname);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_hostname_label_too_long() {
+        // RFC 1035: Max 63 characters per label
+        let label = "a".repeat(64);
+        let hostname = format!("{label}.com");
+        let result = Hostname::new(hostname);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hostname_label_max_length() {
+        // Exactly 63 characters per label should work
+        let label = "a".repeat(63);
+        let hostname = format!("{label}.com");
+        let result = Hostname::new(hostname);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_hostname_starts_with_hyphen() {
+        let result = Hostname::new("-example.com");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hostname_ends_with_hyphen() {
+        let result = Hostname::new("example.com-");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hostname_label_starts_with_hyphen() {
+        let result = Hostname::new("example.-invalid.com");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hostname_label_ends_with_hyphen() {
+        let result = Hostname::new("example.invalid-.com");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hostname_empty_label() {
+        let result = Hostname::new("example..com");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hostname_invalid_chars() {
+        let result = Hostname::new("example!.com");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hostname_with_underscore() {
+        // Underscores are commonly used but technically invalid in hostnames
+        let result = Hostname::new("test_host.com");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hostname_valid_hyphen() {
+        // Hyphens in the middle are valid
+        let result = Hostname::new("my-host.example.com");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_hostname_ipv4_valid() {
+        let result = Hostname::ipv4("192.168.1.1");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_hostname_ipv4_invalid() {
+        let result = Hostname::ipv4("256.1.1.1");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hostname_ipv4_invalid_format() {
+        let result = Hostname::ipv4("192.168.1");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hostname_ipv4_too_many_octets() {
+        let result = Hostname::ipv4("192.168.1.1.1");
+        assert!(result.is_err());
+    }
+
+    // ========== Port Validation Tests ==========
+
+    #[test]
+    fn test_port_zero_invalid() {
+        let result = Port::try_from(0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_port_one_valid() {
+        let result = Port::try_from(1);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().get(), 1);
+    }
+
+    #[test]
+    fn test_port_max_valid() {
+        let result = Port::try_from(65535);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().get(), 65535);
+    }
+
+    #[test]
+    fn test_port_from_str_valid() {
+        let result = "8080".parse::<Port>();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().get(), 8080);
+    }
+
+    #[test]
+    fn test_port_from_str_invalid() {
+        let result = "0".parse::<Port>();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_port_from_str_not_a_number() {
+        let result = "abc".parse::<Port>();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_port_display() {
+        let port = Port::try_from(8080).unwrap();
+        assert_eq!(port.to_string(), "8080");
+    }
+
+    // ========== HTTP Target Validation Tests ==========
+
+    #[test]
+    fn test_http_target_invalid_status_too_low() {
+        let url = Url::parse("http://example.com").unwrap();
+        let result = Target::http(url, 99);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_http_target_invalid_status_too_high() {
+        let url = Url::parse("http://example.com").unwrap();
+        let result = Target::http(url, 600);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_http_target_status_100_valid() {
+        let url = Url::parse("http://example.com").unwrap();
+        let result = Target::http(url, 100);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_http_target_status_599_valid() {
+        let url = Url::parse("http://example.com").unwrap();
+        let result = Target::http(url, 599);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_http_target_unsupported_scheme() {
+        let result = Target::http_url("ftp://example.com", 200);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_http_target_file_scheme() {
+        let result = Target::http_url("file:///etc/passwd", 200);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_http_target_empty_header_key() {
+        let url = Url::parse("http://example.com").unwrap();
+        let headers = vec![("".to_string(), "value".to_string())];
+        let result = Target::http_with_headers(url, 200, headers);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_http_target_empty_header_value() {
+        let url = Url::parse("http://example.com").unwrap();
+        let headers = vec![("X-Custom".to_string(), "".to_string())];
+        let result = Target::http_with_headers(url, 200, headers);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_http_target_invalid_header_name_space() {
+        let url = Url::parse("http://example.com").unwrap();
+        let headers = vec![("X Custom".to_string(), "value".to_string())];
+        let result = Target::http_with_headers(url, 200, headers);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_http_target_valid_header() {
+        let url = Url::parse("http://example.com").unwrap();
+        let headers = vec![("X-Custom-Header".to_string(), "value".to_string())];
+        let result = Target::http_with_headers(url, 200, headers);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_http_builder_auth_bearer() {
+        let url = Url::parse("http://example.com").unwrap();
+        let target = Target::http_builder(url)
+            .auth_bearer("token123")
+            .build()
+            .unwrap();
+
+        match target {
+            Target::Http { headers, .. } => {
+                assert!(headers.is_some());
+                let headers = headers.unwrap();
+                assert_eq!(headers.len(), 1);
+                assert_eq!(headers[0].0, "Authorization");
+                assert_eq!(headers[0].1, "Bearer token123");
+            }
+            _ => panic!("Expected HTTP target"),
         }
     }
 
-    // Property-based test for PortCategory consistency
-    proptest! {
-        #[test]
-        fn test_port_category_consistency(port_num in 1u16..=65535) {
-            let port = Port::new(port_num).unwrap();
-            let category = port.category();
+    #[test]
+    fn test_http_builder_basic_auth() {
+        let url = Url::parse("http://example.com").unwrap();
+        let target = Target::http_builder(url)
+            .basic_auth("user", "pass")
+            .build()
+            .unwrap();
 
-            // Verify category matches predicate methods
-            match category {
-                PortCategory::System => {
-                    assert!(port.is_system_port());
-                    assert!(!port.is_user_port());
-                    assert!(!port.is_dynamic_port());
-                }
-                PortCategory::User => {
-                    assert!(!port.is_system_port());
-                    assert!(port.is_user_port());
-                    assert!(!port.is_dynamic_port());
-                }
-                PortCategory::Dynamic => {
-                    assert!(!port.is_system_port());
-                    assert!(!port.is_user_port());
-                    assert!(port.is_dynamic_port());
-                }
-                #[allow(unreachable_patterns)]
-                _ => {} // For future categories
+        match target {
+            Target::Http { headers, .. } => {
+                assert!(headers.is_some());
+                let headers = headers.unwrap();
+                assert_eq!(headers.len(), 1);
+                assert_eq!(headers[0].0, "Authorization");
+                assert!(headers[0].1.starts_with("Basic "));
             }
-
-            // Verify port falls within category range
-            let (min, max) = category.range();
-            assert!(port_num >= min && port_num <= max,
-                "Port {port_num} should be within range {min}..={max} for category {category}");
+            _ => panic!("Expected HTTP target"),
         }
+    }
 
-        #[test]
-        fn test_port_category_as_str(port_num in 1u16..=65535) {
-            let port = Port::new(port_num).unwrap();
-            let category = port.category();
-            let category_str = category.as_str();
+    // ========== Target Creation Tests ==========
 
-            // Verify as_str returns expected values
-            assert!(
-                category_str == "system" || category_str == "user" || category_str == "dynamic",
-                "Category string should be one of system/user/dynamic, got: {category_str}"
-            );
+    #[test]
+    fn test_target_tcp_invalid_hostname() {
+        let result = Target::tcp("", 8080);
+        assert!(result.is_err());
+    }
 
-            // Verify Display matches as_str
-            assert_eq!(category.to_string(), category_str);
+    #[test]
+    fn test_target_tcp_invalid_port() {
+        let result = Target::tcp("localhost", 0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_target_localhost_valid() {
+        let result = Target::localhost(8080);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_target_loopback_valid() {
+        let result = Target::loopback(8080);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_target_loopback_v6_valid() {
+        let result = Target::loopback_v6(8080);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_target_http_localhost() {
+        let result = Target::http_localhost(3000);
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Target::Http { url, .. } => {
+                assert_eq!(url.to_string(), "http://localhost:3000/");
+            }
+            _ => panic!("Expected HTTP target"),
         }
+    }
+
+    #[test]
+    fn test_target_from_parts() {
+        let hostname = Hostname::localhost();
+        let port = Port::try_from(8080).unwrap();
+        let target = Target::from_parts(hostname, port);
+
+        assert_eq!(target.hostname(), "localhost");
+        assert_eq!(target.port(), Some(8080));
+    }
+
+    #[test]
+    fn test_target_kind() {
+        let tcp = Target::tcp("localhost", 8080).unwrap();
+        assert_eq!(tcp.kind(), TargetKind::Tcp);
+
+        let http = Target::http_url("http://example.com", 200).unwrap();
+        assert_eq!(http.kind(), TargetKind::Http);
+    }
+
+    #[test]
+    fn test_target_tcp_batch_valid() {
+        let targets = vec![("localhost", 8080), ("127.0.0.1", 9090)];
+        let result = Target::tcp_batch(targets);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_target_tcp_batch_one_invalid() {
+        let targets = vec![
+            ("localhost", 8080),
+            ("", 9090), // Invalid hostname
+        ];
+        let result = Target::tcp_batch(targets);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_target_tcp_ports_single_host() {
+        let result = Target::tcp_ports("localhost", &[8080, 8081, 8082]);
+        assert!(result.is_ok());
+        let targets = result.unwrap();
+        assert_eq!(targets.len(), 3);
+        assert_eq!(targets[0].port(), Some(8080));
+        assert_eq!(targets[1].port(), Some(8081));
+        assert_eq!(targets[2].port(), Some(8082));
+    }
+
+    #[test]
+    fn test_target_tcp_ports_invalid_port() {
+        let result = Target::tcp_ports("localhost", &[8080, 0, 8082]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_target_http_batch() {
+        let urls = vec!["http://example.com", "https://example.org"];
+        let result = Target::http_batch(urls, 200);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 2);
+    }
+
+    // ========== Duration Validation Tests ==========
+
+    #[test]
+    fn test_validated_duration_from_str_seconds() {
+        let result = "30s".parse::<types::ValidatedDuration>();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().get(), Duration::from_secs(30));
+    }
+
+    #[test]
+    fn test_validated_duration_from_str_minutes() {
+        let result = "5m".parse::<types::ValidatedDuration>();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().get(), Duration::from_secs(300));
+    }
+
+    #[test]
+    fn test_validated_duration_from_str_hours() {
+        let result = "2h".parse::<types::ValidatedDuration>();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().get(), Duration::from_secs(7200));
+    }
+
+    #[test]
+    fn test_validated_duration_from_str_milliseconds() {
+        let result = "500ms".parse::<types::ValidatedDuration>();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().get(), Duration::from_millis(500));
+    }
+
+    #[test]
+    fn test_validated_duration_from_str_plain_number() {
+        let result = "60".parse::<types::ValidatedDuration>();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().get(), Duration::from_secs(60));
+    }
+
+    #[test]
+    fn test_validated_duration_from_str_invalid_unit() {
+        let result = "30d".parse::<types::ValidatedDuration>();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validated_duration_from_str_invalid_number() {
+        let result = "abc".parse::<types::ValidatedDuration>();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validated_duration_display() {
+        let duration = types::ValidatedDuration::from_secs(90);
+        assert_eq!(duration.to_string(), "1m");
+
+        let duration = types::ValidatedDuration::from_millis(500);
+        assert_eq!(duration.to_string(), "500ms");
+    }
+
+    // ========== WaitConfig Tests ==========
+
+    #[test]
+    fn test_wait_config_default() {
+        let config = WaitConfig::default();
+        assert_eq!(config.timeout, Duration::from_secs(30));
+        assert_eq!(config.initial_interval, Duration::from_secs(1));
+        assert!(!config.wait_for_any);
+        assert!(config.max_retries.is_none());
+    }
+
+    #[test]
+    fn test_wait_config_builder_custom() {
+        let config = WaitConfig::builder()
+            .timeout(Duration::from_secs(60))
+            .interval(Duration::from_secs(2))
+            .max_interval(Duration::from_secs(10))
+            .wait_for_any(true)
+            .max_retries(Some(5))
+            .build();
+
+        assert_eq!(config.timeout, Duration::from_secs(60));
+        assert_eq!(config.initial_interval, Duration::from_secs(2));
+        assert_eq!(config.max_interval, Duration::from_secs(10));
+        assert!(config.wait_for_any);
+        assert_eq!(config.max_retries, Some(5));
+    }
+
+    #[test]
+    fn test_wait_config_from_duration() {
+        let config = WaitConfig::from(Duration::from_secs(120));
+        assert_eq!(config.timeout, Duration::from_secs(120));
+    }
+
+    // ========== Error Context Tests ==========
+
+    #[test]
+    fn test_result_ext_context() {
+        let hostname_result: Result<Hostname> = Hostname::new("");
+        let result_with_context = hostname_result.context("Failed to create hostname");
+
+        assert!(result_with_context.is_err());
+        let err = result_with_context.unwrap_err();
+        assert!(err.to_string().contains("Failed to create hostname"));
+    }
+
+    #[test]
+    fn test_result_ext_with_context() {
+        let hostname_result: Result<Hostname> = Hostname::new("");
+        let result_with_context =
+            hostname_result.with_context(|| "Dynamic error message".to_string());
+
+        assert!(result_with_context.is_err());
     }
 }

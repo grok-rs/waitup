@@ -1,5 +1,13 @@
 //! Convenience macros for creating targets and configurations.
 
+/// Helper macro to count the number of token trees (for Vec pre-allocation).
+#[doc(hidden)]
+#[macro_export]
+macro_rules! count_tts {
+    () => { 0 };
+    ($one:tt $($rest:tt)*) => { 1 + $crate::count_tts!($($rest)*) };
+}
+
 /// Create TCP targets from a compact syntax.
 ///
 /// Returns a `Result<Vec<Target>, WaitForError>` that contains either all valid targets
@@ -22,9 +30,10 @@
 macro_rules! tcp_targets {
     ($($host:expr => $port:expr),* $(,)?) => {
         {
-            #[expect(clippy::vec_init_then_push, reason = "macro expansion requires incremental push pattern")]
+            #[expect(clippy::vec_init_then_push, reason = "macro expansion pattern with pre-allocated capacity for performance")]
             let result = || -> $crate::Result<Vec<$crate::Target>> {
-                let mut targets = Vec::new();
+                // Pre-allocate capacity for better performance
+                let mut targets = Vec::with_capacity($crate::count_tts!($($host)*));
                 $(
                     targets.push($crate::Target::tcp($host, $port)?);
                 )*
@@ -56,162 +65,16 @@ macro_rules! tcp_targets {
 macro_rules! http_targets {
     ($($url:expr => $status:expr),* $(,)?) => {
         {
-            #[expect(clippy::vec_init_then_push, reason = "macro expansion requires incremental push pattern")]
+            #[expect(clippy::vec_init_then_push, reason = "macro expansion pattern with pre-allocated capacity for performance")]
             let result = || -> $crate::Result<Vec<$crate::Target>> {
-                let mut targets = Vec::new();
+                // Pre-allocate capacity for better performance
+                let mut targets = Vec::with_capacity($crate::count_tts!($($url)*));
                 $(
                     targets.push($crate::Target::http_url($url, $status)?);
                 )*
                 return Ok(targets)
             };
             result()
-        }
-    };
-}
-
-/// Create a wait configuration with a compact syntax.
-///
-/// # Examples
-///
-/// ```rust
-/// use waitup::wait_config;
-/// use std::time::Duration;
-///
-/// let config = wait_config! {
-///     timeout: Duration::from_secs(30),
-///     interval: Duration::from_millis(500),
-///     wait_for_any: false,
-/// };
-/// ```
-#[macro_export]
-macro_rules! wait_config {
-    (
-        $(timeout: $timeout:expr,)?
-        $(interval: $interval:expr,)?
-        $(max_interval: $max_interval:expr,)?
-        $(connection_timeout: $connection_timeout:expr,)?
-        $(max_retries: $max_retries:expr,)?
-        $(wait_for_any: $wait_for_any:expr,)?
-    ) => {
-        {
-            let mut builder = $crate::WaitConfig::builder();
-            $(builder = builder.timeout($timeout);)?
-            $(builder = builder.interval($interval);)?
-            $(builder = builder.max_interval($max_interval);)?
-            $(builder = builder.connection_timeout($connection_timeout);)?
-            $(builder = builder.max_retries($max_retries);)?
-            $(builder = builder.wait_for_any($wait_for_any);)?
-            builder.build()
-        }
-    };
-}
-
-/// Create common port configurations.
-///
-/// # Examples
-///
-/// ```rust
-/// use waitup::common_ports;
-///
-/// let ports = common_ports![http, https, ssh, postgres];
-/// assert_eq!(ports.len(), 4);
-/// ```
-#[macro_export]
-macro_rules! common_ports {
-    ($($port_name:ident),* $(,)?) => {
-        vec![
-            $(
-                $crate::Port::$port_name()
-            ),*
-        ]
-    };
-}
-
-/// Check that all targets in a collection are ready within a timeout.
-///
-/// Returns a `Result<WaitResult, WaitForError>` instead of panicking.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// use waitup::{check_ready, Target, WaitConfig};
-/// use std::time::Duration;
-///
-/// # #[tokio::main]
-/// # async fn main() -> Result<(), waitup::WaitForError> {
-/// let targets = vec![
-///     Target::tcp("localhost", 8080)?,
-/// ];
-///
-/// // Create config first to avoid temporary value issues
-/// let config = WaitConfig::builder()
-///     .timeout(Duration::from_secs(30))
-///     .build();
-/// let result = waitup::wait_for_connection(&targets, &config).await?;
-/// println!("All targets ready in {:?}", result.elapsed);
-/// # Ok(())
-/// # }
-/// ```
-#[macro_export]
-macro_rules! check_ready {
-    ($targets:expr, timeout: $timeout:expr) => {
-        {
-            let config = $crate::WaitConfig::builder()
-                .timeout($timeout)
-                .build();
-            $crate::wait_for_connection(&$targets, &config)
-        }
-    };
-    ($targets:expr, $($config_field:ident: $config_value:expr),+ $(,)?) => {
-        {
-            let config = $crate::wait_config! {
-                $($config_field: $config_value,)+
-            };
-            $crate::wait_for_connection(&$targets, &config)
-        }
-    };
-}
-
-/// Assert that all targets in a collection are ready within a timeout (panics on failure).
-///
-/// **Note:** This macro panics on failure. Consider using `check_ready!` for non-test code.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// use waitup::{assert_ready, Target};
-/// use std::time::Duration;
-///
-/// # #[tokio::main]
-/// # async fn main() -> Result<(), waitup::WaitForError> {
-/// let targets = vec![
-///     Target::tcp("localhost", 8080)?,
-/// ];
-///
-/// assert_ready!(targets, timeout: Duration::from_secs(30));
-/// # Ok(())
-/// # }
-/// ```
-#[macro_export]
-macro_rules! assert_ready {
-    ($targets:expr, timeout: $timeout:expr) => {
-        {
-            let config = $crate::WaitConfig::builder()
-                .timeout($timeout)
-                .build();
-            $crate::wait_for_connection(&$targets, &config)
-                .await
-                .unwrap_or_else(|e| panic!("Targets should be ready, but failed with: {}", e))
-        }
-    };
-    ($targets:expr, $($config_field:ident: $config_value:expr),+ $(,)?) => {
-        {
-            let config = $crate::wait_config! {
-                $($config_field: $config_value,)+
-            };
-            $crate::wait_for_connection(&$targets, &config)
-                .await
-                .unwrap_or_else(|e| panic!("Targets should be ready, but failed with: {}", e))
         }
     };
 }
