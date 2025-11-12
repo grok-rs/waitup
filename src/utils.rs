@@ -95,14 +95,16 @@ mod tests {
 
     #[test]
     fn test_parse_duration_unit_seconds() {
-        let result = parse_duration_unit(5.0, 1000.0, "5s").expect("valid duration");
-        assert_eq!(result, Duration::from_secs(5));
+        let result = parse_duration_unit(5.0, 1000.0, "5s");
+        assert!(result.is_ok());
+        assert_eq!(result.ok(), Some(Duration::from_secs(5)));
     }
 
     #[test]
     fn test_parse_duration_unit_minutes() {
-        let result = parse_duration_unit(2.0, 60_000.0, "2m").expect("valid duration");
-        assert_eq!(result, Duration::from_secs(120));
+        let result = parse_duration_unit(2.0, 60_000.0, "2m");
+        assert!(result.is_ok());
+        assert_eq!(result.ok(), Some(Duration::from_secs(120)));
     }
 
     #[test]
