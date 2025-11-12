@@ -1,226 +1,4 @@
-//! Core type definitions for waitup library.
-//!
-//! This module contains the fundamental types used throughout the waitup library:
-//! - [`Port`] and [`Hostname`] - `NewType` wrappers for type safety
-//! - [`StatusCode`] and [`RetryCount`] - Semantic wrappers for HTTP and retry logic
-//! - [`Target`] - Represents services to wait for (TCP or HTTP)
-//! - [`WaitConfig`] - Configuration for wait operations
-//! - [`WaitResult`] and [`TargetResult`] - Result types for wait operations
-//! - Error types for different failure modes
-//!
-//! # Why NewType Patterns?
-//!
-//! NewType wrappers provide several benefits that make code more readable and maintainable:
-//!
-//! ## 1. Type Safety - Prevents Bugs at Compile Time
-//!
-//! **Without NewTypes (Error-Prone):**
-//! ```rust,ignore
-//! // Easy to mix up parameters!
-//! fn connect(port: u16, timeout: u16, status: u16) { }
-//!
-//! // Which one is which? Compiler can't help!
-//! connect(200, 8080, 30);  // BUG: Wrong order!
-//! ```
-//!
-//! **With NewTypes (Type-Safe):**
-//! ```rust,ignore
-//! use waitup::{Port, StatusCode};
-//!
-//! fn connect(port: Port, status: StatusCode) { }
-//!
-//! // Compiler error - can't mix types!
-//! // connect(StatusCode::OK, Port::http());  // Won't compile!
-//!
-//! // Correct usage is clear and safe
-//! connect(Port::http(), StatusCode::OK);  // ✓ Type-safe!
-//! ```
-//!
-//! ## 2. Self-Documenting Code - Improves Readability
-//!
-//! **Without NewTypes (Unclear):**
-//! ```rust,ignore
-//! let result = check_service("localhost", 8080, 200, 5);
-//! // What do these numbers mean? Need to check docs!
-//! ```
-//!
-//! **With NewTypes (Self-Explanatory):**
-//! ```rust,no_run
-//! use waitup::{Port, StatusCode, RetryCount, Hostname};
-//!
-//! let hostname = Hostname::localhost();
-//! let port = Port::new(8080).unwrap();
-//! let expected = StatusCode::OK;
-//! let retries = RetryCount::MODERATE;
-//!
-//! // Crystal clear what each parameter represents!
-//! // (Note: This is illustrative - actual API differs)
-//! ```
-//!
-//! ## 3. Domain Knowledge Built-In
-//!
-//! **Without NewTypes:**
-//! ```rust,ignore
-//! if port <= 1023 {
-//!     println!("Needs root privileges");
-//! }
-//! if status >= 200 && status < 300 {
-//!     println!("Success!");
-//! }
-//! ```
-//!
-//! **With NewTypes (Expressive):**
-//! ```rust
-//! use waitup::{Port, StatusCode};
-//!
-//! let port = Port::http();
-//! if port.is_system_port() {
-//!     println!("Needs root privileges");
-//! }
-//!
-//! let status = StatusCode::OK;
-//! if status.is_success() {
-//!     println!("Success!");
-//! }
-//! ```
-//!
-//! ## 4. Validation at Construction
-//!
-//! **Without NewTypes (Runtime Errors):**
-//! ```rust,ignore
-//! let port = 70000;  // Oops! Invalid port, but compiles fine
-//! // Error happens later at runtime...
-//! ```
-//!
-//! **With NewTypes (Compile-Time Safety):**
-//! ```rust
-//! use waitup::Port;
-//!
-//! // Validation happens at construction
-//! let port = Port::new(0);
-//! assert!(port.is_none());  // ✓ Caught immediately (port 0 invalid)!
-//!
-//! // Constants are compile-time validated
-//! let http = Port::http();  // ✓ Always valid!
-//! ```
-//!
-//! # Real-World Example
-//!
-//! Here's a complete example showing how newtypes make code more readable:
-//!
-//! ```rust,no_run
-//! use waitup::{Port, Hostname, StatusCode, RetryCount, WaitConfig, Target};
-//! use std::time::Duration;
-//!
-//! // Clear, self-documenting configuration
-//! let config = WaitConfig::builder()
-//!     .timeout(Duration::from_secs(30))
-//!     .max_retries(Some(RetryCount::MODERATE.get()))
-//!     .build();
-//!
-//! // Type-safe target construction
-//! let database = Target::tcp(
-//!     Hostname::localhost().as_str(),
-//!     Port::postgres().get()
-//! ).unwrap();
-//!
-//! println!("Connecting to {} on port {}",
-//!     "localhost",
-//!     if database.port().map(|p| Port::new(p).unwrap().is_system_port()).unwrap_or(false) {
-//!         "system port"
-//!     } else {
-//!         "user port"
-//!     }
-//! );
-//! ```
-//!
-//! # Examples
-//!
-//! ## Creating type-safe network identifiers
-//!
-//! ```rust
-//! use waitup::{Port, Hostname};
-//!
-//! // Create validated ports
-//! let port = Port::new(8080).expect("Valid port");
-//! assert_eq!(port.get(), 8080);
-//! assert!(port.is_user_port());
-//!
-//! // Use port range validation
-//! let http_port = Port::http();
-//! assert!(http_port.is_system_port());
-//!
-//! let app_port = Port::user_port(8080).expect("8080 is user port");
-//! let ephemeral = Port::dynamic_port(49152).expect("49152 is dynamic");
-//!
-//! // Create validated hostnames
-//! let hostname = Hostname::new("example.com").expect("Valid hostname");
-//! let localhost = Hostname::localhost();
-//! assert!(localhost.is_localhost());
-//!
-//! let ip = Hostname::ipv4("192.168.1.1").expect("Valid IPv4");
-//! assert!(ip.is_ipv4());
-//! ```
-//!
-//! ## Working with HTTP status codes
-//!
-//! ```rust
-//! use waitup::StatusCode;
-//!
-//! // Use common status code constants
-//! let ok = StatusCode::OK;
-//! let not_found = StatusCode::NOT_FOUND;
-//! let server_error = StatusCode::INTERNAL_SERVER_ERROR;
-//!
-//! // Check status code categories
-//! assert!(ok.is_success());
-//! assert!(not_found.is_client_error());
-//! assert!(server_error.is_server_error());
-//!
-//! // Custom status codes with validation
-//! let created = StatusCode::new(201).expect("Valid status");
-//! assert!(created.is_success());
-//! ```
-//!
-//! ## Port categories with pattern matching
-//!
-//! ```rust
-//! use waitup::{Port, PortCategory};
-//!
-//! fn check_port_requirements(port: Port) -> &'static str {
-//!     match port.category() {
-//!         PortCategory::System => "Requires root/admin privileges to bind",
-//!         PortCategory::User => "Can be bound by regular users",
-//!         PortCategory::Dynamic => "Ephemeral port for client connections",
-//!         _ => "Future category (non-exhaustive)",  // Required for external crates
-//!     }
-//! }
-//!
-//! let http = Port::http();
-//! assert_eq!(check_port_requirements(http), "Requires root/admin privileges to bind");
-//!
-//! let app_port = Port::new(8080).unwrap();
-//! assert_eq!(check_port_requirements(app_port), "Can be bound by regular users");
-//! ```
-//!
-//! ## Managing retry logic
-//!
-//! ```rust
-//! use waitup::RetryCount;
-//!
-//! // Use semantic retry count constants
-//! let quick_fail = RetryCount::FEW;        // 3 retries
-//! let balanced = RetryCount::MODERATE;     // 5 retries
-//! let persistent = RetryCount::MANY;       // 10 retries
-//!
-//! // Custom retry counts
-//! let custom = RetryCount::new(7);
-//! assert_eq!(custom.get(), 7);
-//!
-//! // Unlimited retries
-//! let unlimited = RetryCount::unlimited();
-//! assert!(unlimited.is_none());
-//! ```
+//! Type-safe wrappers for network targets and configuration.
 
 use core::fmt;
 use core::num::NonZeroU16;
@@ -232,89 +10,35 @@ use url::Url;
 
 use crate::error_messages;
 
-// Type aliases for complex types to improve readability
-/// HTTP headers represented as a vector of key-value pairs
+const MS_PER_MS: f64 = 1.0;
+const MS_PER_SECOND: f64 = 1000.0;
+const MS_PER_MINUTE: f64 = 60_000.0;
+const MS_PER_HOUR: f64 = 3_600_000.0;
+
+const MAX_HOSTNAME_LENGTH: usize = 253; // RFC 1035
+const MAX_LABEL_LENGTH: usize = 63;
+
+const LOCALHOST_HOSTNAME: &str = "localhost";
+const LOOPBACK_V4: &str = "127.0.0.1";
+const LOOPBACK_V6: &str = "::1";
+
+const DEFAULT_TIMEOUT_SECS: u64 = 30;
+const DEFAULT_INITIAL_INTERVAL_SECS: u64 = 1;
+const DEFAULT_MAX_INTERVAL_SECS: u64 = 30;
+const DEFAULT_CONNECTION_TIMEOUT_SECS: u64 = 10;
+
+/// HTTP headers as key-value pairs.
 pub type HttpHeaders = Vec<(String, String)>;
 
-/// Result type alias for functions returning a vector of targets
+/// Result type for batch target operations.
 pub type TargetVecResult = crate::Result<Vec<Target>>;
 
-/// Port categories as defined by RFC 6335
-///
-/// This enum represents the three official IANA port range categories.
-/// The `#[non_exhaustive]` attribute allows for future API evolution
-/// if additional categories are defined by IANA.
-///
-/// # Examples
-///
-/// ```rust
-/// use waitup::{Port, PortCategory};
-///
-/// let port = Port::http();
-/// match port.category() {
-///     PortCategory::System => println!("Requires root/admin privileges"),
-///     PortCategory::User => println!("Standard application port"),
-///     PortCategory::Dynamic => println!("Ephemeral/temporary port"),
-///     _ => {} // Required due to #[non_exhaustive]
-/// }
-/// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum PortCategory {
-    /// System Ports (0-1023) - Require elevated privileges
-    ///
-    /// Per RFC 6335, these ports are reserved for system services
-    /// and typically require root/administrator access to bind.
-    System,
-
-    /// User Ports (1024-49151) - Assigned by IANA for applications
-    ///
-    /// Per RFC 6335, these ports are assigned by IANA for specific
-    /// services upon request from users or organizations.
-    User,
-
-    /// Dynamic Ports (49152-65535) - Private/ephemeral use
-    ///
-    /// Per RFC 6335, these ports are used for temporary connections
-    /// and cannot be registered with IANA.
-    Dynamic,
-}
-
-impl PortCategory {
-    /// Get the string representation of this port category
-    #[must_use]
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Self::System => "system",
-            Self::User => "user",
-            Self::Dynamic => "dynamic",
-        }
-    }
-
-    /// Get the port range for this category
-    #[must_use]
-    pub const fn range(&self) -> (u16, u16) {
-        match self {
-            Self::System => (1, 1023),
-            Self::User => (1024, 49151),
-            Self::Dynamic => (49152, 65535),
-        }
-    }
-}
-
-impl fmt::Display for PortCategory {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-/// `NewType` wrapper for ports to provide type safety
-/// Uses `NonZeroU16` internally to guarantee valid port numbers (1-65535)
+/// Type-safe port number (1-65535).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Port(NonZeroU16);
 
 impl Port {
-    /// Create a new port, validating it's not zero
+    /// Create port if non-zero.
     #[must_use]
     #[inline]
     pub const fn new(port: u16) -> Option<Self> {
@@ -324,209 +48,28 @@ impl Port {
         }
     }
 
-    /// Create a port from a system port number (0-1023)
-    ///
-    /// System Ports (per RFC 6335) are reserved for system services and require elevated privileges.
+    /// Create port from `NonZeroU16` (zero-cost).
     #[must_use]
     #[inline]
-    pub const fn system_port(port: u16) -> Option<Self> {
-        if port == 0 || port > 1023 {
-            None
-        } else {
-            Self::new(port)
-        }
+    pub const fn from_nonzero(port: NonZeroU16) -> Self {
+        Self(port)
     }
 
-    /// Create a port from a user port number range (1024-49151)
-    ///
-    /// User Ports (per RFC 6335) are assigned by IANA for user applications.
-    #[must_use]
-    #[inline]
-    pub const fn user_port(port: u16) -> Option<Self> {
-        if port < 1024 || port > 49151 {
-            None
-        } else {
-            Self::new(port)
-        }
-    }
-
-    /// Create a port from a dynamic port number range (49152-65535)
-    ///
-    /// Dynamic Ports (per RFC 6335) are used for temporary or private connections.
-    #[must_use]
-    #[inline]
-    pub const fn dynamic_port(port: u16) -> Option<Self> {
-        if port < 49152 { None } else { Self::new(port) }
-    }
-
-    /// Create a new port without validation (for known valid values)
-    /// Only use this when you know the port is valid (not zero)
-    ///
-    /// This method is safe because it panics at compile-time if called
-    /// with an invalid port number (like 0), preventing runtime errors.
-    /// It's optimized for known valid port constants.
+    /// Create port without validation. Panics if port is zero.
     #[must_use]
     #[inline]
     pub const fn new_unchecked(port: u16) -> Self {
-        // SAFETY: This function is intended for compile-time known valid ports.
-        // If called with 0, it will panic at compile time in const contexts,
-        // or unwrap at runtime with a clear error message for debugging.
         match NonZeroU16::new(port) {
             Some(nz) => Self(nz),
-            None => {
-                // This will cause a compile-time error if used in const context with port = 0
-                panic!("Port::new_unchecked called with invalid port 0");
-            }
+            None => panic!("Port::new_unchecked called with port 0"),
         }
     }
 
-    /// Common HTTP port (80)
-    #[must_use]
-    pub const fn http() -> Self {
-        Self::new_unchecked(80)
-    }
-
-    /// Common HTTPS port (443)
-    #[must_use]
-    pub const fn https() -> Self {
-        Self::new_unchecked(443)
-    }
-
-    /// Common SSH port (22)
-    #[must_use]
-    pub const fn ssh() -> Self {
-        Self::new_unchecked(22)
-    }
-
-    /// Common `PostgreSQL` port (5432)
-    #[must_use]
-    pub const fn postgres() -> Self {
-        Self::new_unchecked(5432)
-    }
-
-    /// Common `MySQL` port (3306)
-    #[must_use]
-    pub const fn mysql() -> Self {
-        Self::new_unchecked(3306)
-    }
-
-    /// Common Redis port (6379)
-    #[must_use]
-    pub const fn redis() -> Self {
-        Self::new_unchecked(6379)
-    }
-
-    /// Get the inner port value
+    /// Get port value.
     #[must_use]
     #[inline(always)]
     pub const fn get(&self) -> u16 {
         self.0.get()
-    }
-
-    // Predicate methods for better readability
-
-    /// Check if this port is a System Port (0-1023)
-    ///
-    /// System Ports (per RFC 6335) are reserved for system services and require elevated privileges.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use waitup::Port;
-    ///
-    /// let http = Port::http();
-    /// assert!(http.is_system_port());
-    ///
-    /// let app_port = Port::new(8080).unwrap();
-    /// assert!(!app_port.is_system_port());
-    /// ```
-    #[must_use]
-    #[inline]
-    pub const fn is_system_port(&self) -> bool {
-        self.0.get() <= 1023
-    }
-
-    /// Check if this port is a User Port (1024-49151)
-    ///
-    /// User Ports (per RFC 6335) are assigned by IANA for user applications.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use waitup::Port;
-    ///
-    /// let app_port = Port::new(8080).unwrap();
-    /// assert!(app_port.is_user_port());
-    ///
-    /// let http = Port::http();
-    /// assert!(!http.is_user_port());
-    /// ```
-    #[must_use]
-    #[inline]
-    pub const fn is_user_port(&self) -> bool {
-        let port = self.0.get();
-        port >= 1024 && port <= 49151
-    }
-
-    /// Check if this port is a Dynamic Port (49152-65535)
-    ///
-    /// Dynamic Ports (per RFC 6335) are used for temporary or private connections.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use waitup::Port;
-    ///
-    /// let ephemeral = Port::new(50000).unwrap();
-    /// assert!(ephemeral.is_dynamic_port());
-    ///
-    /// let http = Port::http();
-    /// assert!(!http.is_dynamic_port());
-    /// ```
-    #[must_use]
-    #[inline]
-    pub const fn is_dynamic_port(&self) -> bool {
-        self.0.get() >= 49152
-    }
-
-    /// Get the RFC 6335 category for this port
-    ///
-    /// Returns the port category (System, User, or Dynamic) as defined by RFC 6335.
-    /// This method enables exhaustive pattern matching on port categories.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use waitup::{Port, PortCategory};
-    ///
-    /// let http = Port::http();
-    /// assert_eq!(http.category(), PortCategory::System);
-    ///
-    /// let app_port = Port::new(8080).unwrap();
-    /// assert_eq!(app_port.category(), PortCategory::User);
-    ///
-    /// let ephemeral = Port::new(50000).unwrap();
-    /// assert_eq!(ephemeral.category(), PortCategory::Dynamic);
-    ///
-    /// // Pattern matching example
-    /// match http.category() {
-    ///     PortCategory::System => println!("Requires elevated privileges"),
-    ///     PortCategory::User => println!("Standard application port"),
-    ///     PortCategory::Dynamic => println!("Temporary/ephemeral port"),
-    ///     _ => {} // Required due to #[non_exhaustive]
-    /// }
-    /// ```
-    #[must_use]
-    #[inline]
-    pub const fn category(&self) -> PortCategory {
-        let port = self.0.get();
-        if port <= 1023 {
-            PortCategory::System
-        } else if port <= 49151 {
-            PortCategory::User
-        } else {
-            PortCategory::Dynamic
-        }
     }
 }
 
@@ -544,39 +87,6 @@ impl TryFrom<u16> for Port {
     }
 }
 
-impl TryFrom<u32> for Port {
-    type Error = crate::WaitForError;
-
-    fn try_from(port: u32) -> crate::Result<Self> {
-        if port > u32::from(u16::MAX) {
-            return Err(crate::WaitForError::InvalidPort(0)); // Use 0 to represent invalid port
-        }
-        Self::try_from(u16::try_from(port).unwrap_or(0))
-    }
-}
-
-impl TryFrom<i32> for Port {
-    type Error = crate::WaitForError;
-
-    fn try_from(port: i32) -> crate::Result<Self> {
-        if port < 0 || port > i32::from(u16::MAX) {
-            return Err(crate::WaitForError::InvalidPort(0)); // Use 0 to represent invalid
-        }
-        Self::try_from(u16::try_from(port).unwrap_or(0))
-    }
-}
-
-impl TryFrom<usize> for Port {
-    type Error = crate::WaitForError;
-
-    fn try_from(port: usize) -> crate::Result<Self> {
-        if port > usize::from(u16::MAX) {
-            return Err(crate::WaitForError::InvalidPort(0)); // Use 0 to represent invalid
-        }
-        Self::try_from(u16::try_from(port).unwrap_or(0))
-    }
-}
-
 impl TryFrom<NonZeroU16> for Port {
     type Error = crate::WaitForError;
 
@@ -585,7 +95,6 @@ impl TryFrom<NonZeroU16> for Port {
     }
 }
 
-/// Parse port from string representations
 impl std::str::FromStr for Port {
     type Err = crate::WaitForError;
 
@@ -609,251 +118,84 @@ impl From<Port> for NonZeroU16 {
     }
 }
 
-/// `NewType` wrapper for HTTP status codes to provide type safety and validation
-///
-/// This type ensures that HTTP status codes are always in the valid range (100-599)
-/// and provides convenient constructors for common status codes.
-///
-/// # Examples
-///
-/// ```rust
-/// use waitup::StatusCode;
-///
-/// // Common status codes
-/// let ok = StatusCode::OK;
-/// let not_found = StatusCode::NOT_FOUND;
-/// let server_error = StatusCode::INTERNAL_SERVER_ERROR;
-///
-/// // Custom status code with validation
-/// let custom = StatusCode::new(201).expect("Valid status code");
-/// assert_eq!(custom.get(), 201);
-///
-/// // Invalid status codes are rejected
-/// assert!(StatusCode::new(999).is_none());
-/// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct StatusCode(u16);
-
-impl StatusCode {
-    /// Create a new status code with validation (must be 100-599)
-    #[must_use]
-    #[inline]
-    pub const fn new(code: u16) -> Option<Self> {
-        if code >= 100 && code <= 599 {
-            Some(Self(code))
-        } else {
-            None
-        }
-    }
-
-    /// Get the inner status code value
-    #[must_use]
-    #[inline(always)]
-    pub const fn get(&self) -> u16 {
-        self.0
-    }
-
-    /// Check if this is a successful status code (200-299)
-    #[must_use]
-    #[inline]
-    pub const fn is_success(&self) -> bool {
-        self.0 >= 200 && self.0 <= 299
-    }
-
-    /// Check if this is a redirection status code (300-399)
-    #[must_use]
-    #[inline]
-    pub const fn is_redirection(&self) -> bool {
-        self.0 >= 300 && self.0 <= 399
-    }
-
-    /// Check if this is a client error status code (400-499)
-    #[must_use]
-    #[inline]
-    pub const fn is_client_error(&self) -> bool {
-        self.0 >= 400 && self.0 <= 499
-    }
-
-    /// Check if this is a server error status code (500-599)
-    #[must_use]
-    #[inline]
-    pub const fn is_server_error(&self) -> bool {
-        self.0 >= 500 && self.0 <= 599
-    }
-
-    // Common HTTP status codes as constants
-
-    /// HTTP 200 OK
-    pub const OK: Self = Self(200);
-
-    /// HTTP 201 Created
-    pub const CREATED: Self = Self(201);
-
-    /// HTTP 202 Accepted
-    pub const ACCEPTED: Self = Self(202);
-
-    /// HTTP 204 No Content
-    pub const NO_CONTENT: Self = Self(204);
-
-    /// HTTP 301 Moved Permanently
-    pub const MOVED_PERMANENTLY: Self = Self(301);
-
-    /// HTTP 302 Found
-    pub const FOUND: Self = Self(302);
-
-    /// HTTP 304 Not Modified
-    pub const NOT_MODIFIED: Self = Self(304);
-
-    /// HTTP 400 Bad Request
-    pub const BAD_REQUEST: Self = Self(400);
-
-    /// HTTP 401 Unauthorized
-    pub const UNAUTHORIZED: Self = Self(401);
-
-    /// HTTP 403 Forbidden
-    pub const FORBIDDEN: Self = Self(403);
-
-    /// HTTP 404 Not Found
-    pub const NOT_FOUND: Self = Self(404);
-
-    /// HTTP 500 Internal Server Error
-    pub const INTERNAL_SERVER_ERROR: Self = Self(500);
-
-    /// HTTP 502 Bad Gateway
-    pub const BAD_GATEWAY: Self = Self(502);
-
-    /// HTTP 503 Service Unavailable
-    pub const SERVICE_UNAVAILABLE: Self = Self(503);
-}
-
-impl fmt::Display for StatusCode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl TryFrom<u16> for StatusCode {
-    type Error = crate::WaitForError;
-
-    fn try_from(code: u16) -> crate::Result<Self> {
-        Self::new(code).ok_or_else(|| {
-            crate::WaitForError::InvalidTarget(Cow::Owned(format!(
-                "Invalid HTTP status code: {code} (must be 100-599)"
-            )))
-        })
-    }
-}
-
-impl From<StatusCode> for u16 {
-    #[inline(always)]
-    fn from(code: StatusCode) -> Self {
-        code.0
-    }
-}
-
-/// `NewType` wrapper for retry counts to provide type safety
-///
-/// This type provides semantic meaning to retry counts and prevents
-/// accidental mixing with other numeric types.
-///
-/// # Examples
-///
-/// ```rust
-/// use waitup::RetryCount;
-///
-/// // Common retry patterns
-/// let few_retries = RetryCount::FEW;      // 3 retries
-/// let moderate = RetryCount::MODERATE;    // 5 retries
-/// let many = RetryCount::MANY;            // 10 retries
-///
-/// // Custom retry count
-/// let custom = RetryCount::new(7);
-/// assert_eq!(custom.get(), 7);
-///
-/// // Unlimited retries (None represents unlimited)
-/// let unlimited = RetryCount::unlimited();
-/// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct RetryCount(u32);
-
-impl RetryCount {
-    /// Create a new retry count
-    #[must_use]
-    #[inline]
-    pub const fn new(count: u32) -> Self {
-        Self(count)
-    }
-
-    /// Get the inner retry count value
-    #[must_use]
-    #[inline(always)]
-    pub const fn get(&self) -> u32 {
-        self.0
-    }
-
-    /// Create an `Option<RetryCount>` representing unlimited retries
-    #[must_use]
-    #[inline]
-    pub const fn unlimited() -> Option<Self> {
-        None
-    }
-
-    // Common retry count patterns
-
-    /// Very few retries (3) - for fast-failing operations
-    pub const FEW: Self = Self(3);
-
-    /// Moderate retries (5) - balanced approach
-    pub const MODERATE: Self = Self(5);
-
-    /// Many retries (10) - for critical operations
-    pub const MANY: Self = Self(10);
-
-    /// Aggressive retries (20) - for long-running services
-    pub const AGGRESSIVE: Self = Self(20);
-}
-
-impl fmt::Display for RetryCount {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl From<u32> for RetryCount {
-    #[inline(always)]
-    fn from(count: u32) -> Self {
-        Self(count)
-    }
-}
-
-impl From<RetryCount> for u32 {
-    #[inline(always)]
-    fn from(count: RetryCount) -> Self {
-        count.0
-    }
-}
-
-/// `NewType` wrapper for hostnames to provide type safety
-/// Uses Cow<'static, str> to avoid allocations for common static hostnames
+/// Validated hostname (RFC 1035).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Hostname(Cow<'static, str>);
 
 impl Hostname {
-    /// Create a new hostname with validation
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the hostname is invalid or too long
+    /// Create and validate hostname.
     pub fn new(hostname: impl Into<String>) -> crate::Result<Self> {
         let hostname = hostname.into();
         Self::validate(&hostname)?;
-        Ok(Self(Cow::Owned(hostname)))
+
+        let cow = match hostname.as_str() {
+            "localhost" => Cow::Borrowed(LOCALHOST_HOSTNAME),
+            "127.0.0.1" => Cow::Borrowed(LOOPBACK_V4),
+            "::1" => Cow::Borrowed(LOOPBACK_V6),
+            _ => Cow::Owned(hostname),
+        };
+
+        Ok(Self(cow))
     }
 
-    /// Create a hostname from a static string (zero allocation)
+    /// Create from static string.
     #[must_use]
     pub const fn from_static(hostname: &'static str) -> Self {
         Self(Cow::Borrowed(hostname))
+    }
+
+    fn validate_label(label: &str) -> crate::Result<()> {
+        if label.is_empty() {
+            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                error_messages::HOSTNAME_EMPTY_LABEL,
+            )));
+        }
+        if label.len() > MAX_LABEL_LENGTH {
+            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                error_messages::HOSTNAME_LABEL_TOO_LONG,
+            )));
+        }
+
+        // Single-pass validation: check all constraints in one iteration
+        let mut chars = label.chars();
+
+        // Check first character
+        let Some(first) = chars.next() else {
+            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                error_messages::HOSTNAME_EMPTY_LABEL,
+            )));
+        };
+
+        if first == '-' {
+            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                error_messages::HOSTNAME_LABEL_INVALID_HYPHEN,
+            )));
+        }
+        if !first.is_ascii_alphanumeric() {
+            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                error_messages::HOSTNAME_INVALID_CHARS,
+            )));
+        }
+
+        // Check middle and last characters
+        let mut last = first;
+        for c in chars {
+            if !c.is_ascii_alphanumeric() && c != '-' {
+                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                    error_messages::HOSTNAME_INVALID_CHARS,
+                )));
+            }
+            last = c;
+        }
+
+        // Check last character isn't a hyphen
+        if last == '-' {
+            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
+                error_messages::HOSTNAME_LABEL_INVALID_HYPHEN,
+            )));
+        }
+
+        Ok(())
     }
 
     /// Validate a hostname according to RFC standards
@@ -864,7 +206,7 @@ impl Hostname {
             )));
         }
 
-        if hostname.len() > 253 {
+        if hostname.len() > MAX_HOSTNAME_LENGTH {
             return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
                 error_messages::HOSTNAME_TOO_LONG,
             )));
@@ -877,203 +219,50 @@ impl Hostname {
         }
 
         for label in hostname.split('.') {
-            if label.is_empty() {
-                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
-                    error_messages::HOSTNAME_EMPTY_LABEL,
-                )));
-            }
-            if label.len() > 63 {
-                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
-                    error_messages::HOSTNAME_LABEL_TOO_LONG,
-                )));
-            }
-            if label.starts_with('-') || label.ends_with('-') {
-                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
-                    error_messages::HOSTNAME_LABEL_INVALID_HYPHEN,
-                )));
-            }
-            if !label.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
-                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
-                    error_messages::HOSTNAME_INVALID_CHARS,
-                )));
-            }
+            Self::validate_label(label)?;
         }
 
         Ok(())
     }
 
-    /// Create hostname for localhost (zero allocation)
+    /// Localhost hostname.
     #[must_use]
     pub const fn localhost() -> Self {
-        Self::from_static("localhost")
+        Self::from_static(LOCALHOST_HOSTNAME)
     }
 
-    /// Create hostname for IPv4 loopback (zero allocation)
+    /// IPv4 loopback (127.0.0.1).
     #[must_use]
     pub const fn loopback() -> Self {
-        Self::from_static("127.0.0.1")
+        Self::from_static(LOOPBACK_V4)
     }
 
-    /// Create hostname for IPv6 loopback (zero allocation)
+    /// IPv6 loopback (::1).
     #[must_use]
     pub const fn loopback_v6() -> Self {
-        Self::from_static("::1")
+        Self::from_static(LOOPBACK_V6)
     }
 
-    /// Create hostname for wildcard/any address (zero allocation)
+    /// Wildcard address (0.0.0.0).
     #[must_use]
     pub const fn any() -> Self {
         Self::from_static("0.0.0.0")
     }
 
-    /// Create hostname for an IPv4 address (validates format)
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the IPv4 format is invalid
+    /// Create from IPv4 address string.
     pub fn ipv4(ip: impl AsRef<str>) -> crate::Result<Self> {
-        let ip = ip.as_ref();
-        // Basic IPv4 validation without allocating a vector
-        let mut parts_count = 0;
-        for part in ip.split('.') {
-            parts_count += 1;
-            if parts_count > 4 {
-                return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
-                    error_messages::INVALID_IPV4_FORMAT,
-                )));
-            }
-            let _num: u8 = part.parse().map_err(|_| {
-                crate::WaitForError::InvalidHostname(Cow::Borrowed(
-                    error_messages::INVALID_IPV4_OCTET,
-                ))
-            })?;
-            // _num is automatically validated to be 0-255 by u8 parsing
-        }
-        if parts_count != 4 {
-            return Err(crate::WaitForError::InvalidHostname(Cow::Borrowed(
-                error_messages::INVALID_IPV4_FORMAT,
-            )));
-        }
-        Ok(Self(Cow::Owned(ip.to_string())))
+        let ip_str = ip.as_ref();
+        ip_str.parse::<std::net::Ipv4Addr>().map_err(|_| {
+            crate::WaitForError::InvalidHostname(Cow::Borrowed(error_messages::INVALID_IPV4_FORMAT))
+        })?;
+        Ok(Self(Cow::Owned(ip_str.to_string())))
     }
 
-    /// Get the hostname as a string slice
+    /// Get as string slice.
     #[must_use]
     #[inline(always)]
     pub fn as_str(&self) -> &str {
         &self.0
-    }
-
-    // Predicate methods for better readability
-
-    /// Check if this hostname is "localhost"
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use waitup::Hostname;
-    ///
-    /// let host = Hostname::localhost();
-    /// assert!(host.is_localhost());
-    ///
-    /// let other = Hostname::new("example.com").unwrap();
-    /// assert!(!other.is_localhost());
-    /// ```
-    #[must_use]
-    #[inline]
-    pub fn is_localhost(&self) -> bool {
-        self.0 == "localhost"
-    }
-
-    /// Check if this hostname is a loopback address (127.0.0.1 or ::1)
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use waitup::Hostname;
-    ///
-    /// let ipv4 = Hostname::loopback();
-    /// assert!(ipv4.is_loopback());
-    ///
-    /// let ipv6 = Hostname::loopback_v6();
-    /// assert!(ipv6.is_loopback());
-    ///
-    /// let other = Hostname::new("example.com").unwrap();
-    /// assert!(!other.is_loopback());
-    /// ```
-    #[must_use]
-    #[inline]
-    pub fn is_loopback(&self) -> bool {
-        self.0 == "127.0.0.1" || self.0 == "::1"
-    }
-
-    /// Check if this hostname looks like an IPv4 address
-    ///
-    /// This is a simple heuristic check, not a full validation.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use waitup::Hostname;
-    ///
-    /// let ip = Hostname::ipv4("192.168.1.1").unwrap();
-    /// assert!(ip.is_ipv4());
-    ///
-    /// let hostname = Hostname::new("example.com").unwrap();
-    /// assert!(!hostname.is_ipv4());
-    /// ```
-    #[must_use]
-    #[inline]
-    pub fn is_ipv4(&self) -> bool {
-        // Simple heuristic: contains dots and all parts are digits
-        let parts: Vec<&str> = self.0.split('.').collect();
-        parts.len() == 4 && parts.iter().all(|p| p.chars().all(|c| c.is_ascii_digit()))
-    }
-
-    /// Check if this hostname looks like an IPv6 address
-    ///
-    /// This is a simple heuristic check, not a full validation.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use waitup::Hostname;
-    ///
-    /// let ipv6 = Hostname::loopback_v6();
-    /// assert!(ipv6.is_ipv6());
-    ///
-    /// let hostname = Hostname::new("example.com").unwrap();
-    /// assert!(!hostname.is_ipv6());
-    /// ```
-    #[must_use]
-    #[inline]
-    pub fn is_ipv6(&self) -> bool {
-        // Simple heuristic: contains colons
-        self.0.contains(':')
-    }
-
-    /// IPv4 loopback address (zero allocation)
-    #[must_use]
-    pub const fn ipv4_loopback() -> Self {
-        Self::from_static("127.0.0.1")
-    }
-
-    /// IPv6 loopback address (zero allocation)
-    #[must_use]
-    pub const fn ipv6_loopback() -> Self {
-        Self::from_static("::1")
-    }
-
-    /// Any IPv4 address (zero allocation)
-    #[must_use]
-    pub const fn ipv4_any() -> Self {
-        Self::from_static("0.0.0.0")
-    }
-
-    /// Any IPv6 address (zero allocation)
-    #[must_use]
-    pub const fn ipv6_any() -> Self {
-        Self::from_static("::")
     }
 }
 
@@ -1150,112 +339,83 @@ impl std::borrow::Borrow<str> for Hostname {
     }
 }
 
-/// Specific error types for different connection failure modes
-///
-/// This enum is marked `#[non_exhaustive]` to allow adding new error variants
-/// in the future without breaking changes.
+/// Connection failure modes.
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum ConnectionError {
-    /// Failed to establish TCP connection to the target host and port
     #[error("Failed to connect to {host}:{port} - {reason}")]
     TcpConnection {
-        /// The hostname or IP address that connection failed to
         host: Cow<'static, str>,
-        /// The port number that connection failed to
         port: u16,
         #[source]
-        /// The underlying I/O error that caused the connection failure
         reason: std::io::Error,
     },
-    /// Connection attempt timed out before establishing a connection
     #[error("Connection timeout after {timeout_ms}ms")]
-    Timeout {
-        /// The timeout duration in milliseconds that was exceeded
-        timeout_ms: u64,
-    },
-    /// Failed to resolve hostname to IP address via DNS
+    Timeout { timeout_ms: u64 },
     #[error("DNS resolution failed for {host}: {reason}")]
     DnsResolution {
-        /// The hostname that failed to resolve
         host: Cow<'static, str>,
         #[source]
-        /// The underlying I/O error from DNS resolution
         reason: std::io::Error,
     },
 }
 
-/// Specific error types for HTTP operations
-///
-/// This enum is marked `#[non_exhaustive]` to allow adding new error variants
-/// in the future without breaking changes.
+/// HTTP operation errors.
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum HttpError {
-    /// HTTP request failed due to network or server error
     #[error("HTTP request failed for {url}: {reason}")]
     RequestFailed {
-        /// The URL that the request failed to reach
         url: Cow<'static, str>,
         #[source]
-        /// The underlying HTTP client error
         reason: reqwest::Error,
     },
-    /// HTTP response returned unexpected status code
     #[error("Unexpected status code: expected {expected}, got {actual}")]
-    UnexpectedStatus {
-        /// The HTTP status code that was expected
-        expected: u16,
-        /// The actual HTTP status code received
-        actual: u16,
-    },
-    /// Invalid HTTP header format or value
+    UnexpectedStatus { expected: u16, actual: u16 },
     #[error("Invalid header: {header}")]
-    InvalidHeader {
-        /// The header that was invalid
-        header: Cow<'static, str>,
-    },
+    InvalidHeader { header: Cow<'static, str> },
 }
 
-/// A target service to wait for.
-///
-/// This enum is marked `#[non_exhaustive]` to allow adding new target types
-/// in the future (e.g., UDP, WebSocket, gRPC) without breaking changes.
-///
-/// # Examples
-///
-/// ```rust
-/// use waitup::Target;
-///
-/// let tcp_target = Target::tcp("localhost", 8080).unwrap();
-/// let http_target = Target::http_url("https://example.com/health", 200).unwrap();
-///
-/// // Pattern matching requires wildcard due to #[non_exhaustive]
-/// match tcp_target {
-///     Target::Tcp { host, port } => println!("TCP: {}:{}", host.as_str(), port.get()),
-///     Target::Http { url, .. } => println!("HTTP: {}", url),
-///     _ => {} // Required for external crates
-/// }
-/// ```
+/// Network target to wait for (TCP or HTTP).
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Target {
-    /// TCP connection target with host and port.
     Tcp {
-        /// The hostname or IP address
         host: Hostname,
-        /// The port number
         port: Port,
     },
-    /// HTTP/HTTPS endpoint target.
     Http {
-        /// The URL to check
         url: Url,
-        /// Expected HTTP status code
         expected_status: u16,
-        /// Optional custom headers
         headers: Option<HttpHeaders>,
     },
+}
+
+/// Target type discriminant.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TargetKind {
+    Tcp,
+    Http,
+}
+
+impl Target {
+    /// Get target type.
+    #[must_use]
+    pub const fn kind(&self) -> TargetKind {
+        match self {
+            Self::Tcp { .. } => TargetKind::Tcp,
+            Self::Http { .. } => TargetKind::Http,
+        }
+    }
+}
+
+impl fmt::Display for Target {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Tcp { host, port } => write!(f, "{}:{}", host.as_str(), port.get()),
+            Self::Http { url, .. } => write!(f, "{url}"),
+        }
+    }
 }
 
 impl TryFrom<&str> for Target {
@@ -1281,43 +441,6 @@ impl std::str::FromStr for Target {
 
     fn from_str(s: &str) -> crate::Result<Self> {
         Self::try_from(s)
-    }
-}
-
-/// Additional Target construction methods
-impl Target {
-    /// Try to create a TCP target from host and port
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the hostname or port conversion fails
-    pub fn try_tcp<H, P>(host: H, port: P) -> crate::Result<Self>
-    where
-        H: TryInto<Hostname>,
-        P: TryInto<Port>,
-        H::Error: Into<crate::WaitForError>,
-        P::Error: Into<crate::WaitForError>,
-    {
-        let hostname = host.try_into().map_err(Into::into)?;
-        let port = port.try_into().map_err(Into::into)?;
-        Ok(Self::Tcp {
-            host: hostname,
-            port,
-        })
-    }
-
-    /// Try to create an HTTP target from URL string
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the URL cannot be parsed or is invalid
-    pub fn try_http(url: impl AsRef<str>, expected_status: u16) -> crate::Result<Self> {
-        let url = Url::parse(url.as_ref())?;
-        Ok(Self::Http {
-            url,
-            expected_status,
-            headers: None,
-        })
     }
 }
 
@@ -1389,90 +512,12 @@ impl std::str::FromStr for ValidatedDuration {
                 ));
             };
 
-        let number: f64 = number_part.parse().map_err(|_| {
-            crate::WaitForError::InvalidTimeout(
-                Cow::Owned(s.to_string()),
-                Cow::Borrowed("Invalid number"),
-            )
-        })?;
-
-        let duration = match unit_part {
-            "ms" => {
-                #[expect(
-                    clippy::cast_precision_loss,
-                    reason = "duration calculation requires f64"
-                )]
-                let millis = (number * 1.0).min(u64::MAX as f64);
-                if millis < 0.0 {
-                    return Err(crate::WaitForError::InvalidTimeout(
-                        Cow::Owned(s.to_string()),
-                        Cow::Borrowed("Duration cannot be negative"),
-                    ));
-                }
-                #[expect(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss,
-                    reason = "safe cast after bounds check"
-                )]
-                Duration::from_millis(millis as u64)
-            }
-            "s" => {
-                #[expect(
-                    clippy::cast_precision_loss,
-                    reason = "duration calculation requires f64"
-                )]
-                let millis = (number * 1000.0).min(u64::MAX as f64);
-                if millis < 0.0 {
-                    return Err(crate::WaitForError::InvalidTimeout(
-                        Cow::Owned(s.to_string()),
-                        Cow::Borrowed("Duration cannot be negative"),
-                    ));
-                }
-                #[expect(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss,
-                    reason = "safe cast after bounds check"
-                )]
-                Duration::from_millis(millis as u64)
-            }
-            "m" => {
-                #[expect(
-                    clippy::cast_precision_loss,
-                    reason = "duration calculation requires f64"
-                )]
-                let millis = (number * 60_000.0).min(u64::MAX as f64);
-                if millis < 0.0 {
-                    return Err(crate::WaitForError::InvalidTimeout(
-                        Cow::Owned(s.to_string()),
-                        Cow::Borrowed("Duration cannot be negative"),
-                    ));
-                }
-                #[expect(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss,
-                    reason = "safe cast after bounds check"
-                )]
-                Duration::from_millis(millis as u64)
-            }
-            "h" => {
-                #[expect(
-                    clippy::cast_precision_loss,
-                    reason = "duration calculation requires f64"
-                )]
-                let millis = (number * 3_600_000.0).min(u64::MAX as f64);
-                if millis < 0.0 {
-                    return Err(crate::WaitForError::InvalidTimeout(
-                        Cow::Owned(s.to_string()),
-                        Cow::Borrowed("Duration cannot be negative"),
-                    ));
-                }
-                #[expect(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss,
-                    reason = "safe cast after bounds check"
-                )]
-                Duration::from_millis(millis as u64)
-            }
+        // Validate unit first (fail fast before parsing number)
+        let multiplier = match unit_part {
+            "ms" => MS_PER_MS,
+            "s" => MS_PER_SECOND,
+            "m" => MS_PER_MINUTE,
+            "h" => MS_PER_HOUR,
             _ => {
                 return Err(crate::WaitForError::InvalidTimeout(
                     Cow::Owned(s.to_string()),
@@ -1480,6 +525,15 @@ impl std::str::FromStr for ValidatedDuration {
                 ));
             }
         };
+
+        let number: f64 = number_part.parse().map_err(|_| {
+            crate::WaitForError::InvalidTimeout(
+                Cow::Owned(s.to_string()),
+                Cow::Borrowed("Invalid number"),
+            )
+        })?;
+
+        let duration = crate::utils::parse_duration_unit(number, multiplier, s)?;
 
         Ok(Self(duration))
     }
@@ -1536,24 +590,18 @@ pub struct WaitConfig {
     pub connection_timeout: Duration,
     /// Cancellation token for graceful shutdown.
     pub cancellation_token: Option<CancellationToken>,
-    /// Security validator for targets (None to skip validation).
-    pub security_validator: Option<crate::security::SecurityValidator>,
-    /// Rate limiter for connection attempts (None to disable rate limiting).
-    pub rate_limiter: Option<crate::security::RateLimiter>,
 }
 
 impl Default for WaitConfig {
     fn default() -> Self {
         Self {
-            timeout: Duration::from_secs(30),
-            initial_interval: Duration::from_secs(1),
-            max_interval: Duration::from_secs(30),
+            timeout: Duration::from_secs(DEFAULT_TIMEOUT_SECS),
+            initial_interval: Duration::from_secs(DEFAULT_INITIAL_INTERVAL_SECS),
+            max_interval: Duration::from_secs(DEFAULT_MAX_INTERVAL_SECS),
             wait_for_any: false,
             max_retries: None,
-            connection_timeout: Duration::from_secs(10),
+            connection_timeout: Duration::from_secs(DEFAULT_CONNECTION_TIMEOUT_SECS),
             cancellation_token: None,
-            security_validator: None,
-            rate_limiter: None,
         }
     }
 }
@@ -1577,7 +625,7 @@ impl PartialEq for WaitConfig {
             && self.wait_for_any == other.wait_for_any
             && self.max_retries == other.max_retries
             && self.connection_timeout == other.connection_timeout
-        // Intentionally ignore cancellation_token, security_validator, and rate_limiter
+        // Intentionally ignore cancellation_token
         // as they don't implement PartialEq or are runtime-specific
     }
 }

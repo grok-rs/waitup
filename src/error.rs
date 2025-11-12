@@ -4,82 +4,7 @@
     reason = "restriction lints have contradictory pub visibility rules"
 )]
 
-//! Error types and handling for waitup operations.
-//!
-//! This module provides comprehensive error handling for the waitup library,
-//! including structured error types, error context, and helpful error messages.
-//!
-//! # Error Types
-//!
-//! - [`WaitForError`] - Main error enum covering all failure modes
-//! - [`ConnectionError`] - Specific TCP connection failures
-//! - [`HttpError`] - HTTP request and validation failures
-//! - [`ResultExt`] - Extension trait for adding context to errors
-//!
-//! # Error Context
-//!
-//! The [`ResultExt`] trait allows adding contextual information to errors:
-//!
-//! ```rust
-//! use waitup::{Target, ResultExt};
-//!
-//! let result = Target::tcp("invalid-host", 0)
-//!     .context("Failed to create database target");
-//! ```
-//!
-//! # Examples
-//!
-//! ## Handling different error types
-//!
-//! ```rust
-//! use waitup::{WaitForError, ConnectionError, HttpError};
-//!
-//! fn handle_error(err: WaitForError) {
-//!     match err {
-//!         WaitForError::Connection(ConnectionError::TcpConnection { host, port, reason }) => {
-//!             eprintln!("Failed to connect to {}:{} - {}", host, port, reason);
-//!         }
-//!         WaitForError::Http(HttpError::UnexpectedStatus { expected, actual }) => {
-//!             eprintln!("HTTP error: expected status {}, got {}", expected, actual);
-//!         }
-//!         WaitForError::Timeout { targets } => {
-//!             eprintln!("Timeout waiting for: {}", targets);
-//!         }
-//!         WaitForError::Cancelled => {
-//!             eprintln!("Operation was cancelled");
-//!         }
-//!         _ => {
-//!             eprintln!("Other error: {}", err);
-//!         }
-//!     }
-//! }
-//! ```
-//!
-//! ## Adding context to operations
-//!
-//! ```rust
-//! use waitup::{Target, WaitConfig, wait_for_connection, ResultExt};
-//! use std::time::Duration;
-//!
-//! async fn wait_for_services() -> Result<(), waitup::WaitForError> {
-//!     let targets = vec![
-//!         Target::tcp("database", 5432)
-//!             .context("Database target creation failed")?,
-//!         Target::tcp("cache", 6379)
-//!             .context("Cache target creation failed")?,
-//!     ];
-//!
-//!     let config = WaitConfig::builder()
-//!         .timeout(Duration::from_secs(30))
-//!         .build();
-//!
-//!     wait_for_connection(&targets, &config)
-//!         .await
-//!         .context("Service readiness check failed")?;
-//!
-//!     Ok(())
-//! }
-//! ```
+//! Error types for connection and wait operations.
 
 use std::borrow::Cow;
 use thiserror::Error;
@@ -305,5 +230,7 @@ pub(crate) mod error_messages {
         "Hostname labels cannot start or end with hyphen";
     pub const HOSTNAME_INVALID_CHARS: &str = "Hostname contains invalid characters";
     pub const INVALID_IPV4_FORMAT: &str = "Invalid IPv4 format";
-    pub const INVALID_IPV4_OCTET: &str = "Invalid IPv4 octet";
+
+    // Connection error messages
+    pub const TIMEOUT_EXCEEDED: &str = "Overall timeout exceeded";
 }

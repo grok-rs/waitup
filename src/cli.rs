@@ -18,9 +18,15 @@ enum CliError {
     CommandExecution(String),
     #[error("JSON serialization failed: {0}")]
     JsonSerialization(#[from] serde_json::Error),
+    #[error("Invalid progress template: {0}")]
+    ProgressTemplate(String),
 }
 
 type Result<T> = std::result::Result<T, CliError>;
+
+// Constants for CLI configuration
+/// Progress bar tick interval in milliseconds
+const PROGRESS_BAR_TICK_MS: u64 = 100;
 
 #[derive(Parser)]
 #[command(name = "waitup")]
@@ -242,7 +248,7 @@ mod output {
                     .target_results
                     .iter()
                     .map(|tr| JsonTargetResult {
-                        target: tr.target.display(),
+                        target: tr.target.to_string(),
                         success: tr.success,
                         elapsed_ms: u64::try_from(tr.elapsed.as_millis().min(u128::from(u64::MAX)))
                             .unwrap_or(u64::MAX),
@@ -276,15 +282,10 @@ fn setup_progress_bars(targets: &[Target]) -> Result<(indicatif::MultiProgress, 
             pb.set_style(
                 ProgressStyle::default_spinner()
                     .template("{spinner:.green} {msg}")
-                    .map_err(|_| {
-                        CliError::WaitError(WaitForError::InvalidTimeout(
-                            std::borrow::Cow::Borrowed("progress"),
-                            std::borrow::Cow::Borrowed("Invalid progress template"),
-                        ))
-                    })?,
+                    .map_err(|e| CliError::ProgressTemplate(e.to_string()))?,
             );
-            pb.set_message(format!("Waiting for {target}", target = target.display()));
-            pb.enable_steady_tick(Duration::from_millis(100));
+            pb.set_message(format!("Waiting for {target}"));
+            pb.enable_steady_tick(Duration::from_millis(PROGRESS_BAR_TICK_MS));
             Ok(pb)
         })
         .collect();
@@ -311,13 +312,13 @@ fn finalize_wait_results(target_results: Vec<Option<waitup::TargetResult>>) -> R
         .iter()
         .map(|tr| tr.elapsed)
         .max()
-        .unwrap_or_else(|| Duration::from_millis(0));
+        .unwrap_or(Duration::ZERO);
 
     if !all_successful {
         let failed_targets: Vec<_> = final_results
             .iter()
             .filter(|r| !r.success)
-            .map(|r| r.target.display())
+            .map(|r| r.target.to_string())
             .collect();
         return Err(CliError::WaitError(WaitForError::Timeout {
             targets: std::borrow::Cow::Owned(failed_targets.join(", ")),
@@ -358,15 +359,12 @@ async fn wait_with_progress(config: &CliConfig) -> Result<WaitResult> {
                 Ok(target_result) => {
                     if let Some(pb) = progress_bars.get(target_index) {
                         if target_result.success {
-                            pb.finish_with_message(format!(
-                                "✓ {target}",
-                                target = target_result.target.display()
-                            ));
+                            pb.finish_with_message(format!("✓ {}", target_result.target));
                         } else {
                             pb.finish_with_message(format!(
-                                "✗ {target} ({error})",
-                                target = target_result.target.display(),
-                                error = target_result.error.as_deref().unwrap_or("failed")
+                                "✗ {} ({})",
+                                target_result.target,
+                                target_result.error.as_deref().unwrap_or("failed")
                             ));
                         }
                     }
@@ -376,9 +374,8 @@ async fn wait_with_progress(config: &CliConfig) -> Result<WaitResult> {
                     // If a per-target check errors out (e.g., cancelled), record as failed
                     if let Some(pb) = progress_bars.get(target_index) {
                         pb.finish_with_message(format!(
-                            "✗ {target} ({error})",
-                            target = config.targets[target_index].display(),
-                            error = wferror
+                            "✗ {} ({})",
+                            config.targets[target_index], wferror
                         ));
                     }
                     target_results[target_index] = Some(waitup::TargetResult {

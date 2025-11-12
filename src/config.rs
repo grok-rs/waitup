@@ -1,74 +1,4 @@
-//! Configuration builders and related functionality.
-//!
-//! This module provides the [`WaitConfigBuilder`] for creating [`WaitConfig`] instances
-//! with various timeout, retry, and concurrency settings.
-//!
-//! # Features
-//!
-//! - **Flexible Timeouts**: Total timeout, connection timeout, and retry intervals
-//! - **Exponential Backoff**: Configurable initial and maximum retry intervals
-//! - **Retry Limits**: Optional maximum retry attempts
-//! - **Concurrency**: Wait for any vs all targets
-//! - **Cancellation**: Graceful shutdown with cancellation tokens
-//!
-//! # Examples
-//!
-//! ## Basic configuration
-//!
-//! ```rust
-//! use waitup::WaitConfig;
-//! use std::time::Duration;
-//!
-//! let config = WaitConfig::builder()
-//!     .timeout(Duration::from_secs(30))
-//!     .interval(Duration::from_secs(1))
-//!     .build();
-//! ```
-//!
-//! ## Advanced configuration with cancellation
-//!
-//! ```rust
-//! use waitup::WaitConfig;
-//! use std::time::Duration;
-//!
-//! let (builder, cancel_token) = WaitConfig::builder()
-//!     .timeout(Duration::from_secs(60))
-//!     .interval(Duration::from_millis(500))
-//!     .max_interval(Duration::from_secs(10))
-//!     .connection_timeout(Duration::from_secs(5))
-//!     .max_retries(Some(20))
-//!     .wait_for_any(false)
-//!     .with_cancellation();
-//!
-//! let config = builder.build();
-//!
-//! // Later, cancel the operation
-//! // cancel_token.cancel();
-//! ```
-//!
-//! ## Microservice readiness configuration
-//!
-//! ```rust
-//! use waitup::WaitConfig;
-//! use std::time::Duration;
-//!
-//! // Fast polling for local services
-//! let local_config = WaitConfig::builder()
-//!     .timeout(Duration::from_secs(10))
-//!     .interval(Duration::from_millis(100))
-//!     .max_interval(Duration::from_secs(1))
-//!     .connection_timeout(Duration::from_secs(2))
-//!     .build();
-//!
-//! // Conservative settings for external services
-//! let external_config = WaitConfig::builder()
-//!     .timeout(Duration::from_secs(120))
-//!     .interval(Duration::from_secs(2))
-//!     .max_interval(Duration::from_secs(30))
-//!     .connection_timeout(Duration::from_secs(15))
-//!     .max_retries(Some(10))
-//!     .build();
-//! ```
+//! Builder for WaitConfig with timeout and retry settings.
 
 use core::time::Duration;
 use tokio_util::sync::CancellationToken;
@@ -155,40 +85,6 @@ impl WaitConfigBuilder {
         (self, token)
     }
 
-    /// Set the security validator.
-    #[must_use]
-    #[inline]
-    pub fn security_validator(mut self, validator: crate::security::SecurityValidator) -> Self {
-        self.config.security_validator = Some(validator);
-        self
-    }
-
-    /// Set the rate limiter.
-    #[must_use]
-    #[inline]
-    pub fn rate_limiter(mut self, limiter: crate::security::RateLimiter) -> Self {
-        self.config.rate_limiter = Some(limiter);
-        self
-    }
-
-    /// Enable production security (strict validation and rate limiting).
-    #[must_use]
-    #[inline]
-    pub fn production_security(mut self) -> Self {
-        self.config.security_validator = Some(crate::security::SecurityValidator::production());
-        self.config.rate_limiter = Some(crate::security::RateLimiter::new(30)); // Conservative rate limit
-        self
-    }
-
-    /// Enable development security (permissive validation, basic rate limiting).
-    #[must_use]
-    #[inline]
-    pub fn development_security(mut self) -> Self {
-        self.config.security_validator = Some(crate::security::SecurityValidator::development());
-        self.config.rate_limiter = Some(crate::security::RateLimiter::new(120)); // Relaxed rate limit
-        self
-    }
-
     /// Build the `WaitConfig`.
     #[inline]
     pub fn build(self) -> WaitConfig {
@@ -197,7 +93,6 @@ impl WaitConfigBuilder {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test code where panics are acceptable")]
 mod tests {
     use super::*;
     use std::time::Duration;
@@ -252,37 +147,6 @@ mod tests {
     }
 
     #[test]
-    fn wait_config_security_presets() {
-        let config = WaitConfig::builder().production_security().build();
-
-        // Should have security settings applied
-        assert!(config.security_validator.is_some());
-        assert!(config.rate_limiter.is_some());
-
-        let config = WaitConfig::builder().development_security().build();
-
-        // Should have development security settings applied
-        assert!(config.security_validator.is_some());
-        assert!(config.rate_limiter.is_some());
-    }
-
-    #[test]
-    fn wait_config_custom_security() {
-        use crate::security::{RateLimiter, SecurityValidator};
-
-        let validator = SecurityValidator::new();
-        let limiter = RateLimiter::new(100);
-
-        let config = WaitConfig::builder()
-            .security_validator(validator)
-            .rate_limiter(limiter)
-            .build();
-
-        assert!(config.security_validator.is_some());
-        assert!(config.rate_limiter.is_some());
-    }
-
-    #[test]
     fn wait_config_builder_chaining() {
         // Test that all methods return Self for fluent chaining
         let config = WaitConfig::builder()
@@ -292,7 +156,6 @@ mod tests {
             .connection_timeout(Duration::from_secs(5))
             .wait_for_any(false)
             .max_retries(Some(5))
-            .production_security()
             .build();
 
         assert_eq!(config.timeout, Duration::from_secs(30));

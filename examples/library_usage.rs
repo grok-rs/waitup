@@ -100,7 +100,7 @@ async fn example_basic_usage() -> Result<(), waitup::WaitForError> {
 
     let result = wait_for_single_target(&target, &config).await?;
 
-    println!("Target: {}", result.target.display());
+    println!("Target: {}", result.target);
     println!("Success: {}", result.success);
     println!("Elapsed: {:?}", result.elapsed);
     println!("Attempts: {}", result.attempts);
@@ -136,7 +136,7 @@ async fn example_advanced_configuration() -> Result<(), waitup::WaitForError> {
         println!(
             "Target {}: {} - {} in {:?} ({} attempts)",
             i + 1,
-            target_result.target.display(),
+            target_result.target,
             if target_result.success { "✅" } else { "❌" },
             target_result.elapsed,
             target_result.attempts

@@ -168,4 +168,134 @@ mod tests {
         assert!(!output.status.success());
         assert_eq!(output.status.code(), Some(2));
     }
+
+    #[tokio::test]
+    async fn multiple_targets_all_fail() {
+        // Both targets unreachable
+        let output = Command::new("./target/debug/waitup")
+            .args([
+                "127.0.0.1:65533",
+                "127.0.0.1:65534",
+                "--timeout",
+                "1s",
+                "--quiet",
+            ])
+            .output()
+            .expect("Failed to execute waitup");
+
+        assert!(!output.status.success());
+        assert_eq!(output.status.code(), Some(1));
+    }
+
+    #[tokio::test]
+    #[ignore = "requires internet connection"]
+    async fn http_target_success() {
+        // Test against a known stable endpoint
+        let output = Command::new("./target/debug/waitup")
+            .args([
+                "http://httpbin.org/status/200",
+                "--timeout",
+                "10s",
+                "--quiet",
+            ])
+            .output()
+            .expect("Failed to execute waitup");
+
+        assert!(output.status.success());
+    }
+
+    #[tokio::test]
+    #[ignore = "requires internet connection"]
+    async fn http_target_wrong_status() {
+        // httpbin returns 404, but we expect 200
+        let output = Command::new("./target/debug/waitup")
+            .args([
+                "http://httpbin.org/status/404",
+                "--timeout",
+                "10s",
+                "--quiet",
+            ])
+            .output()
+            .expect("Failed to execute waitup");
+
+        assert!(!output.status.success());
+    }
+
+    #[tokio::test]
+    async fn max_retries_limit() {
+        let output = Command::new("./target/debug/waitup")
+            .args([
+                "127.0.0.1:65534",
+                "--timeout",
+                "10s", // Shorter timeout
+                "--max-retries",
+                "2", // Fewer retries for faster test
+                "--interval",
+                "100ms",
+                "--quiet",
+            ])
+            .output()
+            .expect("Failed to execute waitup");
+
+        assert!(!output.status.success());
+        // Exit code can be 1 (timeout) or 2 (other error)
+        assert!(matches!(output.status.code(), Some(1) | Some(2)));
+    }
+
+    #[tokio::test]
+    async fn custom_interval() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        tokio::spawn(async move {
+            let (_stream, _addr) = listener.accept().await.unwrap();
+        });
+
+        let output = Command::new("./target/debug/waitup")
+            .args([
+                &format!("127.0.0.1:{}", addr.port()),
+                "--timeout",
+                "5s",
+                "--interval",
+                "500ms",
+                "--quiet",
+            ])
+            .output()
+            .expect("Failed to execute waitup");
+
+        assert!(output.status.success());
+    }
+
+    #[test]
+    fn invalid_port_zero() {
+        let output = Command::new("./target/debug/waitup")
+            .args(["localhost:0", "--quiet"])
+            .output()
+            .expect("Failed to execute waitup");
+
+        assert!(!output.status.success());
+        assert_eq!(output.status.code(), Some(2));
+    }
+
+    #[test]
+    fn invalid_port_overflow() {
+        let output = Command::new("./target/debug/waitup")
+            .args(["localhost:99999", "--quiet"])
+            .output()
+            .expect("Failed to execute waitup");
+
+        assert!(!output.status.success());
+        assert_eq!(output.status.code(), Some(2));
+    }
+
+    #[test]
+    fn invalid_hostname_empty() {
+        let output = Command::new("./target/debug/waitup")
+            .args([":8080", "--quiet"])
+            .output()
+            .expect("Failed to execute waitup");
+
+        assert!(!output.status.success());
+        assert_eq!(output.status.code(), Some(2));
+    }
 }

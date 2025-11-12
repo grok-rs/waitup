@@ -37,7 +37,7 @@ async fn main() -> Result<(), waitup::WaitForError> {
 
     println!("\u{1F4CB} Waiting for {} services:", targets.len());
     for target in &targets {
-        println!("  - {}", target.display());
+        println!("  - {}", target);
     }
 
     let result = wait_for_connection(&targets, &config).await?;

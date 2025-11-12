@@ -52,7 +52,7 @@ async fn main() -> Result<(), waitup::WaitForError> {
 
     println!("🔍 Checking dependencies:");
     for target in &targets {
-        println!("  ⏳ {}", target.display());
+        println!("  ⏳ {}", target);
     }
 
     match wait_for_connection(&targets, &config).await {
@@ -67,9 +67,7 @@ async fn main() -> Result<(), waitup::WaitForError> {
             for target_result in &result.target_results {
                 println!(
                     "  ✅ {}: Ready in {:?} ({} attempts)",
-                    target_result.target.display(),
-                    target_result.elapsed,
-                    target_result.attempts
+                    target_result.target, target_result.elapsed, target_result.attempts
                 );
             }
 
