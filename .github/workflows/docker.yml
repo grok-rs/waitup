@@ -90,7 +90,7 @@ jobs:
           echo "✅ Docker image tests passed"
 
       - name: Upload image artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: docker-image-${{ matrix.variant }}
           path: /tmp/waitup-${{ matrix.variant }}.tar
@@ -106,7 +106,7 @@ jobs:
         variant: [debian, alpine]
     steps:
       - name: Download image artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: docker-image-${{ matrix.variant }}
           path: /tmp
@@ -225,7 +225,7 @@ jobs:
         variant: [debian, alpine]
     steps:
       - name: Download image artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: docker-image-${{ matrix.variant }}
           path: /tmp

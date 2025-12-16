@@ -45,7 +45,7 @@ jobs:
           RUSTDOCFLAGS: "-D rustdoc::broken-intra-doc-links"
 
       - name: Upload documentation artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: documentation
           path: target/doc/
@@ -209,7 +209,7 @@ jobs:
           echo '```' >> docs-coverage.md
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: docs-coverage-report
           path: docs-coverage.md
