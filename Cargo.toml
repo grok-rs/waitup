@@ -5,13 +5,10 @@ edition = "2024"
 rust-version = "1.85.0"
 authors = ["Serhii Kaliuzhnyi <kalyuzhni.sergei@gmail.com>"]
 
-[package.metadata.cargo-machete]
-ignored = ["writeable"]
 description = "Wait for TCP ports and HTTP endpoints to be available. Essential for Docker, K8s, and CI/CD pipelines to ensure services are ready before proceeding."
 license = "MIT"
 repository = "https://github.com/grok-rs/waitup"
 homepage = "https://github.com/grok-rs/waitup"
-documentation = "https://docs.rs/waitup"
 readme = "README.md"
 keywords = ["cli", "health-check", "docker", "tcp", "http"]
 categories = ["command-line-utilities", "network-programming", "development-tools", "web-programming"]
@@ -21,29 +18,15 @@ exclude = [
     "*.log"
 ]
 
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
-
 [badges]
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-clap = { version = "4.5", features = ["derive", "env"] }
-clap_complete = "4.5"
-tokio = { version = "1.0", features = ["net", "rt-multi-thread", "time", "macros", "sync"] }
-tokio-util = "0.7"
-thiserror = "2.0.17"
+clap = { version = "4.5.56", features = ["derive", "env"] }
+tokio = { version = "1.49", features = ["net", "rt", "time", "macros"] }
+thiserror = "2.0.18"
 humantime = "2.3"
-indicatif = "0.18"
-reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
-url = "2.5"
-futures = "0.3"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-base64 = "0.22"
-# Force newer writeable version for ICU 2.1.x compatibility
-writeable = "0.6.2"
+reqwest = { version = "0.13.1", features = ["rustls"], default-features = false }
 
 [profile.release]
 lto = true
@@ -51,11 +34,6 @@ strip = true
 opt-level = "z"
 codegen-units = 1
 panic = "abort"
-
-[dev-dependencies]
-tokio-test = "0.4"
-proptest = "1.9"
-test-case = "3.3"
 
 [[bin]]
 name = "waitup"
