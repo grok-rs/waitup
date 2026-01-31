@@ -108,6 +108,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v6
         with:
+          pattern: waitup-*
           path: artifacts
 
       - name: Collect assets
