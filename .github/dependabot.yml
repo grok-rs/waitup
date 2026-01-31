@@ -1,80 +1,18 @@
 version: 2
 updates:
-  # Rust/Cargo dependencies
-  - package-ecosystem: "cargo"
-    directory: "/"
+  - package-ecosystem: cargo
+    directory: /
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "UTC"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "grok-rs/maintainers"
-    assignees:
-      - "grok-rs/maintainers"
-    commit-message:
-      prefix: "deps"
-      prefix-development: "deps(dev)"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "rust"
-    # Group minor and patch updates
+      interval: weekly
     groups:
       minor-and-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-    # Allow major version updates but create separate PRs
-    allow:
-      - dependency-type: "direct"
-      - dependency-type: "indirect"
-    # Ignore specific dependencies if needed
-    ignore:
-      # Example: ignore alpha/beta versions
-      - dependency-name: "*"
-        versions: ["< 1.0.0"]
+        patterns: ["*"]
+        update-types: [minor, patch]
 
-  # GitHub Actions dependencies
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "weekly"
-      day: "tuesday"
-      time: "09:00"
-      timezone: "UTC"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "grok-rs/maintainers"
-    commit-message:
-      prefix: "ci"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "github-actions"
-    # Group all GitHub Actions updates
+      interval: weekly
     groups:
       github-actions:
-        patterns:
-          - "*"
-
-  # Docker dependencies (if using base images)
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "wednesday"
-      time: "09:00"
-      timezone: "UTC"
-    open-pull-requests-limit: 3
-    reviewers:
-      - "grok-rs/maintainers"
-    commit-message:
-      prefix: "docker"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "docker"
+        patterns: ["*"]
