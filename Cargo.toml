@@ -22,7 +22,7 @@ exclude = [
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-clap = { version = "4.5.60", features = ["derive", "env"] }
+clap = { version = "4.6.0", features = ["derive", "env"] }
 tokio = { version = "1.50", features = ["net", "rt", "time", "macros"] }
 thiserror = "2.0.18"
 humantime = "2.3"
