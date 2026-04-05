@@ -23,7 +23,7 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 clap = { version = "4.6.0", features = ["derive", "env"] }
-tokio = { version = "1.50", features = ["net", "rt", "time", "macros"] }
+tokio = { version = "1.51", features = ["net", "rt", "time", "macros"] }
 thiserror = "2.0.18"
 humantime = "2.3"
 reqwest = { version = "0.13.2", features = ["rustls"], default-features = false }
